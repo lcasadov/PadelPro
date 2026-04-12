@@ -70,6 +70,92 @@ Se distingue visualmente entre «interface» (puertos) e implementaciones
 Las flechas sólidas → indican uso; las punteadas -.-> indican implementación
 3.5 a 3.7 — Renumeradas sin cambios de contenido
 
+# Prompt 2.1 
+Revisa la arquitectura hexagonal que se ha generado. Falta la capa de application. Indicame porqué no esta y modifica el readme para incluirla.
+
+# Respuesta Prompt 2.1
+
+Muy buena observación. Es un error de diseño en lo que documenté. Te explico el problema y luego actualizo el README.
+
+---
+
+### El problema
+
+En mi diseño actual puse `ReservaService`, `PagoService`, etc. directamente en `domain/service/`, pero esos servicios **orquestan puertos, gestionan transacciones y coordinan múltiples objetos de dominio**. Eso no es lógica de dominio pura, es lógica de aplicación. La capa que falta es la **Application Layer**.
+
+### Las tres capas correctas son:
+
+| Capa | Responsabilidad | Ejemplo |
+|---|---|---|
+| **Domain** | Reglas de negocio puras. Entidades, Value Objects, Domain Services. **Sin dependencias externas**. | `Reserva.calcularImporte()`, `Reserva.puedeSerCancelada()` |
+| **Application** ← *faltaba* | Implementa los casos de uso. Orquesta el dominio, llama a puertos outbound, gestiona `@Transactional`. | `ReservaApplicationService.crearReserva(cmd)` |
+| **Infrastructure** | Adaptadores que conectan el mundo exterior con la aplicación. | `ReservaController`, `ReservaJpaAdapter` |
+
+### La diferencia clave:
+
+```
+// ❌ INCORRECTO — lógica de aplicación dentro del dominio
+domain/service/ReservaService.java {
+    reservaRepository.save(...)    // ← llama a un puerto outbound
+    mensajeriaPort.enviar(...)     // ← llama a otro puerto outbound
+    auditoriaPort.registrar(...)   // ← y otro más
+}
+
+// ✅ CORRECTO — separado en dos capas
+domain/model/Reserva.java {
+    boolean puedeSerCancelada(int horasAntelacion) { ... }  // regla pura
+    BigDecimal calcularImporte(BigDecimal precioPorHora) { ... }
+}
+
+application/service/ReservaApplicationService.java {
+    @Transactional
+    void crearReserva(CrearReservaCommand cmd) {
+        reservaRepositoryPort.save(reserva)    // orquesta puertos
+        mensajeriaPort.publicarEnGrupo(msg)
+        auditoriaPort.registrar(...)
+    }
+}
+```
+
+Actualizo ahora las secciones 3.3, 3.3.4 y 3.4:
+
+Now I have the full picture. I need to fix two things:
+1. **Section 3.3.4** — remove `domain/service/` and add proper `application/service/` directories with `*ApplicationService.java` files
+2. **Section 3.4** — add the Application layer subgraph between inbound and domain in the component diagram
+
+Now fix section 3.4 — replace the component diagram to add the Application layer:
+
+Both sections are now consistent with the rest of the hexagonal architecture. Let me do a quick verification pass on the key areas:
+
+The structure looks correct. Let me also verify section 3.4 was updated properly:
+
+The architecture is now fully consistent end-to-end. Here's a summary of what was fixed:
+
+---
+
+### ✅ Cambios aplicados — Capa Application completa
+
+**3.3.4 Estructura de paquetes** — Corregida para los 6 módulos:
+
+| Módulo | Antes (incorrecto) | Ahora (correcto) |
+|---|---|---|
+| `reservas` | `domain/service/ReservaService.java` | `application/service/ReservaApplicationService.java` + `domain/service/ReservaDisponibilidadService.java` (puro) |
+| `pagos` | `domain/service/PagoService.java` | `application/service/PagoApplicationService.java` + `domain/service/PagoCalculoService.java` (puro) |
+| `usuarios` | `domain/service/AuthService.java` + `UsuarioService.java` | `application/service/AuthApplicationService.java` + `UsuarioApplicationService.java` |
+| `mensajeria` | Sin capa application | `application/service/MensajeriaApplicationService.java` |
+| `otp` | `domain/service/OtpService.java` | `application/service/OtpApplicationService.java` |
+| `auditoria` | Sin puerto inbound | `application/service/AuditoriaApplicationService.java` + `port/inbound/AuditoriaUseCase.java` |
+
+**3.4 Diagrama de componentes** — Actualizado con el subgrafo `🟡 Application` en cada módulo, mostrando el flujo correcto:
+```
+🔵 Infra Inbound → invoca → ⬡ «port in» UseCase
+                             ←impl— 🟡 ApplicationService (@Transactional)
+                                        └── usa → entidad domain
+                                        └── usa → 🟠 outbound adapters
+```
+
+Las referencias cruzadas entre módulos también se corrigieron: los Application Services llaman a `AuditoriaUseCase` (puerto), no directamente a `AuditoriaJpaAdapter`.
+
 # Prompt 3
 
 Antes me hiciste estas preguntas Pasarela de pago: ¿Tienes alguna en mente (Stripe, Redsys, PayPal)? Esto afecta a la arquitectura y al modelo de datos.
@@ -174,3 +260,7 @@ Sección	Cambio
 Sección	Cambio
 3.1	Decisión explícita en tabla: "Sin multi-tenancy en v1.0"
 3.7.4	Keycloak descartado para v1.0; Kubernetes descartado salvo alta disponibilidad futura
+
+
+
+

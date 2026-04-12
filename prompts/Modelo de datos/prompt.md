@@ -1,6 +1,6 @@
 # Prompt 1
 
-Rol: Eres un experimentado Arquitecto de Software Senior en el diseño de arquitectura de software.
+Rol: Eres un experimentado Arquitecto de DataBase Senior en el diseño de Bases de datos..
 
 Objetivo: Diseño de modelo de datos completo.Analiza toda la documentación disponible @prompts/descripcion/descripcion.md y @readme.md y, basándote sólo y exclusivamente en esta información, diseña un modelo de datos completo que incluya entidades, atributos (nombre y tipo) y relaciones. Usa el estándar Diagramas Entidad-Relación (ER). La nomenclatura de entidades y atributos deben estar en ingles.
 
@@ -86,4 +86,63 @@ Respuesta 3:  Opción B.
 - `phone` en `USERS` → identificador para envío por Telegram (no se almacena `telegram_chat_id`)
 - `NOTIFICATION_LOG` con estado de entrega → el admin puede ver notificaciones fallidas
 
-¿Continuamos con el **punto 5 — Especificación de la API**?
+# Prompt 3
+
+Rol: Eres un experimentado Arquitecto de DataBase Senior en el diseño de Bases de datos..
+
+Objetivo: Analiza toda la documentación disponible @prompts/descripcion/descripcion.md y @readme.md y, basándote sólo y exclusivamente en esta información, y analiza cuales serán las consultas más frecuentes y  optimízalo para:
+- Índices para búsquedas frecuentes de disponibilidad
+- Constraints para integridad de datos de negocio
+- Particionado si es necesario para grandes volúmenes
+- Estrategia de caching para consultas repetitivas
+
+
+Outputs a generar: actualiza el @readme.md genera la documentación relativa al punto 4 Modelo de datos, indica las consultas más frecuentes actualiza lo necesario.
+
+No inventes lo que no sepas. Si necesitas solucionar dudas, pregúntame antes de realizar nada.
+
+# Respuesta Prompt 3
+
+Tengo todo lo necesario. Voy a analizar el modelo completo antes de escribir nada.
+
+**Análisis de consultas frecuentes identificadas:**
+
+1. **Disponibilidad** (crítica + concurrencia): overlap check `WHERE reservation_date = ? AND status != 'CANCELLED' AND ranges overlap`
+2. **Calendario semanal** (dashboard): `WHERE reservation_date BETWEEN today AND today+7`
+3. **Reservas incompletas** (unirse): `GROUP BY r.id HAVING COUNT(participants) < 4`
+4. **Historial del usuario**: `WHERE owner_id = ? ORDER BY reservation_date DESC`
+5. **Pagos pendientes del usuario**: JOIN reservations+payments `WHERE status='PENDING'`
+6. **Validación OTP**: `WHERE user_id=? AND type=? AND used=false AND expires_at > NOW()`
+7. **SYSTEM_CONFIG**: singleton leído en cada operación de precio y config
+8. **Autenticación**: `WHERE login=? AND status='ACTIVE'`
+
+Ahora reescribo 4.6 y añado 4.7–4.10:
+Todo en orden. Resumen de lo añadido a la Sección 4:
+
+---
+
+### ✅ Cambios aplicados a la Sección 4
+
+**4.6 Estrategia de Índices** — completamente reescrita
+
+| Antes | Ahora |
+|---|---|
+| 17 índices simples en tabla plana | 21 índices con tipo, columnas, condición parcial y consulta cubierta |
+| Sin índice de solapamiento | **`excl_res_no_overlap` GiST exclusion** (prevención de doble reserva a nivel BD) |
+| Sin índices compuestos reales | 8 índices compuestos alineados con patrones de consulta reales |
+| Sin índices parciales | 5 índices parciales (solo filas relevantes) |
+
+**4.7 Consultas Frecuentes** *(nuevo)* — 8 queries con SQL completo, índice activo y tiempo esperado
+
+**4.8 Constraints de Integridad** *(nuevo)* — DDL completo con:
+- `CHECK` de duraciones válidas (60/90/120/150/180 min)
+- `CHECK` de coherencia `end_time = start_time + duration`
+- `CHECK` de inicio en :00 o :30
+- `CHECK` formato OTP 6 dígitos (`code ~ '^\d{6}$'`)
+- `CHECK` jugador externo XOR registrado
+- `CHECK` singleton de `SYSTEM_CONFIG (id = 1)`
+- **`EXCLUDE USING gist`** para prevención de solapamiento (requiere `btree_gist`)
+
+**4.9 Particionado** *(nuevo)* — Análisis de volumen: **no necesario en v1.0** (< 4.000 reservas en 5 años). Plan documentado para cuando `AUDIT_LOG` supere 500.000 filas
+
+**4.10 Caché** *(nuevo)* — Spring Cache + Caffeine con 4 cachés definidas: `system-config` (sin TTL, invalidación explícita), `available-slots` (30s), `weekly-calendar` (30s), `user-profile` (5 min). Código Java de anotaciones incluido. Justificación de qué NO se cachea (OTP, pagos en curso)

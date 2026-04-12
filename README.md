@@ -7,11 +7,18 @@
 1. [Descripción general del producto](#1-descripción-general-del-producto)
 2. [PRD – Casos de Uso Principales](#2-prd--casos-de-uso-principales)
 3. [Arquitectura del sistema](#3-arquitectura-del-sistema)
+   - 3.1 [Diagrama de Contexto — C4 L1](#31-diagrama-de-contexto-del-sistema--c4-level-1)
+   - 3.2 [Visión General](#32-visión-general-del-sistema)
+   - 3.3 [Arquitectura General — C4 L2](#33-diagrama-de-arquitectura-general--c4-level-2)
+   - 3.4 [Arquitectura Hexagonal — C4 L3](#34-arquitectura-hexagonal-por-módulos--c4-level-3)
+     - 3.4.5 [Diagrama de Clases — C4 L4 · Módulo `reservas`](#345-diagrama-de-clases--c4-level-4--módulo-reservas)
+   - 3.5 [Diagrama de Componentes del Backend](#35-diagrama-de-componentes-del-backend-por-módulos)
+   - 3.6 [Diagrama de Despliegue — Docker Compose](#36-diagrama-de-despliegue--docker-compose-on-premise)
+   - 3.7 [Diagrama de Seguridad — JWT y OTP](#37-diagrama-de-seguridad--flujo-jwt-y-otp)
+   - 3.8 [Análisis del Stack Tecnológico](#38-análisis-del-stack-tecnológico)
 4. [Modelo de datos](#4-modelo-de-datos)
 5. [Especificación de la API](#5-especificación-de-la-api)
-6. [Historias de usuario](#6-historias-de-usuario)
-7. [Tickets de trabajo](#7-tickets-de-trabajo)
-8. [Pull requests](#8-pull-requests)
+
 
 ---
 
@@ -923,7 +930,43 @@ W --> A: Reserva marcada como pagada
 
 ## 3. Arquitectura del Sistema
 
-### 3.1 Visión General
+### 3.1 Diagrama de Contexto del Sistema — C4 Level 1
+
+> Vista de más alto nivel: PadelPro como caja negra, los actores que la usan y los sistemas externos con los que se integra en v1.0.
+
+```mermaid
+graph LR
+    J("<b>Jugador</b><br/>Reserva pistas y paga"):::persona
+    A("<b>Administrador</b><br/>Gestiona el club"):::persona
+    B("<b>Bot Telegram</b><br/>Canal de mensajería"):::persona
+
+    PP("<b>PadelPro</b><br/>Gestión de pistas y reservas"):::system
+
+    R("<b>Redsys</b><br/>Pasarela de pago"):::external
+    T("<b>Telegram API</b><br/>Notificaciones y OTP"):::external
+    S("<b>SMTP</b><br/>Envío de emails"):::external
+
+    J -->|HTTPS / Telegram| PP
+    A -->|HTTPS| PP
+    B -->|Webhook| PP
+    PP -->|HTTPS / Webhook| R
+    PP -->|HTTPS / Webhook| T
+    PP -->|SMTP| S
+
+    classDef persona  fill:#1a7a5e,stroke:#1a7a5e,color:#fff
+    classDef system   fill:#5b5bd6,stroke:#5b5bd6,color:#fff
+    classDef external fill:#b85c00,stroke:#b85c00,color:#fff
+```
+
+| Símbolo | Significado |
+|---|---|
+| 🟩 Verde | Personas / actores que interactúan con el sistema |
+| 🟦 Azul-violeta | Sistema PadelPro (caja negra en este nivel) |
+| 🟧 Naranja | Sistemas externos de los que depende PadelPro |
+
+---
+
+### 3.2 Visión General del Sistema
 
 El backend de PadelPro se construye sobre **Arquitectura Hexagonal** (Ports & Adapters), combinada con un despliegue en **tres capas físicas** (Presentación → Backend → Datos) sobre contenedores Docker en entorno **On-Premise**. Esta decisión arquitectónica es especialmente adecuada para este sistema porque:
 
@@ -951,7 +994,38 @@ El sistema está diseñado bajo los siguientes principios:
 
 ---
 
-### 3.2 Diagrama de Arquitectura General
+### 3.3 Diagrama de Arquitectura General — C4 Level 2
+
+**Vista simplificada — contenedores y sistemas externos:**
+
+```mermaid
+graph LR
+    subgraph SYS["PadelPro — Sistema"]
+        REACT("<b>App React</b><br/>Frontend SPA"):::int_blue
+        API("<b>API Spring Boot</b><br/>Backend REST + lógica"):::int_purple
+        DB("<b>PostgreSQL</b><br/>Base de datos principal"):::int_teal
+        BOT("<b>Bot Telegram</b><br/>Canal de mensajería"):::int_dark
+    end
+
+    REDSYS("<b>Redsys</b><br/>Pasarela pago"):::ext
+    TG("<b>Telegram</b><br/>Bot API"):::ext
+    SMTP_NODE("<b>SMTP</b><br/>Email"):::ext
+
+    REACT  -->|REST| API
+    BOT    -->|Webhook| API
+    API    -->|JPA| DB
+    API    --> REDSYS
+    API    --> TG
+    API    --> SMTP_NODE
+
+    classDef int_blue   fill:#1565C0,stroke:#1565C0,color:#fff
+    classDef int_purple fill:#5b5bd6,stroke:#5b5bd6,color:#fff
+    classDef int_teal   fill:#1a7a5e,stroke:#1a7a5e,color:#fff
+    classDef int_dark   fill:#4a4a4a,stroke:#4a4a4a,color:#fff
+    classDef ext        fill:#b85c00,stroke:#b85c00,color:#fff
+```
+
+**Vista detallada — capas internas y flujos de comunicación:**
 
 ```mermaid
 graph TB
@@ -1027,18 +1101,53 @@ graph TB
 
 ---
 
-### 3.3 Arquitectura Hexagonal por Módulos
+### 3.4 Arquitectura Hexagonal por Módulos — C4 Level 3
 
-#### 3.3.1 Definición de Módulos
+#### 3.4.1 Definición de Módulos y Capas Internas
 
-El backend se divide en **6 módulos** alineados con los contextos de negocio. Cada módulo es autónomo y aplica internamente la estructura hexagonal completa (dominio → puertos → adaptadores). Los módulos transversales (`auditoria`, `shared`) son consumidos por el resto sin exponer lógica de infraestructura.
+El backend se divide en **6 módulos** alineados con los contextos de negocio. Cada módulo aplica internamente **cuatro capas** siguiendo la arquitectura hexagonal completa:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  INFRASTRUCTURE  ←──────────────────────────────────    │
+│  Adaptadores Primarios    Adaptadores Secundarios        │
+│  (Controllers, Webhooks)  (JPA, API clients, SMTP)      │
+│        │                          ▲                      │
+│        ▼                          │                      │
+│  ┌─────────────────────────────────────────────────┐    │
+│  │  APPLICATION                                     │    │
+│  │  *ApplicationService implements UseCase          │    │
+│  │  @Transactional · Orquesta dominio y puertos    │    │
+│  │        │                     │                   │    │
+│  │        ▼                     ▼                   │    │
+│  │  ┌───────────────────────────────────────────┐  │    │
+│  │  │  DOMAIN                                   │  │    │
+│  │  │  Entities · Value Objects                 │  │    │
+│  │  │  Domain Services (reglas puras)           │  │    │
+│  │  │  port/inbound  «UseCase interfaces»       │  │    │
+│  │  │  port/outbound «Repository/Service ports» │  │    │
+│  │  └───────────────────────────────────────────┘  │    │
+│  └─────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────┘
+```
+
+**¿Por qué cuatro capas y no tres?**
+
+| Capa | Qué contiene | Qué NO contiene |
+|---|---|---|
+| **Domain** | Entidades con reglas de negocio puras (`Reserva.calcularImporte()`, `Reserva.puedeSerCancelada()`). Interfaces de puertos inbound/outbound. Domain Services sin dependencias externas. | `@Transactional`, llamadas a repositorios, llamadas a APIs externas |
+| **Application** | `*ApplicationService` que implementan los puertos inbound (UseCase). Orquesta entidades, llama a puertos outbound, gestiona `@Transactional`. | Lógica de negocio pura (vive en Domain), detalles de HTTP o JPA |
+| **Infrastructure (inbound)** | Controllers REST, Webhook adapters. Mapean requests HTTP/mensajes al Command/Query que la Application entiende. | Lógica de negocio, acceso a datos |
+| **Infrastructure (outbound)** | JPA adapters, API clients (Telegram, Redsys, SMTP). Implementan los puertos outbound definidos en Domain. | Lógica de negocio, lógica de aplicación |
+
+**Módulos del sistema:**
 
 | Módulo | Responsabilidad | Tipo |
 |---|---|---|
 | **reservas** | Gestión del ciclo de vida de reservas y participantes | Negocio core |
 | **pagos** | Procesamiento de pagos online y registro de efectivo | Negocio core |
 | **usuarios** | Gestión de usuarios, autenticación y autorización | Negocio core |
-| **mensajeria** | Integración con WhatsApp y Telegram (entrada y salida) | Canal / Infraestructura |
+| **mensajeria** | Integración con Telegram (v1) y WhatsApp (v2 futuro) | Canal / Infraestructura |
 | **otp** | Generación y validación de códigos OTP para operaciones críticas | Seguridad transversal |
 | **auditoria** | Registro inmutable de todas las acciones del sistema | Transversal |
 | **shared** | Configuración Spring, seguridad JWT, DTOs comunes | Infraestructura compartida |
@@ -1050,207 +1159,215 @@ pagos     ──uses──▶  mensajeria · auditoria
 usuarios  ──uses──▶  mensajeria · auditoria · otp
 mensajeria──uses──▶  otp
 ```
-> El dominio de cada módulo solo depende de interfaces (puertos). Nunca de implementaciones de otro módulo.
+> La capa Application de cada módulo solo depende de interfaces (puertos definidos en Domain). Nunca de implementaciones concretas de otro módulo.
 
 ---
 
-#### 3.3.2 Mapa de Módulos
+#### 3.4.2 Mapa de Módulos
 
 ```mermaid
 graph TB
     subgraph SHARED["🔧 shared — Infraestructura Compartida"]
-        SEC["Spring Security · JWT · BCrypt · RBAC\nOpenAPI Config · DTOs comunes"]
+        SEC["Spring Security · JWT · BCrypt · RBAC · OpenAPI"]
     end
 
     subgraph MOD_R["📅 reservas"]
-        direction LR
-        R_IN["Adaptadores Primarios\nReservaController\nAdminReservaController\nBotReservaAdapter"]
-        R_DOM["Dominio\nReserva · Participante\nReservaUseCase\nReservaService"]
-        R_OUT["Adaptadores Secundarios\nReservaJpaAdapter"]
-        R_IN --> R_DOM --> R_OUT
+        direction TB
+        R_IN["🔵 Infra Inbound\nReservaController\nAdminReservaController\nBotReservaAdapter"]
+        R_APP["🟡 Application\nReservaApplicationService\nimplements ReservaUseCase\n@Transactional"]
+        R_DOM["⬡ Domain\nReserva · Participante\n«port in» ReservaUseCase\n«port out» ReservaRepositoryPort\nMensajeriaPort · AuditoriaPort"]
+        R_OUT["🟠 Infra Outbound\nReservaJpaAdapter"]
+        R_IN --> R_APP --> R_DOM --> R_OUT
     end
 
     subgraph MOD_P["💳 pagos"]
-        direction LR
-        P_IN["Adaptadores Primarios\nPagoController\nAdminPagoController\nPagoWebhookAdapter"]
-        P_DOM["Dominio\nPago\nPagoUseCase\nPagoService"]
-        P_OUT["Adaptadores Secundarios\nPagoJpaAdapter\nPagoGatewayAdapter"]
-        P_IN --> P_DOM --> P_OUT
+        direction TB
+        P_IN["🔵 Infra Inbound\nPagoController\nAdminPagoController\nPagoWebhookAdapter"]
+        P_APP["🟡 Application\nPagoApplicationService\nimplements PagoUseCase\n@Transactional"]
+        P_DOM["⬡ Domain\nPago\n«port in» PagoUseCase\n«port out» PagoRepositoryPort\nPagoGatewayPort · AuditoriaPort"]
+        P_OUT["🟠 Infra Outbound\nPagoJpaAdapter\nRedsysGatewayAdapter"]
+        P_IN --> P_APP --> P_DOM --> P_OUT
     end
 
     subgraph MOD_U["👤 usuarios"]
-        direction LR
-        U_IN["Adaptadores Primarios\nAuthController\nUsuarioController\nAdminUsuarioController"]
-        U_DOM["Dominio\nUsuario\nAuthUseCase · UsuarioUseCase\nAuthService · UsuarioService"]
-        U_OUT["Adaptadores Secundarios\nUsuarioJpaAdapter\nSmtpEmailAdapter"]
-        U_IN --> U_DOM --> U_OUT
+        direction TB
+        U_IN["🔵 Infra Inbound\nAuthController\nUsuarioController\nAdminUsuarioController"]
+        U_APP["🟡 Application\nAuthApplicationService\nUsuarioApplicationService\n@Transactional"]
+        U_DOM["⬡ Domain\nUsuario\n«port in» AuthUseCase · UsuarioUseCase\n«port out» UsuarioRepositoryPort\nMensajeriaPort · OtpUseCase · AuditoriaPort"]
+        U_OUT["🟠 Infra Outbound\nUsuarioJpaAdapter\nSmtpEmailAdapter"]
+        U_IN --> U_APP --> U_DOM --> U_OUT
     end
 
     subgraph MOD_M["📲 mensajeria"]
-        direction LR
-        M_IN["Adaptadores Primarios\nBotWhatsAppAdapter\nBotTelegramAdapter"]
-        M_DOM["Puerto\nMensajeriaPort"]
-        M_OUT["Adaptadores Secundarios\nWhatsAppClientAdapter\nTelegramClientAdapter"]
-        M_IN --> M_DOM --> M_OUT
+        direction TB
+        M_IN["🔵 Infra Inbound\nBotTelegramAdapter ✅\nBotWhatsAppAdapter ⏳"]
+        M_APP["🟡 Application\nMensajeriaApplicationService\norquesta OtpUseCase y ReservaUseCase"]
+        M_DOM["⬡ Domain\n«port out» MensajeriaPort"]
+        M_OUT["🟠 Infra Outbound\nTelegramClientAdapter ✅\nWhatsAppClientAdapter ⏳"]
+        M_IN --> M_APP --> M_DOM --> M_OUT
     end
 
     subgraph MOD_O["🔑 otp"]
-        direction LR
-        O_DOM["Dominio\nOtp · OtpUseCase\nOtpService"]
-        O_OUT["Adaptadores Secundarios\nOtpJpaAdapter"]
-        O_DOM --> O_OUT
+        direction TB
+        O_APP["🟡 Application\nOtpApplicationService\nimplements OtpUseCase"]
+        O_DOM["⬡ Domain\nOtp\n«port in» OtpUseCase\n«port out» OtpRepositoryPort"]
+        O_OUT["🟠 Infra Outbound\nOtpJpaAdapter"]
+        O_APP --> O_DOM --> O_OUT
     end
 
     subgraph MOD_A["📋 auditoria"]
-        direction LR
-        A_DOM["Puerto\nAuditoriaPort"]
-        A_OUT["Adaptadores Secundarios\nAuditoriaJpaAdapter"]
-        A_DOM --> A_OUT
+        direction TB
+        A_APP["🟡 Application\nAuditoriaApplicationService\nimplements AuditoriaUseCase"]
+        A_DOM["⬡ Domain\n«port out» AuditoriaPort"]
+        A_OUT["🟠 Infra Outbound\nAuditoriaJpaAdapter"]
+        A_APP --> A_DOM --> A_OUT
     end
 
-    SHARED -.->|seguridad transversal| MOD_R & MOD_P & MOD_U & MOD_M
+    SHARED -.->|JWT · RBAC transversal| MOD_R & MOD_P & MOD_U & MOD_M
 
-    MOD_R -->|MensajeriaPort| MOD_M
-    MOD_R -->|AuditoriaPort| MOD_A
-    MOD_P -->|MensajeriaPort| MOD_M
-    MOD_P -->|AuditoriaPort| MOD_A
-    MOD_U -->|MensajeriaPort| MOD_M
-    MOD_U -->|AuditoriaPort| MOD_A
-    MOD_U -->|OtpUseCase| MOD_O
-    MOD_M -->|OtpUseCase| MOD_O
+    R_APP -->|MensajeriaPort| MOD_M
+    R_APP -->|AuditoriaPort| MOD_A
+    P_APP -->|MensajeriaPort| MOD_M
+    P_APP -->|AuditoriaPort| MOD_A
+    U_APP -->|MensajeriaPort| MOD_M
+    U_APP -->|AuditoriaPort| MOD_A
+    U_APP -->|OtpUseCase| MOD_O
+    M_APP -->|OtpUseCase| MOD_O
 ```
 
 ---
 
-#### 3.3.3 Diagrama Hexagonal por Módulo
+#### 3.4.3 Diagrama Hexagonal por Módulo
 
 **Módulo `reservas`**
 
 ```mermaid
 graph LR
-    subgraph R_PA["🔵 Adaptadores Primarios"]
+    subgraph R_INFRA_IN["🔵 Infra Inbound"]
         RC["ReservaController\n/api/reservas"]
         ARC["AdminReservaController\n/api/admin/reservas"]
-        BRA["BotReservaAdapter\nwebhook WA/TG"]
+        BRA["BotReservaAdapter\nwebhook Telegram"]
     end
-    subgraph R_DOMAIN["⬡ Dominio reservas"]
+    subgraph R_APP["🟡 Application"]
+        RAS["ReservaApplicationService\nimplements ReservaUseCase\n@Transactional\norquesta dominio y puertos"]
+    end
+    subgraph R_DOM["⬡ Domain"]
         RUC["«port in»\nReservaUseCase"]
-        RS["ReservaService"]
-        RE["Reserva\nParticipante"]
+        RE["Reserva · Participante\ncalcularImporte()\npuedeSerCancelada()\nestaCompleta()"]
         RRP["«port out»\nReservaRepositoryPort"]
         RMP["«port out»\nMensajeriaPort"]
         RAP["«port out»\nAuditoriaPort"]
     end
-    subgraph R_SA["🟠 Adaptadores Secundarios"]
-        RJPA["ReservaJpaAdapter\nPostgreSQL"]
-        RMSG["→ módulo mensajeria"]
-        RAUD["→ módulo auditoria"]
+    subgraph R_INFRA_OUT["🟠 Infra Outbound"]
+        RJPA["ReservaJpaAdapter"]
+        RMSG["→ mensajeria module"]
+        RAUD["→ auditoria module"]
     end
-    RC & ARC & BRA -->|usa| RUC
-    RUC -.->|impl| RS
-    RS --- RE
-    RS -->|usa| RRP & RMP & RAP
+    RC & ARC & BRA -->|invoca| RUC
+    RUC -.->|impl| RAS
+    RAS -->|usa| RE
+    RAS -->|usa| RRP & RMP & RAP
     RRP -.->|impl| RJPA
-    RMP -.->|delega| RMSG
-    RAP -.->|delega| RAUD
+    RMP -.->|impl| RMSG
+    RAP -.->|impl| RAUD
 ```
 
 **Módulo `pagos`**
 
 ```mermaid
 graph LR
-    subgraph P_PA["🔵 Adaptadores Primarios"]
+    subgraph P_INFRA_IN["🔵 Infra Inbound"]
         PC["PagoController\n/api/pagos"]
         APC["AdminPagoController\n/api/admin/pagos"]
         PWA["PagoWebhookAdapter\n/api/pagos/webhook"]
     end
-    subgraph P_DOMAIN["⬡ Dominio pagos"]
+    subgraph P_APP["🟡 Application"]
+        PAS["PagoApplicationService\nimplements PagoUseCase\n@Transactional\ncalcula importe y orquesta pago"]
+    end
+    subgraph P_DOM["⬡ Domain"]
         PUC["«port in»\nPagoUseCase"]
-        PS["PagoService"]
-        PE["Pago"]
+        PE["Pago\ncalcularImporte(precioHora, minutos)\nestaPendiente() · estaAnulado()"]
         PRP["«port out»\nPagoRepositoryPort"]
         PGP["«port out»\nPagoGatewayPort"]
-        PNP["«port out»\nNotificacionPort"]
         PAP["«port out»\nAuditoriaPort"]
     end
-    subgraph P_SA["🟠 Adaptadores Secundarios"]
-        PJPA["PagoJpaAdapter\nPostgreSQL"]
-        PGA["PagoGatewayAdapter\nBanco (Webhook)"]
-        PSMTP["SmtpEmailAdapter\nSMTP"]
-        PAUD["→ módulo auditoria"]
+    subgraph P_INFRA_OUT["🟠 Infra Outbound"]
+        PJPA["PagoJpaAdapter"]
+        PGA["RedsysGatewayAdapter\n(default configurable)"]
+        PAUD["→ auditoria module"]
     end
-    PC & APC & PWA -->|usa| PUC
-    PUC -.->|impl| PS
-    PS --- PE
-    PS -->|usa| PRP & PGP & PNP & PAP
+    PC & APC & PWA -->|invoca| PUC
+    PUC -.->|impl| PAS
+    PAS -->|usa| PE
+    PAS -->|usa| PRP & PGP & PAP
     PRP -.->|impl| PJPA
     PGP -.->|impl| PGA
-    PNP -.->|impl| PSMTP
-    PAP -.->|delega| PAUD
+    PAP -.->|impl| PAUD
 ```
 
 **Módulo `usuarios`**
 
 ```mermaid
 graph LR
-    subgraph U_PA["🔵 Adaptadores Primarios"]
+    subgraph U_INFRA_IN["🔵 Infra Inbound"]
         AC["AuthController\n/api/auth"]
         UC["UsuarioController\n/api/usuarios"]
         AUC["AdminUsuarioController\n/api/admin/usuarios"]
     end
-    subgraph U_DOMAIN["⬡ Dominio usuarios"]
+    subgraph U_APP["🟡 Application"]
+        AAS["AuthApplicationService\nimplements AuthUseCase\n@Transactional"]
+        UAS["UsuarioApplicationService\nimplements UsuarioUseCase\n@Transactional"]
+    end
+    subgraph U_DOM["⬡ Domain"]
         AUI["«port in»\nAuthUseCase"]
         UUI["«port in»\nUsuarioUseCase"]
-        AS["AuthService"]
-        US["UsuarioService"]
-        UE["Usuario"]
+        UE["Usuario\nestaActivo() · tieneRol()"]
         URP["«port out»\nUsuarioRepositoryPort"]
         UMP["«port out»\nMensajeriaPort"]
-        UNP["«port out»\nNotificacionPort"]
         UOP["«port out»\nOtpUseCase"]
         UAP["«port out»\nAuditoriaPort"]
     end
-    subgraph U_SA["🟠 Adaptadores Secundarios"]
-        UJPA["UsuarioJpaAdapter\nPostgreSQL"]
-        UMSG["→ módulo mensajeria"]
-        USMTP["SmtpEmailAdapter\nSMTP"]
-        UOTP["→ módulo otp"]
-        UAUD["→ módulo auditoria"]
+    subgraph U_INFRA_OUT["🟠 Infra Outbound"]
+        UJPA["UsuarioJpaAdapter"]
+        UMSG["→ mensajeria module"]
+        UOTP["→ otp module"]
+        UAUD["→ auditoria module"]
     end
-    AC -->|usa| AUI
-    UC & AUC -->|usa| UUI
-    AUI -.->|impl| AS
-    UUI -.->|impl| US
-    AS & US --- UE
-    AS & US -->|usa| URP & UMP & UNP & UOP & UAP
+    AC -->|invoca| AUI
+    UC & AUC -->|invoca| UUI
+    AUI -.->|impl| AAS
+    UUI -.->|impl| UAS
+    AAS & UAS -->|usa| UE
+    AAS & UAS -->|usa| URP & UMP & UOP & UAP
     URP -.->|impl| UJPA
-    UMP -.->|delega| UMSG
-    UNP -.->|impl| USMTP
-    UOP -.->|delega| UOTP
-    UAP -.->|delega| UAUD
+    UMP -.->|impl| UMSG
+    UOP -.->|impl| UOTP
+    UAP -.->|impl| UAUD
 ```
 
 **Módulo `mensajeria`**
 
-> Canal principal: **Telegram Bot API**. WhatsApp Business API previsto para v2 — el puerto `MensajeriaPort` permite añadirlo sin modificar el dominio.
+> Canal principal: **Telegram Bot API** ✅ v1.0. WhatsApp Business API ⏳ v2 futuro — el puerto `MensajeriaPort` permite añadir el adaptador sin modificar dominio ni application.
 
 ```mermaid
 graph LR
-    subgraph M_PA["🔵 Adaptadores Primarios\n(webhooks entrantes)"]
-        BTA["BotTelegramAdapter\nPOST /api/bot/telegram\n✅ v1.0 activo"]
-        BWA["BotWhatsAppAdapter\nPOST /api/bot/whatsapp\n⏳ v2 futuro"]
+    subgraph M_INFRA_IN["🔵 Infra Inbound\n(webhooks entrantes)"]
+        BTA["BotTelegramAdapter\nPOST /api/bot/telegram ✅"]
+        BWA["BotWhatsAppAdapter\nPOST /api/bot/whatsapp ⏳"]
     end
-    subgraph M_DOMAIN["⬡ Puerto mensajeria"]
-        MP["«port»\nMensajeriaPort\n+ enviar(destino, mensaje)\n+ enviarOtp(destino, codigo)"]
-        OUC["«dep»\nOtpUseCase\n(valida OTP por Telegram)"]
-        RUC["«dep»\nReservaUseCase\n(crea/cancela reserva)"]
+    subgraph M_APP["🟡 Application"]
+        MAS["MensajeriaApplicationService\nparsea mensajes entrantes\norquesta OtpUseCase y ReservaUseCase"]
     end
-    subgraph M_SA["🟠 Adaptadores Secundarios\n(clientes salientes)"]
-        TGC["TelegramClientAdapter\nTelegram Bot API\n✅ v1.0 activo"]
-        WAC["WhatsAppClientAdapter\nWA Business API\n⏳ v2 futuro"]
+    subgraph M_DOM["⬡ Domain"]
+        MP["«port out»\nMensajeriaPort\n+ enviar(destino, mensaje)\n+ enviarOtp(destino, codigo)"]
     end
-    BTA -->|parsea y delega| RUC & OUC
-    BWA -.->|futuro| RUC & OUC
+    subgraph M_INFRA_OUT["🟠 Infra Outbound\n(clientes salientes)"]
+        TGC["TelegramClientAdapter\nTelegram Bot API ✅"]
+        WAC["WhatsAppClientAdapter\nWA Business API ⏳"]
+    end
+    BTA -->|parsea| MAS
+    BWA -.->|futuro| MAS
+    MAS -->|usa| MP
     MP -.->|impl activa| TGC
     MP -.->|impl futura| WAC
 ```
@@ -1260,29 +1377,43 @@ graph LR
 ```mermaid
 graph LR
     subgraph MOD_OTP["🔑 otp"]
-        OPI["«port in»\nOtpUseCase\n+ generar(userId)\n+ validar(userId, code)"]
-        OS["OtpService"]
-        OE["Otp"]
-        ORP["«port out»\nOtpRepositoryPort"]
-        OJPA["OtpJpaAdapter\nPostgreSQL"]
-        OPI -.->|impl| OS
-        OS --- OE
-        OS --> ORP
+        subgraph OTP_APP["🟡 Application"]
+            OAS["OtpApplicationService\nimplements OtpUseCase\ngenerar() · validar() · invalidar()"]
+        end
+        subgraph OTP_DOM["⬡ Domain"]
+            OUC["«port in»\nOtpUseCase"]
+            OE["Otp\nestaExpirado() · estaUsado()"]
+            ORP["«port out»\nOtpRepositoryPort"]
+        end
+        subgraph OTP_OUT["🟠 Infra Outbound"]
+            OJPA["OtpJpaAdapter"]
+        end
+        OUC -.->|impl| OAS
+        OAS -->|usa| OE & ORP
         ORP -.->|impl| OJPA
     end
 
     subgraph MOD_AUD["📋 auditoria"]
-        API2["«port out»\nAuditoriaPort\n+ registrar(accion, usuario, detalle)"]
-        AJPA["AuditoriaJpaAdapter\nPostgreSQL"]
-        AE["AuditoriaEntry"]
-        API2 -.->|impl| AJPA
-        AJPA --- AE
+        subgraph AUD_APP["🟡 Application"]
+            AAS2["AuditoriaApplicationService\nimplements AuditoriaUseCase\nregistrar()"]
+        end
+        subgraph AUD_DOM["⬡ Domain"]
+            AUC2["«port in»\nAuditoriaUseCase"]
+            AE["AuditoriaEntry\n(inmutable)"]
+            ARP["«port out»\nAuditoriaRepositoryPort"]
+        end
+        subgraph AUD_OUT["🟠 Infra Outbound"]
+            AJPA["AuditoriaJpaAdapter"]
+        end
+        AUC2 -.->|impl| AAS2
+        AAS2 -->|usa| AE & ARP
+        ARP -.->|impl| AJPA
     end
 ```
 
 ---
 
-#### 3.3.4 Estructura de Paquetes por Módulo
+#### 3.4.4 Estructura de Paquetes por Módulo
 
 ```
 com.padelpro
@@ -1290,17 +1421,20 @@ com.padelpro
 ├── reservas/
 │   ├── domain/
 │   │   ├── model/
-│   │   │   ├── Reserva.java
-│   │   │   └── Participante.java
+│   │   │   ├── Reserva.java                           ← entidad: calcularImporte(), puedeSerCancelada(), estaCompleta()
+│   │   │   └── Participante.java                      ← value object
 │   │   ├── port/
 │   │   │   ├── inbound/
-│   │   │   │   └── ReservaUseCase.java
+│   │   │   │   └── ReservaUseCase.java                ← interfaz del puerto primario
 │   │   │   └── outbound/
 │   │   │       ├── ReservaRepositoryPort.java
-│   │   │       ├── MensajeriaPort.java        ← ref al módulo mensajeria
-│   │   │       └── AuditoriaPort.java         ← ref al módulo auditoria
+│   │   │       ├── MensajeriaPort.java                ← ref al módulo mensajeria
+│   │   │       └── AuditoriaPort.java                 ← ref al módulo auditoria
 │   │   └── service/
-│   │       └── ReservaService.java
+│   │       └── ReservaDisponibilidadService.java      ← domain service: solo reglas puras, sin @Transactional
+│   ├── application/
+│   │   └── service/
+│   │       └── ReservaApplicationService.java         ← implements ReservaUseCase, @Transactional
 │   └── infrastructure/
 │       ├── adapter/
 │       │   ├── inbound/
@@ -1321,17 +1455,19 @@ com.padelpro
 ├── pagos/
 │   ├── domain/
 │   │   ├── model/
-│   │   │   └── Pago.java
+│   │   │   └── Pago.java                             ← entidad: calcularImporte(), estaPendiente(), estaAnulado()
 │   │   ├── port/
 │   │   │   ├── inbound/
 │   │   │   │   └── PagoUseCase.java
 │   │   │   └── outbound/
 │   │   │       ├── PagoRepositoryPort.java
 │   │   │       ├── PagoGatewayPort.java
-│   │   │       ├── NotificacionPort.java
 │   │   │       └── AuditoriaPort.java
 │   │   └── service/
-│   │       └── PagoService.java
+│   │       └── PagoCalculoService.java               ← domain service: reglas de cálculo puras
+│   ├── application/
+│   │   └── service/
+│   │       └── PagoApplicationService.java           ← implements PagoUseCase, @Transactional
 │   └── infrastructure/
 │       ├── adapter/
 │       │   ├── inbound/
@@ -1345,17 +1481,15 @@ com.padelpro
 │       │       │   ├── PagoJpaAdapter.java
 │       │       │   └── entity/
 │       │       │       └── PagoEntity.java
-│       │       ├── payment/
-│       │       │   └── PagoGatewayAdapter.java
-│       │       └── email/
-│       │           └── SmtpEmailAdapter.java
+│       │       └── payment/
+│       │           └── RedsysGatewayAdapter.java     ← implements PagoGatewayPort (HMAC SHA-256)
 │       └── config/
 │           └── PagoConfig.java
 │
 ├── usuarios/
 │   ├── domain/
 │   │   ├── model/
-│   │   │   └── Usuario.java
+│   │   │   └── Usuario.java                          ← entidad: estaActivo(), tieneRol()
 │   │   ├── port/
 │   │   │   ├── inbound/
 │   │   │   │   ├── AuthUseCase.java
@@ -1363,12 +1497,14 @@ com.padelpro
 │   │   │   └── outbound/
 │   │   │       ├── UsuarioRepositoryPort.java
 │   │   │       ├── MensajeriaPort.java
-│   │   │       ├── NotificacionPort.java
-│   │   │       ├── OtpUseCase.java            ← ref al módulo otp
+│   │   │       ├── OtpUseCase.java                   ← ref al módulo otp
 │   │   │       └── AuditoriaPort.java
 │   │   └── service/
-│   │       ├── AuthService.java
-│   │       └── UsuarioService.java
+│   │       └── PasswordPolicyService.java            ← domain service: validación de políticas de contraseña
+│   ├── application/
+│   │   └── service/
+│   │       ├── AuthApplicationService.java           ← implements AuthUseCase, @Transactional
+│   │       └── UsuarioApplicationService.java        ← implements UsuarioUseCase, @Transactional
 │   └── infrastructure/
 │       ├── adapter/
 │       │   ├── inbound/
@@ -1389,29 +1525,33 @@ com.padelpro
 ├── mensajeria/
 │   ├── domain/
 │   │   └── port/
-│   │       └── MensajeriaPort.java            ← puerto compartido
+│   │       └── MensajeriaPort.java                   ← puerto compartido: enviar(), enviarOtp()
+│   ├── application/
+│   │   └── service/
+│   │       └── MensajeriaApplicationService.java     ← parsea mensajes entrantes, orquesta OtpUseCase y ReservaUseCase
 │   └── infrastructure/
 │       ├── adapter/
 │       │   ├── inbound/
-│       │   │   ├── BotWhatsAppAdapter.java
-│       │   │   └── BotTelegramAdapter.java
+│       │   │   ├── BotTelegramAdapter.java            ← webhook POST /api/bot/telegram ✅
+│       │   │   └── BotWhatsAppAdapter.java            ← webhook POST /api/bot/whatsapp ⏳ v2
 │       │   └── outbound/
-│       │       ├── WhatsAppClientAdapter.java
-│       │       └── TelegramClientAdapter.java
+│       │       ├── TelegramClientAdapter.java         ← implements MensajeriaPort ✅
+│       │       └── WhatsAppClientAdapter.java         ← implements MensajeriaPort ⏳ v2
 │       └── config/
 │           └── MensajeriaConfig.java
 │
 ├── otp/
 │   ├── domain/
 │   │   ├── model/
-│   │   │   └── Otp.java
-│   │   ├── port/
-│   │   │   ├── inbound/
-│   │   │   │   └── OtpUseCase.java
-│   │   │   └── outbound/
-│   │   │       └── OtpRepositoryPort.java
+│   │   │   └── Otp.java                              ← entidad: estaExpirado(), estaUsado()
+│   │   └── port/
+│   │       ├── inbound/
+│   │       │   └── OtpUseCase.java                   ← generar(), validar(), invalidar()
+│   │       └── outbound/
+│   │           └── OtpRepositoryPort.java
+│   ├── application/
 │   │   └── service/
-│   │       └── OtpService.java
+│   │       └── OtpApplicationService.java            ← implements OtpUseCase, TTL 10 min, 3 tipos OTP
 │   └── infrastructure/
 │       └── adapter/
 │           └── outbound/
@@ -1422,9 +1562,15 @@ com.padelpro
 ├── auditoria/
 │   ├── domain/
 │   │   ├── model/
-│   │   │   └── AuditoriaEntry.java
+│   │   │   └── AuditoriaEntry.java                   ← value object inmutable
 │   │   └── port/
-│   │       └── AuditoriaPort.java
+│   │       ├── inbound/
+│   │       │   └── AuditoriaUseCase.java             ← registrar()
+│   │       └── outbound/
+│   │           └── AuditoriaRepositoryPort.java
+│   ├── application/
+│   │   └── service/
+│   │       └── AuditoriaApplicationService.java      ← implements AuditoriaUseCase
 │   └── infrastructure/
 │       └── adapter/
 │           └── outbound/
@@ -1434,7 +1580,7 @@ com.padelpro
 │
 └── shared/
     ├── config/
-    │   ├── SecurityConfig.java                ← JWT, BCrypt, RBAC global
+    │   ├── SecurityConfig.java                       ← JWT, BCrypt, RBAC global
     │   └── SwaggerConfig.java
     ├── security/
     │   ├── JwtFilter.java
@@ -1445,7 +1591,238 @@ com.padelpro
 
 ---
 
-### 3.4 Diagrama de Componentes del Backend (por Módulos)
+#### 3.4.5 Diagrama de Clases — C4 Level 4 · Módulo `reservas`
+
+> El módulo `reservas` es el más representativo del sistema y sirve de **plantilla de implementación** para el resto de módulos.
+
+**Vista de componentes — Puertos y Adaptadores:**
+
+```mermaid
+graph LR
+    subgraph IN["Inbound"]
+        RC("<b>ReservaController</b><br/>/api/reservas"):::inbound
+        AC("<b>AdminController</b><br/>/api/admin"):::inbound
+    end
+
+    subgraph DOM["Domain · Application"]
+        RUC("<b>ReservaUseCase</b><br/><i>«port in»</i>"):::port_in
+        RE("<b>Reserva</b><br/>calcularImporte()<br/>puedeSerCancelada()"):::entity
+        RRP("<b>ReservaRepository</b><br/><i>«port out»</i>"):::port_out
+        MP("<b>MensajeriaPort</b><br/><i>«port out»</i>"):::port_out
+        AP("<b>AuditoriaPort</b><br/><i>«port out»</i>"):::port_out
+        RAS("<b>ReservaApplicationService</b><br/>implements ReservaUseCase · @Transactional"):::app
+    end
+
+    subgraph OUT["Outbound"]
+        JPA("<b>JpaAdapter</b><br/>PostgreSQL"):::outbound
+        TGA("<b>TelegramAdapter</b><br/>Mensajería"):::outbound
+        AUDA("<b>AuditoriaAdapter</b><br/>Logs"):::outbound
+    end
+
+    RC  -->|invoca| RUC
+    AC  -->|invoca| RUC
+    RUC -.->|implementa| RAS
+    RAS -->|usa| RE
+    RAS -->|usa| RRP
+    RAS -->|usa| MP
+    RAS -->|usa| AP
+    RRP -.->|implementa| JPA
+    MP  -.->|implementa| TGA
+    AP  -.->|implementa| AUDA
+
+    classDef inbound  fill:#1565C0,stroke:#1565C0,color:#fff
+    classDef port_in  fill:#5b5bd6,stroke:#5b5bd6,color:#fff
+    classDef entity   fill:#4a4a5a,stroke:#555,color:#ccc
+    classDef port_out fill:#3a3a4a,stroke:#555,color:#ccc
+    classDef app      fill:#1a7a5e,stroke:#1a7a5e,color:#fff
+    classDef outbound fill:#b85c00,stroke:#b85c00,color:#fff
+```
+
+> `→ invoca` — llamada directa &nbsp;&nbsp;&nbsp; `- - → implementa` — el adaptador implementa el puerto
+
+---
+
+**Diagrama A — Modelo de Dominio y Puertos** *(detalle de clases)*
+
+```plantuml
+@startuml reservas-domain-ports
+scale max 680 width
+skinparam classAttributeIconSize 0
+skinparam classFontSize 10
+skinparam packageFontSize 10
+skinparam nodesep 20
+skinparam ranksep 30
+hide empty members
+hide circle
+
+' ── Entidades ──────────────────────────────
+class Reserva #FFFDE7 {
+    - id          : UUID
+    - fechaHora   : LocalDateTime
+    - duracionMin : int
+    - estado      : EstadoReserva
+    --
+    + calcularImporte(ph) : BigDecimal
+    + puedeSerCancelada(ahora, margen) : boolean
+    + estaCompleta() : boolean
+    + agregarParticipante(p) : void
+}
+class Participante #FFFDE7 {
+    - usuarioId  : UUID
+    - nombre     : String
+    - estadoPago : EstadoPago
+    --
+    + haPagado() : boolean
+}
+enum EstadoReserva #FFFDE7 {
+    PENDIENTE · CONFIRMADA
+    CANCELADA · COMPLETADA
+}
+enum EstadoPago #FFFDE7 {
+    PENDIENTE
+    PAGADO_ONLINE · PAGADO_EFECTIVO
+}
+
+' ── Puerto primario ────────────────────────
+interface ReservaUseCase #DDEEFF {
+    + crearReserva(cmd)        : ReservaDTO
+    + cancelarReserva(cmd)     : void
+    + unirseAReserva(cmd)      : ReservaDTO
+    + listarDisponibles(fecha) : List<ReservaDTO>
+    + obtenerReserva(id)       : ReservaDTO
+}
+
+' ── Puertos secundarios ────────────────────
+interface ReservaRepositoryPort #FFE8E0 {
+    + guardar(r)               : Reserva
+    + buscarPorId(id)          : Optional<Reserva>
+    + buscarDisponibles(fecha) : List<Reserva>
+    + existeSolapamiento(...)  : boolean
+}
+interface MensajeriaPort #FFE8E0 {
+    + enviar(destino, msg)       : void
+    + enviarOtp(destino, codigo) : void
+    + publicarEnGrupo(gid, msg)  : void
+}
+interface AuditoriaPort #FFE8E0 {
+    + registrar(accion, entidad, uid, detalle) : void
+}
+
+' ── Relaciones de dominio ──────────────────
+Reserva "1" *-- "1..4" Participante
+Reserva      --> EstadoReserva
+Participante --> EstadoPago
+
+' ── Apilado vertical forzado ──────────────
+Reserva               -[hidden]down-> ReservaUseCase
+ReservaUseCase        -[hidden]down-> ReservaRepositoryPort
+ReservaRepositoryPort -[hidden]down-> MensajeriaPort
+MensajeriaPort        -[hidden]down-> AuditoriaPort
+EstadoReserva         -[hidden]right-> Participante
+
+note right of ReservaRepositoryPort
+    existeSolapamiento() usa
+    SELECT FOR UPDATE (PostgreSQL)
+end note
+
+@enduml
+```
+
+---
+
+**Diagrama B — Capa Application e Infraestructura**
+
+```plantuml
+@startuml reservas-application-infra
+scale max 680 width
+skinparam classAttributeIconSize 0
+skinparam classFontSize 10
+skinparam packageFontSize 10
+skinparam nodesep 20
+skinparam ranksep 30
+hide empty members
+hide circle
+
+' ── Infra Inbound (agrupado) ───────────────
+class ReservaController #DDEEFF {
+    + POST   /api/reservas
+    + GET    /api/reservas/{id}
+    + DELETE /api/reservas/{id}
+}
+class AdminReservaController #DDEEFF {
+    + GET   /api/admin/reservas
+    + PATCH /api/admin/reservas/{id}/estado
+}
+class BotReservaAdapter #DDEEFF {
+    + procesarComandoReserva(msg)     : void
+    + procesarComandoCancelacion(msg) : void
+}
+
+' ── Puerto primario ────────────────────────
+interface ReservaUseCase #E8E8E8 {
+    + crearReserva(cmd)        : ReservaDTO
+    + cancelarReserva(cmd)     : void
+    + unirseAReserva(cmd)      : ReservaDTO
+    + listarDisponibles(fecha) : List<ReservaDTO>
+    + obtenerReserva(id)       : ReservaDTO
+}
+
+' ── Application Service ────────────────────
+class ReservaApplicationService #DDFADD {
+    - reservaRepo : ReservaRepositoryPort
+    - mensajeria  : MensajeriaPort
+    - auditoria   : AuditoriaPort
+    --
+    + crearReserva(cmd)        : ReservaDTO
+    + cancelarReserva(cmd)     : void
+    + unirseAReserva(cmd)      : ReservaDTO
+    + listarDisponibles(fecha) : List<ReservaDTO>
+    + obtenerReserva(id)       : ReservaDTO
+}
+
+' ── Puertos outbound ───────────────────────
+interface ReservaRepositoryPort #FFE8E0
+interface MensajeriaPort        #FFE8E0
+interface AuditoriaPort         #FFE8E0
+
+' ── Infra Outbound ─────────────────────────
+class ReservaJpaAdapter #FFCCAA {
+    + guardar(r)               : Reserva
+    + buscarPorId(id)          : Optional<Reserva>
+    + existeSolapamiento(...)  : boolean
+}
+
+' ── Apilado vertical forzado ──────────────
+ReservaController      -[hidden]right-> AdminReservaController
+AdminReservaController -[hidden]right-> BotReservaAdapter
+ReservaController      -[hidden]down->  ReservaUseCase
+ReservaUseCase         -[hidden]down->  ReservaApplicationService
+ReservaApplicationService -[hidden]down-> ReservaRepositoryPort
+ReservaRepositoryPort  -[hidden]right-> MensajeriaPort
+MensajeriaPort         -[hidden]right-> AuditoriaPort
+ReservaRepositoryPort  -[hidden]down->  ReservaJpaAdapter
+
+' ── Relaciones reales ──────────────────────
+ReservaController      ..> ReservaUseCase             : use
+AdminReservaController ..> ReservaUseCase             : use
+BotReservaAdapter      ..> ReservaUseCase             : use
+ReservaUseCase         <|.. ReservaApplicationService : implements
+ReservaApplicationService ..> ReservaRepositoryPort   : use
+ReservaApplicationService ..> MensajeriaPort          : use
+ReservaApplicationService ..> AuditoriaPort           : use
+ReservaRepositoryPort  <|.. ReservaJpaAdapter         : implements
+
+note bottom of ReservaApplicationService
+    @Service · @Transactional
+    orquesta dominio y puertos
+end note
+
+@enduml
+```
+
+---
+
+### 3.5 Diagrama de Componentes del Backend (por Módulos)
 
 ```mermaid
 graph TB
@@ -1454,107 +1831,145 @@ graph TB
     end
 
     subgraph MOD_R["📅 Módulo reservas"]
-        direction LR
-        subgraph R_IN2["🔵 inbound"]
+        direction TB
+        subgraph R_IN2["🔵 Infra Inbound"]
             RC2["ReservaController"]
             ARC2["AdminReservaController"]
             BRA2["BotReservaAdapter"]
         end
-        subgraph R_DOM2["⬡ dominio"]
-            RUC2["ReservaUseCase"]
-            RS2["ReservaService"]
+        subgraph R_APP2["🟡 Application"]
+            RAS2["ReservaApplicationService\nimplements ReservaUseCase\n@Transactional"]
         end
-        subgraph R_OUT2["🟠 outbound"]
+        subgraph R_DOM2["⬡ Domain"]
+            RUC2["«port in» ReservaUseCase"]
+            RE2["Reserva · Participante"]
+        end
+        subgraph R_OUT2["🟠 Infra Outbound"]
             RJPA2["ReservaJpaAdapter"]
         end
-        RC2 & ARC2 & BRA2 --> RUC2
-        RUC2 -.-> RS2
-        RS2 --> RJPA2
+        RC2 & ARC2 & BRA2 -->|invoca| RUC2
+        RUC2 -.->|impl| RAS2
+        RAS2 -->|usa| RE2
+        RAS2 --> RJPA2
     end
 
     subgraph MOD_P2["💳 Módulo pagos"]
-        direction LR
-        subgraph P_IN2["🔵 inbound"]
+        direction TB
+        subgraph P_IN2["🔵 Infra Inbound"]
             PC2["PagoController"]
             APC2["AdminPagoController"]
             PWA2["PagoWebhookAdapter"]
         end
-        subgraph P_DOM2["⬡ dominio"]
-            PUC2["PagoUseCase"]
-            PS2["PagoService"]
+        subgraph P_APP2["🟡 Application"]
+            PAS2["PagoApplicationService\nimplements PagoUseCase\n@Transactional"]
         end
-        subgraph P_OUT2["🟠 outbound"]
+        subgraph P_DOM2["⬡ Domain"]
+            PUC2["«port in» PagoUseCase"]
+            PE2["Pago"]
+        end
+        subgraph P_OUT2["🟠 Infra Outbound"]
             PJPA2["PagoJpaAdapter"]
-            PGA2["RedsysGatewayAdapter\n(default configurable)"]
+            PGA2["RedsysGatewayAdapter"]
         end
-        PC2 & APC2 & PWA2 --> PUC2
-        PUC2 -.-> PS2
-        PS2 --> PJPA2 & PGA2
+        PC2 & APC2 & PWA2 -->|invoca| PUC2
+        PUC2 -.->|impl| PAS2
+        PAS2 -->|usa| PE2
+        PAS2 --> PJPA2 & PGA2
     end
 
     subgraph MOD_U2["👤 Módulo usuarios"]
-        direction LR
-        subgraph U_IN2["🔵 inbound"]
+        direction TB
+        subgraph U_IN2["🔵 Infra Inbound"]
             AC2["AuthController"]
             UC2["UsuarioController"]
             AUC2["AdminUsuarioController"]
         end
-        subgraph U_DOM2["⬡ dominio"]
-            AUI2["AuthUseCase"]
-            UUI2["UsuarioUseCase"]
-            AS2["AuthService"]
-            US2["UsuarioService"]
+        subgraph U_APP2["🟡 Application"]
+            AAS2["AuthApplicationService\nimplements AuthUseCase\n@Transactional"]
+            UAS2["UsuarioApplicationService\nimplements UsuarioUseCase\n@Transactional"]
         end
-        subgraph U_OUT2["🟠 outbound"]
+        subgraph U_DOM2["⬡ Domain"]
+            AUI2["«port in» AuthUseCase"]
+            UUI2["«port in» UsuarioUseCase"]
+            UE2["Usuario"]
+        end
+        subgraph U_OUT2["🟠 Infra Outbound"]
             UJPA2["UsuarioJpaAdapter"]
             USMTP2["SmtpEmailAdapter"]
         end
-        AC2 --> AUI2
-        UC2 & AUC2 --> UUI2
-        AUI2 -.-> AS2
-        UUI2 -.-> US2
-        AS2 & US2 --> UJPA2 & USMTP2
+        AC2 -->|invoca| AUI2
+        UC2 & AUC2 -->|invoca| UUI2
+        AUI2 -.->|impl| AAS2
+        UUI2 -.->|impl| UAS2
+        AAS2 & UAS2 -->|usa| UE2
+        AAS2 & UAS2 --> UJPA2 & USMTP2
     end
 
     subgraph MOD_M2["📲 Módulo mensajeria"]
-        direction LR
-        subgraph M_IN2["🔵 inbound"]
-            BWA2["BotWhatsAppAdapter"]
-            BTA2["BotTelegramAdapter"]
+        direction TB
+        subgraph M_IN2["🔵 Infra Inbound"]
+            BTA2["BotTelegramAdapter ✅"]
+            BWA2["BotWhatsAppAdapter ⏳"]
         end
-        subgraph M_OUT2["🟠 outbound"]
-            WAC2["WhatsAppClientAdapter"]
-            TGC2["TelegramClientAdapter"]
+        subgraph M_APP2["🟡 Application"]
+            MAS2["MensajeriaApplicationService\nparsea · orquesta OtpUseCase + ReservaUseCase"]
         end
+        subgraph M_OUT2["🟠 Infra Outbound"]
+            TGC2["TelegramClientAdapter ✅"]
+            WAC2["WhatsAppClientAdapter ⏳"]
+        end
+        BTA2 & BWA2 -->|parsea| MAS2
+        MAS2 --> TGC2 & WAC2
     end
 
     subgraph MOD_O2["🔑 Módulo otp"]
-        OUC2["OtpUseCase"]
-        OS2["OtpService"]
-        OJPA2["OtpJpaAdapter"]
-        OUC2 -.-> OS2 --> OJPA2
+        direction TB
+        subgraph O_APP2["🟡 Application"]
+            OAS2["OtpApplicationService\nimplements OtpUseCase"]
+        end
+        subgraph O_DOM2["⬡ Domain"]
+            OUC2["«port in» OtpUseCase"]
+            OE2["Otp"]
+        end
+        subgraph O_OUT2["🟠 Infra Outbound"]
+            OJPA2["OtpJpaAdapter"]
+        end
+        OUC2 -.->|impl| OAS2
+        OAS2 -->|usa| OE2
+        OAS2 --> OJPA2
     end
 
     subgraph MOD_A2["📋 Módulo auditoria"]
-        AP2["AuditoriaPort"]
-        AJPA2["AuditoriaJpaAdapter"]
-        AP2 -.-> AJPA2
+        direction TB
+        subgraph A_APP2["🟡 Application"]
+            AudAS2["AuditoriaApplicationService\nimplements AuditoriaUseCase"]
+        end
+        subgraph A_DOM2["⬡ Domain"]
+            AUC2_P["«port in» AuditoriaUseCase"]
+            AE2["AuditoriaEntry (inmutable)"]
+        end
+        subgraph A_OUT2["🟠 Infra Outbound"]
+            AJPA2["AuditoriaJpaAdapter"]
+        end
+        AUC2_P -.->|impl| AudAS2
+        AudAS2 -->|usa| AE2
+        AudAS2 --> AJPA2
     end
 
     JWT -.->|protege| RC2 & ARC2 & PC2 & APC2 & AC2 & UC2 & AUC2
 
-    RS2 -->|MensajeriaPort| MOD_M2
-    RS2 -->|AuditoriaPort| AP2
-    PS2 -->|AuditoriaPort| AP2
-    AS2 & US2 -->|OtpUseCase| OUC2
-    AS2 & US2 -->|AuditoriaPort| AP2
-    BWA2 & BTA2 -->|OtpUseCase| OUC2
-    BWA2 & BTA2 -->|ReservaUseCase| RUC2
+    RAS2 -->|MensajeriaPort| MAS2
+    RAS2 -->|AuditoriaUseCase| AUC2_P
+    PAS2 -->|AuditoriaUseCase| AUC2_P
+    AAS2 & UAS2 -->|OtpUseCase| OUC2
+    AAS2 & UAS2 -->|AuditoriaUseCase| AUC2_P
+    MAS2 -->|OtpUseCase| OUC2
+    MAS2 -->|ReservaUseCase| RUC2
 ```
 
 ---
 
-### 3.5 Diagrama de Despliegue — Docker Compose (On-Premise)
+### 3.6 Diagrama de Despliegue — Docker Compose (On-Premise)
 
 > El sistema se despliega **On-Premise** en un servidor propio del cliente (Linux) mediante Docker Compose. El acceso externo se gestiona a través de un router/firewall que expone únicamente el puerto 443. Los servicios externos (Telegram, Redsys, SMTP) se consumen desde la red interna del servidor hacia Internet.
 
@@ -1624,7 +2039,7 @@ graph TB
 
 ---
 
-### 3.6 Diagrama de Seguridad — Flujo JWT y OTP
+### 3.7 Diagrama de Seguridad — Flujo JWT y OTP
 
 ```mermaid
 sequenceDiagram
@@ -1668,7 +2083,7 @@ sequenceDiagram
 
 ---
 
-### 3.7 Análisis del Stack Tecnológico
+### 3.8 Análisis del Stack Tecnológico
 
 #### 3.7.1 Stack Definido
 
@@ -2075,24 +2490,3360 @@ erDiagram
 
 ### 4.6 Estrategia de Índices
 
-| Tabla | Índice | Columnas | Justificación |
-|---|---|---|---|
-| `USERS` | `idx_users_login` | `login` | Login en cada autenticación |
-| `USERS` | `idx_users_phone` | `phone` | Búsqueda por teléfono para OTP y Telegram |
-| `USERS` | `idx_users_email` | `email` | Búsqueda para reset de contraseña |
-| `RESERVATIONS` | `idx_res_date_time` | `reservation_date, start_time` | Consultas de disponibilidad (crítico) |
-| `RESERVATIONS` | `idx_res_owner` | `owner_id` | Historial de reservas por usuario |
-| `RESERVATIONS` | `idx_res_status` | `status` | Filtrado por estado en el dashboard |
-| `PARTICIPANTS` | `idx_part_reservation` | `reservation_id` | Carga de participantes por reserva |
-| `PARTICIPANTS` | `idx_part_user` | `user_id` | Reservas en las que participa un usuario |
-| `PAYMENTS` | `idx_pay_reservation` | `reservation_id` | Acceso al pago desde la reserva (UNIQUE) |
-| `PAYMENTS` | `idx_pay_status` | `status` | Listado de pagos pendientes |
-| `OTP_CODES` | `idx_otp_user_type` | `user_id, type, used` | Validación de OTP por usuario y tipo |
-| `OTP_CODES` | `idx_otp_expires` | `expires_at` | Limpieza periódica de códigos expirados |
-| `AUDIT_LOG` | `idx_audit_user` | `user_id` | Historial de acciones por usuario |
-| `AUDIT_LOG` | `idx_audit_entity` | `entity_type, entity_id` | Trazabilidad de una entidad concreta |
-| `AUDIT_LOG` | `idx_audit_created` | `created_at` | Filtrado por rango de fechas en el dashboard |
-| `NOTIFICATION_LOG` | `idx_notif_user` | `user_id` | Notificaciones de un usuario |
-| `NOTIFICATION_LOG` | `idx_notif_status` | `status` | Detección de notificaciones fallidas |
+> Los índices se diseñan a partir del análisis de las 8 consultas frecuentes identificadas en la sección 4.7. Se distinguen tres tipos: **B-Tree simple**, **B-Tree compuesto** (clave multi-columna) e **índices parciales** (filtran solo las filas relevantes, reduciendo tamaño y mejorando rendimiento).
 
-> **Nota:** Los campos sensibles de `SYSTEM_CONFIG` (`redsys_secret_key`, `telegram_bot_token`, `smtp_password`) se almacenan cifrados mediante AES-256 a nivel de aplicación antes de persistirlos en base de datos.
+| Tabla | Nombre | Tipo | Columnas / Expresión | Parcial (`WHERE`) | Consulta cubierta |
+|---|---|---|---|---|---|
+| `USERS` | `idx_users_login` | UNIQUE B-Tree | `login` | — | Q8 — Autenticación |
+| `USERS` | `idx_users_phone` | UNIQUE B-Tree | `phone` | — | Q6 — OTP / Telegram |
+| `USERS` | `idx_users_email` | UNIQUE B-Tree | `email` | — | Reset contraseña |
+| `USERS` | `idx_users_status_role` | B-Tree | `(status, role)` | — | Listado admin de usuarios activos |
+| `RESERVATIONS` | `excl_res_no_overlap` | **GiST exclusion** | `tsrange(reservation_date+start_time, reservation_date+end_time)` | `status <> 'CANCELLED'` | **Q1 — Prevención de solapamiento** |
+| `RESERVATIONS` | `idx_res_date_status` | B-Tree compuesto | `(reservation_date, status)` | `status <> 'CANCELLED'` | Q1, Q2 — Disponibilidad y calendario |
+| `RESERVATIONS` | `idx_res_date_start` | B-Tree compuesto | `(reservation_date, start_time)` | — | Q2 — Ordenación calendario semanal |
+| `RESERVATIONS` | `idx_res_owner_date` | B-Tree compuesto | `(owner_id, reservation_date DESC)` | — | Q4 — Historial de usuario |
+| `RESERVATIONS` | `idx_res_owner_status` | B-Tree compuesto | `(owner_id, status)` | `status = 'PENDING_PAYMENT'` | Q5 — Pagos pendientes del usuario |
+| `PARTICIPANTS` | `idx_part_reservation` | B-Tree | `reservation_id` | — | Q3 — Carga de participantes por reserva |
+| `PARTICIPANTS` | `idx_part_user_res` | B-Tree compuesto | `(user_id, reservation_id)` | `user_id IS NOT NULL` | Q3 — Reservas de usuario como participante |
+| `PARTICIPANTS` | `idx_part_slot_unique` | UNIQUE B-Tree | `(reservation_id, slot_position)` | — | Integridad: posición única por reserva |
+| `PAYMENTS` | `idx_pay_reservation` | UNIQUE B-Tree | `reservation_id` | — | Q5 — Join reserva-pago (1:1) |
+| `PAYMENTS` | `idx_pay_status_date` | B-Tree compuesto | `(status, created_at)` | `status = 'PENDING'` | Q5 — Dashboard pagos pendientes (admin) |
+| `OTP_CODES` | `idx_otp_active` | B-Tree compuesto | `(user_id, type, expires_at)` | `used = false` | **Q6 — Validación OTP activos** |
+| `OTP_CODES` | `idx_otp_cleanup` | B-Tree | `expires_at` | `used = false` | Job de limpieza nocturna |
+| `AUDIT_LOG` | `idx_audit_user_time` | B-Tree compuesto | `(user_id, created_at DESC)` | — | Historial por usuario (admin panel) |
+| `AUDIT_LOG` | `idx_audit_entity` | B-Tree compuesto | `(entity_type, entity_id)` | — | Trazabilidad de entidad concreta |
+| `NOTIFICATION_LOG` | `idx_notif_user_time` | B-Tree compuesto | `(user_id, created_at DESC)` | — | Notificaciones de un usuario |
+| `NOTIFICATION_LOG` | `idx_notif_failed` | B-Tree | `status` | `status = 'FAILED'` | Detección y reintento de fallos |
+
+**Nota sobre el índice GiST de exclusión (`excl_res_no_overlap`):**
+Requiere activar la extensión `btree_gist` (`CREATE EXTENSION IF NOT EXISTS btree_gist`). Es la solución nativa de PostgreSQL para prevenir solapamientos temporales a nivel de base de datos, eliminando la posibilidad de condición de carrera incluso sin `SELECT FOR UPDATE`.
+
+---
+
+### 4.7 Consultas Frecuentes y Optimización
+
+#### Q1 — Comprobación de disponibilidad (crítica)
+
+Se ejecuta en cada intento de reserva, tanto desde la web como desde el bot de Telegram. Debe ser la más rápida del sistema.
+
+```sql
+-- Detecta solapamiento con cualquier reserva existente en la misma franja
+SELECT id, start_time, end_time, status
+FROM   RESERVATIONS
+WHERE  reservation_date = :fecha
+  AND  status <> 'CANCELLED'
+  AND  start_time < :hora_fin
+  AND  end_time   > :hora_inicio
+FOR UPDATE;  -- Bloqueo de fila: evita doble reserva concurrente
+```
+
+**Índice activo:** `idx_res_date_status` + `excl_res_no_overlap` (barrera de seguridad de nivel BD)
+**Tiempo esperado:** < 1 ms (tabla de cientos de filas, índice en fecha+estado)
+
+---
+
+#### Q2 — Calendario semanal (dashboard)
+
+Se ejecuta al cargar el dashboard y al navegar el calendario. Frecuencia: cada carga de página.
+
+```sql
+SELECT r.id, r.reservation_date, r.start_time, r.end_time,
+       r.status, r.owner_id, COUNT(p.id) AS num_participants
+FROM   RESERVATIONS r
+LEFT JOIN PARTICIPANTS p ON p.reservation_id = r.id
+WHERE  r.reservation_date BETWEEN :hoy AND :hoy_mas_7
+  AND  r.status <> 'CANCELLED'
+GROUP BY r.id
+ORDER BY r.reservation_date, r.start_time;
+```
+
+**Índices activos:** `idx_res_date_status`, `idx_res_date_start`, `idx_part_reservation`
+**Caché:** Resultado cacheado 30 segundos (ver sección 4.10)
+
+---
+
+#### Q3 — Reservas incompletas (unirse a partida)
+
+Se ejecuta cuando el usuario accede a "Incluirse en reserva". Busca reservas de la semana con menos de 4 participantes.
+
+```sql
+SELECT r.id, r.reservation_date, r.start_time, r.end_time,
+       r.owner_id, COUNT(p.id) AS ocupados,
+       (4 - COUNT(p.id))       AS huecos_libres
+FROM   RESERVATIONS r
+LEFT JOIN PARTICIPANTS p ON p.reservation_id = r.id
+WHERE  r.reservation_date BETWEEN :hoy AND :hoy_mas_7
+  AND  r.status = 'CONFIRMED'
+GROUP BY r.id
+HAVING COUNT(p.id) < 4
+ORDER BY r.reservation_date, r.start_time;
+```
+
+**Índices activos:** `idx_res_date_status`, `idx_part_reservation`
+
+---
+
+#### Q4 — Historial de reservas del usuario
+
+Se ejecuta en el apartado "Histórico" del perfil de usuario.
+
+```sql
+SELECT r.*, p.status AS payment_status, p.amount, p.method, p.paid_at
+FROM   RESERVATIONS r
+JOIN   PAYMENTS p ON p.reservation_id = r.id
+WHERE  r.owner_id = :user_id
+  AND  (:fecha_inicio IS NULL OR r.reservation_date >= :fecha_inicio)
+  AND  (:fecha_fin    IS NULL OR r.reservation_date <= :fecha_fin)
+ORDER BY r.reservation_date DESC
+LIMIT  :page_size OFFSET :offset;
+```
+
+**Índices activos:** `idx_res_owner_date`, `idx_pay_reservation`
+
+---
+
+#### Q5 — Pagos pendientes del usuario
+
+Se ejecuta en el badge de notificación y en la vista de pagos pendientes.
+
+```sql
+SELECT r.id, r.reservation_date, r.start_time, p.amount, p.status
+FROM   RESERVATIONS r
+JOIN   PAYMENTS p ON p.reservation_id = r.id
+WHERE  r.owner_id = :user_id
+  AND  p.status   = 'PENDING';
+```
+
+**Índices activos:** `idx_res_owner_status` (parcial `status='PENDING_PAYMENT'`), `idx_pay_reservation`
+
+---
+
+#### Q6 — Validación de OTP activo
+
+Se ejecuta en cada flujo que requiere confirmación (reserva, cancelación, reset de contraseña). TTL estricto de 10 minutos.
+
+```sql
+SELECT id, code, type, expires_at
+FROM   OTP_CODES
+WHERE  user_id    = :user_id
+  AND  type       = :tipo
+  AND  used       = false
+  AND  expires_at > NOW()
+ORDER BY created_at DESC
+LIMIT  1;
+```
+
+**Índice activo:** `idx_otp_active` (parcial `used = false`, compuesto por user_id+type+expires_at)
+**Tiempo esperado:** < 0.5 ms
+
+---
+
+#### Q7 — Dashboard de ingresos (admin)
+
+Se ejecuta en el panel de administración para el resumen económico.
+
+```sql
+SELECT DATE_TRUNC('month', p.paid_at) AS mes,
+       COUNT(*)                        AS num_pagos,
+       SUM(p.amount)                   AS total_ingresos,
+       COUNT(*) FILTER (WHERE p.method = 'CASH')   AS pagos_efectivo,
+       COUNT(*) FILTER (WHERE p.method = 'ONLINE') AS pagos_online
+FROM   PAYMENTS p
+WHERE  p.status   = 'PAID'
+  AND  p.paid_at >= :inicio_periodo
+GROUP BY 1
+ORDER BY 1;
+```
+
+**Índices activos:** `idx_pay_status_date`
+
+---
+
+#### Q8 — Autenticación de usuario
+
+Se ejecuta en cada login. Debe ser instantánea.
+
+```sql
+SELECT id, password_hash, status, role
+FROM   USERS
+WHERE  login = :login;
+-- La lógica de status ACTIVE/INACTIVE se valida en aplicación tras recuperar la fila
+```
+
+**Índice activo:** `idx_users_login` (UNIQUE — O(log n) garantizado)
+**Caché:** El perfil del usuario autenticado se cachea por sesión JWT (ver sección 4.10)
+
+---
+
+### 4.8 Constraints de Integridad de Negocio
+
+Los constraints siguientes se aplican a nivel de base de datos como segunda línea de defensa (la primera es la capa de dominio). Garantizan la integridad incluso ante accesos directos a la BD o bugs en la aplicación.
+
+```sql
+-- ─────────────────────────────────────────────────────────────────
+--  EXTENSIÓN REQUERIDA para el constraint de solapamiento
+-- ─────────────────────────────────────────────────────────────────
+CREATE EXTENSION IF NOT EXISTS btree_gist;
+
+-- ─────────────────────────────────────────────────────────────────
+--  RESERVATIONS
+-- ─────────────────────────────────────────────────────────────────
+
+-- Duraciones permitidas: 1h, 1h30, 2h, 2h30, 3h
+ALTER TABLE RESERVATIONS
+  ADD CONSTRAINT chk_res_duration
+  CHECK (duration_minutes IN (60, 90, 120, 150, 180));
+
+-- end_time debe ser coherente con start_time + duration
+ALTER TABLE RESERVATIONS
+  ADD CONSTRAINT chk_res_end_time
+  CHECK (end_time = (start_time + (duration_minutes || ' minutes')::INTERVAL));
+
+-- Las reservas solo pueden comenzar en punto o en media hora
+ALTER TABLE RESERVATIONS
+  ADD CONSTRAINT chk_res_start_minutes
+  CHECK (EXTRACT(MINUTE FROM start_time) IN (0, 30));
+
+-- Estados permitidos
+ALTER TABLE RESERVATIONS
+  ADD CONSTRAINT chk_res_status
+  CHECK (status IN ('CONFIRMED', 'CANCELLED', 'PENDING_PAYMENT', 'PAID'));
+
+-- Canal de creación permitido
+ALTER TABLE RESERVATIONS
+  ADD CONSTRAINT chk_res_channel
+  CHECK (channel IN ('WEB', 'TELEGRAM'));
+
+-- *** CONSTRAINT PRINCIPAL: prevención de solapamiento a nivel BD ***
+ALTER TABLE RESERVATIONS
+  ADD CONSTRAINT excl_res_no_overlap
+  EXCLUDE USING gist (
+    reservation_date WITH =,
+    tsrange(
+      reservation_date + start_time,
+      reservation_date + end_time,
+      '[)'
+    ) WITH &&
+  )
+  WHERE (status <> 'CANCELLED');
+
+-- ─────────────────────────────────────────────────────────────────
+--  PARTICIPANTS
+-- ─────────────────────────────────────────────────────────────────
+
+-- Posición del slot entre 1 y 4
+ALTER TABLE PARTICIPANTS
+  ADD CONSTRAINT chk_part_slot
+  CHECK (slot_position BETWEEN 1 AND 4);
+
+-- Máximo 4 participantes por reserva (enforced también por lógica de aplicación)
+-- Se gestiona con UNIQUE (reservation_id, slot_position) más lógica en ApplicationService
+
+-- Jugador externo XOR registrado: exactamente uno de los dos debe estar informado
+ALTER TABLE PARTICIPANTS
+  ADD CONSTRAINT chk_part_user_or_external
+  CHECK (
+    (user_id IS NOT NULL AND external_name IS NULL) OR
+    (user_id IS NULL     AND external_name IS NOT NULL)
+  );
+
+-- Canal de incorporación
+ALTER TABLE PARTICIPANTS
+  ADD CONSTRAINT chk_part_channel
+  CHECK (joined_via IN ('WEB', 'TELEGRAM'));
+
+-- ─────────────────────────────────────────────────────────────────
+--  PAYMENTS
+-- ─────────────────────────────────────────────────────────────────
+
+-- El importe debe ser positivo
+ALTER TABLE PAYMENTS
+  ADD CONSTRAINT chk_pay_amount
+  CHECK (amount > 0);
+
+-- Estados permitidos
+ALTER TABLE PAYMENTS
+  ADD CONSTRAINT chk_pay_status
+  CHECK (status IN ('PENDING', 'PAID', 'CANCELLED', 'REJECTED'));
+
+-- Método de pago permitido (puede ser NULL hasta que se elige)
+ALTER TABLE PAYMENTS
+  ADD CONSTRAINT chk_pay_method
+  CHECK (method IS NULL OR method IN ('ONLINE', 'CASH'));
+
+-- ─────────────────────────────────────────────────────────────────
+--  OTP_CODES
+-- ─────────────────────────────────────────────────────────────────
+
+-- Tipos de OTP permitidos
+ALTER TABLE OTP_CODES
+  ADD CONSTRAINT chk_otp_type
+  CHECK (type IN ('RESERVATION_CONFIRM', 'CANCELLATION_CONFIRM', 'PASSWORD_RESET'));
+
+-- El código tiene exactamente 6 dígitos
+ALTER TABLE OTP_CODES
+  ADD CONSTRAINT chk_otp_format
+  CHECK (code ~ '^\d{6}$');
+
+-- La expiración debe ser futura respecto a la creación
+ALTER TABLE OTP_CODES
+  ADD CONSTRAINT chk_otp_expiry
+  CHECK (expires_at > created_at);
+
+-- ─────────────────────────────────────────────────────────────────
+--  SYSTEM_CONFIG
+-- ─────────────────────────────────────────────────────────────────
+
+-- Singleton: solo puede existir la fila con id = 1
+ALTER TABLE SYSTEM_CONFIG
+  ADD CONSTRAINT chk_cfg_singleton
+  CHECK (id = 1);
+
+-- El precio por hora debe ser positivo
+ALTER TABLE SYSTEM_CONFIG
+  ADD CONSTRAINT chk_cfg_price
+  CHECK (price_per_hour > 0);
+
+-- El plazo de cancelación no puede ser negativo
+ALTER TABLE SYSTEM_CONFIG
+  ADD CONSTRAINT chk_cfg_deadline
+  CHECK (cancellation_deadline_hours >= 0);
+
+-- Pasarela de pago permitida
+ALTER TABLE SYSTEM_CONFIG
+  ADD CONSTRAINT chk_cfg_gateway
+  CHECK (payment_gateway IN ('REDSYS', 'STRIPE', 'PAYPAL'));
+```
+
+---
+
+### 4.9 Estrategia de Particionado
+
+#### Estimación de volumen (pista única, instalación On-Premise)
+
+| Tabla | Filas/año (estimado) | Filas a 5 años | Tamaño estimado 5 años |
+|---|---|---|---|
+| `RESERVATIONS` | ~730 (2 reservas/día) | ~3.650 | < 1 MB |
+| `PARTICIPANTS` | ~2.920 (4 × reservas) | ~14.600 | < 2 MB |
+| `PAYMENTS` | ~730 (1:1 con reservas) | ~3.650 | < 1 MB |
+| `AUDIT_LOG` | ~15.000 (acciones de usuario) | ~75.000 | ~20 MB |
+| `NOTIFICATION_LOG` | ~5.000 (notificaciones) | ~25.000 | ~10 MB |
+| `OTP_CODES` | ~3.000 (rotación alta) | ~3.000* | < 1 MB |
+
+> *`OTP_CODES` se limpia periódicamente (job nocturno elimina registros `used=true` o `expires_at < NOW() - 7 días`).
+
+#### Conclusión
+
+> **El particionado NO es necesario para v1.0** en este contexto (instalación única, ~730 reservas/año). Los volúmenes son triviales para PostgreSQL: incluso a 5 años, la tabla más grande (`AUDIT_LOG`) no supera 75.000 filas.
+
+**Cuándo considerar particionado:**
+
+| Tabla | Umbral | Estrategia recomendada |
+|---|---|---|
+| `AUDIT_LOG` | > 500.000 filas o > 2 años de datos | `PARTITION BY RANGE (created_at)` — partición anual |
+| `NOTIFICATION_LOG` | > 200.000 filas | `PARTITION BY RANGE (created_at)` — partición anual |
+| `RESERVATIONS` | Si el sistema escala a múltiples pistas/instalaciones | `PARTITION BY LIST (installation_id)` |
+
+**Implementación futura de partición anual en `AUDIT_LOG`:**
+
+```sql
+-- Solo necesario cuando supere ~500.000 filas (no antes de varios años)
+CREATE TABLE AUDIT_LOG (
+  ...
+  created_at TIMESTAMP NOT NULL
+) PARTITION BY RANGE (created_at);
+
+CREATE TABLE audit_log_2025 PARTITION OF AUDIT_LOG
+  FOR VALUES FROM ('2025-01-01') TO ('2026-01-01');
+
+CREATE TABLE audit_log_2026 PARTITION OF AUDIT_LOG
+  FOR VALUES FROM ('2026-01-01') TO ('2027-01-01');
+```
+
+---
+
+### 4.10 Estrategia de Caché
+
+#### Tecnología
+
+Se utiliza **Spring Cache con Caffeine** (caché en memoria JVM). Esta elección es coherente con la arquitectura On-Premise de una sola instancia y no requiere infraestructura adicional (sin Redis).
+
+> Si en el futuro el sistema escala a múltiples instancias o la caché necesita persistencia entre reinicios, se puede sustituir Caffeine por **Redis** sin cambiar el código de negocio (solo cambia el bean `CacheManager`).
+
+#### Dependencia Maven
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-cache</artifactId>
+</dependency>
+<dependency>
+    <groupId>com.github.ben-manes.caffeine</groupId>
+    <artifactId>caffeine</artifactId>
+</dependency>
+```
+
+#### Configuración de cachés (`application.yml`)
+
+```yaml
+spring:
+  cache:
+    type: caffeine
+    caffeine:
+      spec: maximumSize=500,expireAfterWrite=300s  # default
+
+padelpro:
+  cache:
+    system-config:
+      ttl: 0           # Sin expiración — invalidación explícita al guardar
+      max-size: 1
+    available-slots:
+      ttl: 30          # 30 segundos — datos de disponibilidad casi en tiempo real
+      max-size: 50     # Una entrada por día consultado
+    user-profile:
+      ttl: 300         # 5 minutos — perfil del usuario autenticado
+      max-size: 200    # Un entry por usuario activo simultáneo
+    weekly-calendar:
+      ttl: 30          # 30 segundos — misma frecuencia que available-slots
+      max-size: 10
+```
+
+#### Catálogo de cachés por caso de uso
+
+| Caché | Entidad cacheada | TTL | Invalidación explícita | Justificación |
+|---|---|---|---|---|
+| `system-config` | `SystemConfigDTO` (singleton) | Sin expiración | Al `PATCH /api/admin/config` | Se lee en cada operación de precio y configuración. Cambia raramente. |
+| `available-slots` | `List<ReservaDTO>` por fecha | 30 s | Al crear/cancelar reserva | Datos de disponibilidad: frecuentes y críticos. TTL corto para consistencia. |
+| `weekly-calendar` | `List<ReservaDTO>` semana actual | 30 s | Al crear/cancelar reserva | Carga del dashboard y calendario. Misma invalidación que disponibilidad. |
+| `user-profile` | `UsuarioDTO` por `userId` | 5 min | Al `PATCH /api/usuarios/me` o cambio de estado admin | El perfil se lee en cada request autenticado (para verificar status y rol). |
+
+#### Anotaciones en la capa Application
+
+```java
+// ReservaApplicationService
+@Cacheable(value = "available-slots", key = "#fecha")
+public List<ReservaDTO> listarDisponibles(LocalDate fecha) { ... }
+
+@CacheEvict(value = {"available-slots", "weekly-calendar"}, allEntries = true)
+@Transactional
+public ReservaDTO crearReserva(CrearReservaCommand cmd) { ... }
+
+@CacheEvict(value = {"available-slots", "weekly-calendar"}, allEntries = true)
+@Transactional
+public void cancelarReserva(CancelarReservaCommand cmd) { ... }
+
+// SystemConfigApplicationService
+@Cacheable(value = "system-config", key = "'singleton'")
+public SystemConfigDTO obtenerConfig() { ... }
+
+@CacheEvict(value = "system-config", key = "'singleton'")
+@Transactional
+public void actualizarConfig(ActualizarConfigCommand cmd) { ... }
+
+// UsuarioApplicationService
+@Cacheable(value = "user-profile", key = "#userId")
+public UsuarioDTO obtenerPerfil(Long userId) { ... }
+
+@CacheEvict(value = "user-profile", key = "#cmd.userId")
+@Transactional
+public UsuarioDTO actualizarPerfil(ActualizarPerfilCommand cmd) { ... }
+```
+
+#### Lo que NO se cachea (y por qué)
+
+| Dato | Razón |
+|---|---|
+| **Resultado de OTP** | Datos de seguridad con TTL de 10 min. La BD es la fuente de verdad. Caché podría dar un OTP ya usado como válido. |
+| **Histórico de reservas del usuario** | Paginado, filtrable por fechas, baja frecuencia. La complejidad del cache-key no compensa. |
+| **AUDIT_LOG / NOTIFICATION_LOG** | Solo escritura desde la app. Solo lectura desde el panel admin (baja frecuencia). |
+| **Estado del pago en curso** | Webhook de Redsys puede actualizar el estado en cualquier momento. Datos demasiado volátiles. |
+
+---
+
+> **Nota:** Los campos sensibles de `SYSTEM_CONFIG` (`redsys_secret_key`, `telegram_bot_token`, `smtp_password`) se almacenan cifrados mediante AES-256 a nivel de aplicación antes de persistirlos en base de datos. El `SystemConfigDTO` que se cachea **contiene las credenciales ya descifradas en memoria** — esto es aceptable en una instalación On-Premise de instancia única con la JVM protegida.
+
+---
+
+## 5. Especificación de la API
+
+### 5.1 Convenciones Generales
+
+#### URL base y cabeceras
+
+| Parámetro | Valor |
+|---|---|
+| URL base (producción) | `https://padelpro.local/api` |
+| URL base (desarrollo) | `http://localhost:8080/api` |
+| Content-Type | `application/json` |
+| Cabecera de autenticación | `Authorization: Bearer <jwt_token>` |
+
+#### Formato de error
+
+Todos los errores devuelven el mismo envelope JSON:
+
+```json
+{
+  "code": "VALIDATION_ERROR",
+  "message": "Los datos de la solicitud no son válidos.",
+  "errors": [
+    {
+      "field": "email",
+      "message": "El formato del email no es válido."
+    }
+  ]
+}
+```
+
+El campo `errors` es un array vacío `[]` cuando el error no está asociado a campos concretos (p. ej. `UNAUTHORIZED`, `FORBIDDEN`, `INTERNAL_ERROR`).
+
+**Códigos de error de aplicación (`code`) más frecuentes:**
+
+| `code` | Descripción |
+|---|---|
+| `VALIDATION_ERROR` | Datos de entrada inválidos (errores de campo en `errors[]`) |
+| `UNAUTHORIZED` | Token ausente, inválido o expirado |
+| `FORBIDDEN` | El usuario autenticado no tiene el rol requerido |
+| `NOT_FOUND` | El recurso solicitado no existe |
+| `CONFLICT` | Conflicto de estado (p. ej. franja ya reservada) |
+| `UNPROCESSABLE` | La petición es semánticamente incorrecta (reglas de negocio) |
+| `INTERNAL_ERROR` | Error inesperado en el servidor |
+
+#### Paginación
+
+Las peticiones que devuelven listas aceptan los parámetros de consulta:
+
+| Parámetro | Tipo | Por defecto | Descripción |
+|---|---|---|---|
+| `page` | `integer` | `0` | Índice de la página (base 0) |
+| `pageSize` | `integer` | `20` | Número de elementos por página (máximo 100) |
+
+**Formato de respuesta paginada:**
+
+```json
+{
+  "data": [ ],
+  "total": 47,
+  "page": 0,
+  "pageSize": 20
+}
+```
+
+#### Códigos de estado HTTP
+
+| Código | Significado | Uso habitual |
+|---|---|---|
+| `200 OK` | Éxito | Consultas y actualizaciones que devuelven cuerpo |
+| `201 Created` | Recurso creado | POST que crea un nuevo recurso |
+| `204 No Content` | Éxito sin cuerpo | DELETE y acciones sin datos que devolver |
+| `400 Bad Request` | Petición malformada | JSON inválido o parámetros de tipo incorrecto |
+| `401 Unauthorized` | No autenticado | Token ausente, inválido o expirado |
+| `403 Forbidden` | No autorizado | Rol insuficiente o acceso a recurso ajeno |
+| `404 Not Found` | Recurso no encontrado | ID inexistente en la base de datos |
+| `409 Conflict` | Conflicto de estado | Franja ocupada, login duplicado, etc. |
+| `422 Unprocessable Entity` | Error de reglas de negocio | Cancelación fuera de plazo, OTP expirado, etc. |
+| `500 Internal Server Error` | Error del servidor | Fallo inesperado no controlado |
+
+---
+
+### 5.2 Mapa de Endpoints
+
+```mermaid
+mindmap
+  root((API PadelPro))
+    Auth
+      POST /api/auth/login
+      POST /api/auth/register
+      POST /api/auth/refresh
+      POST /api/auth/logout
+      POST /api/auth/password/solicitar-reset
+      POST /api/auth/password/confirmar-reset
+    Usuarios
+      GET /api/usuarios/me
+      PATCH /api/usuarios/me
+      GET /api/admin/usuarios
+      POST /api/admin/usuarios
+      GET /api/admin/usuarios/{id}
+      PATCH /api/admin/usuarios/{id}
+      PATCH /api/admin/usuarios/{id}/aprobar
+      DELETE /api/admin/usuarios/{id}
+    Reservas
+      GET /api/reservas/disponibles
+      GET /api/reservas
+      POST /api/reservas
+      GET /api/reservas/{id}
+      DELETE /api/reservas/{id}
+      POST /api/reservas/{id}/unirse
+      GET /api/admin/reservas
+      PATCH /api/admin/reservas/{id}/estado
+    Pagos
+      GET /api/pagos
+      POST /api/pagos/iniciar
+      POST /api/admin/pagos/{reservaId}/efectivo
+      GET /api/admin/pagos
+    OTP
+      POST /api/otp/verificar
+```
+
+---
+
+### 5.3 Módulo `auth`
+
+#### POST /api/auth/login
+
+Autentica un usuario con credenciales y devuelve un par de tokens JWT.
+
+**Request body:**
+
+```json
+{
+  "login": "string",
+  "password": "string"
+}
+```
+
+**Response body (200):**
+
+```json
+{
+  "accessToken": "string",
+  "refreshToken": "string",
+  "expiresIn": 3600
+}
+```
+
+**Códigos de estado:**
+
+| Código | Escenario |
+|---|---|
+| `200 OK` | Credenciales correctas, tokens devueltos |
+| `400 Bad Request` | Campos ausentes o vacíos |
+| `401 Unauthorized` | Login o contraseña incorrectos |
+| `403 Forbidden` | Cuenta pendiente de aprobación o desactivada |
+
+**Validaciones:**
+- `login` requerido, no vacío.
+- `password` requerido, no vacío.
+- Si el estado del usuario es `PENDING` o `INACTIVE` se devuelve `403` con código de aplicación `FORBIDDEN`.
+
+---
+
+#### POST /api/auth/register
+
+Registra un nuevo usuario. La cuenta queda en estado `PENDING` hasta que un administrador la apruebe.
+
+**Request body:**
+
+```json
+{
+  "login": "string",
+  "email": "string",
+  "phone": "string",
+  "name": "string",
+  "password": "string"
+}
+```
+
+**Response body (201):**
+
+```json
+{
+  "id": "integer",
+  "login": "string",
+  "email": "string",
+  "phone": "string",
+  "name": "string",
+  "status": "PENDING"
+}
+```
+
+**Códigos de estado:**
+
+| Código | Escenario |
+|---|---|
+| `201 Created` | Usuario registrado correctamente |
+| `400 Bad Request` | Campos inválidos o ausentes |
+| `409 Conflict` | El `login` o el `email` ya están en uso |
+
+**Validaciones:**
+- `login` requerido, 3-50 caracteres, alfanumérico + guión bajo.
+- `email` requerido, formato válido.
+- `phone` requerido, formato E.164 (p. ej. `+34612345678`).
+- `name` requerido, 2-100 caracteres.
+- `password` requerido, mínimo 8 caracteres, al menos una mayúscula y un número.
+
+---
+
+#### POST /api/auth/refresh
+
+Obtiene un nuevo `accessToken` a partir de un `refreshToken` válido.
+
+**Request body:**
+
+```json
+{
+  "refreshToken": "string"
+}
+```
+
+**Response body (200):**
+
+```json
+{
+  "accessToken": "string",
+  "refreshToken": "string",
+  "expiresIn": 3600
+}
+```
+
+**Códigos de estado:**
+
+| Código | Escenario |
+|---|---|
+| `200 OK` | Refresh token válido, nuevos tokens devueltos |
+| `400 Bad Request` | Campo ausente |
+| `401 Unauthorized` | Refresh token inválido o expirado |
+
+**Validaciones:**
+- `refreshToken` requerido y no vacío.
+- El refresh token debe existir en base de datos y no haber expirado.
+
+---
+
+#### POST /api/auth/logout
+
+Invalida el refresh token del usuario autenticado.
+
+**Request body:**
+
+```json
+{
+  "refreshToken": "string"
+}
+```
+
+**Response body:** vacío (`204 No Content`).
+
+**Códigos de estado:**
+
+| Código | Escenario |
+|---|---|
+| `204 No Content` | Token invalidado correctamente |
+| `400 Bad Request` | Campo ausente |
+| `401 Unauthorized` | Access token inválido o expirado |
+
+**Validaciones:**
+- Requiere cabecera `Authorization: Bearer <accessToken>`.
+- `refreshToken` requerido.
+
+---
+
+#### POST /api/auth/password/solicitar-reset
+
+Inicia el flujo de restablecimiento de contraseña. El sistema envía un OTP de tipo `PASSWORD_RESET` al Telegram del usuario asociado al email indicado.
+
+**Request body:**
+
+```json
+{
+  "email": "string"
+}
+```
+
+**Response body (200):**
+
+```json
+{
+  "message": "Si el email existe en el sistema, se ha enviado un código de verificación."
+}
+```
+
+**Códigos de estado:**
+
+| Código | Escenario |
+|---|---|
+| `200 OK` | Solicitud procesada (respuesta neutral por seguridad) |
+| `400 Bad Request` | Email ausente o formato inválido |
+
+**Validaciones:**
+- La respuesta es siempre `200` para no revelar si el email existe (seguridad por oscuridad).
+- Si el usuario no tiene Telegram vinculado, no se envía el OTP y el mensaje de respuesta es el mismo.
+
+---
+
+#### POST /api/auth/password/confirmar-reset
+
+Confirma el restablecimiento de contraseña usando el OTP recibido.
+
+**Request body:**
+
+```json
+{
+  "email": "string",
+  "codigo": "string",
+  "nuevaPassword": "string"
+}
+```
+
+**Response body (200):**
+
+```json
+{
+  "message": "Contraseña restablecida correctamente."
+}
+```
+
+**Códigos de estado:**
+
+| Código | Escenario |
+|---|---|
+| `200 OK` | Contraseña cambiada correctamente |
+| `400 Bad Request` | Campos ausentes o inválidos |
+| `422 Unprocessable Entity` | OTP incorrecto, expirado o ya utilizado |
+
+**Validaciones:**
+- `email` requerido, formato válido.
+- `codigo` requerido.
+- `nuevaPassword` requerido, mínimo 8 caracteres, al menos una mayúscula y un número.
+- El OTP debe ser de tipo `PASSWORD_RESET`, no haber sido utilizado (`used = false`) y no haber expirado (`expires_at > now()`).
+
+---
+
+### 5.4 Módulo `usuarios`
+
+#### GET /api/usuarios/me
+
+Devuelve el perfil del usuario autenticado. Requiere `ROLE_USER`.
+
+**Request body:** ninguno.
+
+**Response body (200):**
+
+```json
+{
+  "id": "integer",
+  "login": "string",
+  "email": "string",
+  "phone": "string",
+  "name": "string",
+  "role": "ROLE_USER",
+  "status": "ACTIVE",
+  "telegramLinked": false,
+  "telegramLinkedAt": null
+}
+```
+
+**Códigos de estado:**
+
+| Código | Escenario |
+|---|---|
+| `200 OK` | Perfil devuelto correctamente |
+| `401 Unauthorized` | Token ausente o inválido |
+
+---
+
+#### PATCH /api/usuarios/me
+
+Actualiza el perfil del usuario autenticado. Requiere `ROLE_USER`.
+
+**Request body (todos los campos opcionales):**
+
+```json
+{
+  "email": "string",
+  "phone": "string",
+  "name": "string",
+  "password": "string"
+}
+```
+
+**Response body (200):**
+
+```json
+{
+  "id": "integer",
+  "login": "string",
+  "email": "string",
+  "phone": "string",
+  "name": "string",
+  "role": "ROLE_USER",
+  "status": "ACTIVE",
+  "telegramLinked": true,
+  "telegramLinkedAt": "2025-03-10T14:22:00Z"
+}
+```
+
+**Códigos de estado:**
+
+| Código | Escenario |
+|---|---|
+| `200 OK` | Perfil actualizado correctamente |
+| `400 Bad Request` | Datos inválidos |
+| `401 Unauthorized` | Token ausente o inválido |
+| `409 Conflict` | El email ya está en uso por otro usuario |
+
+**Validaciones:**
+- Solo se actualizan los campos presentes en el cuerpo (semántica PATCH).
+- `email` formato válido si se proporciona.
+- `phone` formato E.164 si se proporciona.
+- `password` mínimo 8 caracteres, al menos una mayúscula y un número, si se proporciona.
+
+---
+
+#### GET /api/admin/usuarios
+
+Lista todos los usuarios con paginación y filtrado. Requiere `ROLE_ADMIN`.
+
+**Parámetros de consulta:**
+
+| Parámetro | Tipo | Requerido | Descripción |
+|---|---|---|---|
+| `page` | `integer` | No | Página (base 0, por defecto 0) |
+| `pageSize` | `integer` | No | Elementos por página (por defecto 20) |
+| `status` | `string` | No | Filtrar por estado: `PENDING`, `ACTIVE`, `INACTIVE` |
+
+**Response body (200):**
+
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "login": "jdoe",
+      "email": "jdoe@example.com",
+      "phone": "+34612345678",
+      "name": "John Doe",
+      "role": "ROLE_USER",
+      "status": "ACTIVE",
+      "telegramLinked": true,
+      "telegramLinkedAt": "2025-03-10T14:22:00Z"
+    }
+  ],
+  "total": 42,
+  "page": 0,
+  "pageSize": 20
+}
+```
+
+**Códigos de estado:**
+
+| Código | Escenario |
+|---|---|
+| `200 OK` | Lista devuelta correctamente |
+| `401 Unauthorized` | Token ausente o inválido |
+| `403 Forbidden` | El usuario no tiene rol `ROLE_ADMIN` |
+
+---
+
+#### POST /api/admin/usuarios
+
+Crea un nuevo usuario directamente (sin proceso de aprobación). Requiere `ROLE_ADMIN`.
+
+**Request body:**
+
+```json
+{
+  "login": "string",
+  "email": "string",
+  "phone": "string",
+  "name": "string",
+  "password": "string",
+  "role": "ROLE_USER"
+}
+```
+
+**Response body (201):**
+
+```json
+{
+  "id": "integer",
+  "login": "string",
+  "email": "string",
+  "phone": "string",
+  "name": "string",
+  "role": "ROLE_USER",
+  "status": "ACTIVE",
+  "telegramLinked": false,
+  "telegramLinkedAt": null
+}
+```
+
+**Códigos de estado:**
+
+| Código | Escenario |
+|---|---|
+| `201 Created` | Usuario creado correctamente |
+| `400 Bad Request` | Campos inválidos o ausentes |
+| `401 Unauthorized` | Token ausente o inválido |
+| `403 Forbidden` | El usuario no tiene rol `ROLE_ADMIN` |
+| `409 Conflict` | El `login` o el `email` ya están en uso |
+
+**Validaciones:**
+- Mismas reglas de formato que `POST /api/auth/register`.
+- `role` debe ser `ROLE_USER` o `ROLE_ADMIN`.
+- El usuario se crea con estado `ACTIVE` directamente.
+
+---
+
+#### GET /api/admin/usuarios/{id}
+
+Obtiene los datos de un usuario concreto. Requiere `ROLE_ADMIN`.
+
+**Parámetros de ruta:**
+
+| Parámetro | Tipo | Descripción |
+|---|---|---|
+| `id` | `integer` | Identificador del usuario |
+
+**Response body (200):** mismo esquema que el elemento de la lista en `GET /api/admin/usuarios`.
+
+**Códigos de estado:**
+
+| Código | Escenario |
+|---|---|
+| `200 OK` | Usuario encontrado |
+| `401 Unauthorized` | Token ausente o inválido |
+| `403 Forbidden` | El usuario no tiene rol `ROLE_ADMIN` |
+| `404 Not Found` | No existe un usuario con ese `id` |
+
+---
+
+#### PATCH /api/admin/usuarios/{id}
+
+Actualiza los datos de un usuario. Requiere `ROLE_ADMIN`.
+
+**Parámetros de ruta:**
+
+| Parámetro | Tipo | Descripción |
+|---|---|---|
+| `id` | `integer` | Identificador del usuario |
+
+**Request body (todos los campos opcionales):**
+
+```json
+{
+  "email": "string",
+  "phone": "string",
+  "name": "string",
+  "role": "ROLE_USER",
+  "status": "ACTIVE",
+  "password": "string"
+}
+```
+
+**Response body (200):** mismo esquema que `GET /api/admin/usuarios/{id}`.
+
+**Códigos de estado:**
+
+| Código | Escenario |
+|---|---|
+| `200 OK` | Usuario actualizado correctamente |
+| `400 Bad Request` | Datos inválidos |
+| `401 Unauthorized` | Token ausente o inválido |
+| `403 Forbidden` | El usuario no tiene rol `ROLE_ADMIN` |
+| `404 Not Found` | No existe un usuario con ese `id` |
+| `409 Conflict` | El email ya está en uso por otro usuario |
+
+---
+
+#### PATCH /api/admin/usuarios/{id}/aprobar
+
+Aprueba una cuenta de usuario pendiente, cambiando su estado a `ACTIVE`. Requiere `ROLE_ADMIN`.
+
+**Parámetros de ruta:**
+
+| Parámetro | Tipo | Descripción |
+|---|---|---|
+| `id` | `integer` | Identificador del usuario |
+
+**Request body:** ninguno.
+
+**Response body (200):**
+
+```json
+{
+  "id": "integer",
+  "login": "string",
+  "status": "ACTIVE"
+}
+```
+
+**Códigos de estado:**
+
+| Código | Escenario |
+|---|---|
+| `200 OK` | Cuenta aprobada correctamente |
+| `401 Unauthorized` | Token ausente o inválido |
+| `403 Forbidden` | El usuario no tiene rol `ROLE_ADMIN` |
+| `404 Not Found` | No existe un usuario con ese `id` |
+| `422 Unprocessable Entity` | El usuario no estaba en estado `PENDING` |
+
+---
+
+#### DELETE /api/admin/usuarios/{id}
+
+Desactiva (borrado lógico) un usuario. Requiere `ROLE_ADMIN`.
+
+**Parámetros de ruta:**
+
+| Parámetro | Tipo | Descripción |
+|---|---|---|
+| `id` | `integer` | Identificador del usuario |
+
+**Response body:** vacío (`204 No Content`).
+
+**Códigos de estado:**
+
+| Código | Escenario |
+|---|---|
+| `204 No Content` | Usuario desactivado correctamente |
+| `401 Unauthorized` | Token ausente o inválido |
+| `403 Forbidden` | El usuario no tiene rol `ROLE_ADMIN` |
+| `404 Not Found` | No existe un usuario con ese `id` |
+| `422 Unprocessable Entity` | No se puede eliminar el propio usuario administrador activo |
+
+**Validaciones:**
+- El borrado es lógico: el estado pasa a `INACTIVE`, el registro permanece en base de datos.
+- Un administrador no puede desactivarse a sí mismo.
+
+---
+
+### 5.5 Módulo `reservas`
+
+#### GET /api/reservas/disponibles
+
+Devuelve los tramos horarios disponibles para una fecha concreta. Requiere `ROLE_USER`.
+
+**Parámetros de consulta:**
+
+| Parámetro | Tipo | Requerido | Descripción |
+|---|---|---|---|
+| `fecha` | `string (YYYY-MM-DD)` | Sí | Fecha para la que se consulta disponibilidad |
+
+**Response body (200):**
+
+```json
+{
+  "fecha": "2025-06-15",
+  "tramosDisponibles": [
+    {
+      "horaInicio": "09:00",
+      "duracionMinutos": 60,
+      "plazasLibres": 3
+    },
+    {
+      "horaInicio": "10:00",
+      "duracionMinutos": 60,
+      "plazasLibres": 4
+    }
+  ]
+}
+```
+
+**Códigos de estado:**
+
+| Código | Escenario |
+|---|---|
+| `200 OK` | Disponibilidad calculada correctamente |
+| `400 Bad Request` | Parámetro `fecha` ausente o formato inválido |
+| `401 Unauthorized` | Token ausente o inválido |
+
+**Validaciones:**
+- `fecha` requerido, formato `YYYY-MM-DD`.
+- Solo se devuelven tramos con al menos una plaza libre (máximo de participantes configurable en `SYSTEM_CONFIG.max_participants`).
+
+---
+
+#### GET /api/reservas
+
+Lista las reservas del usuario autenticado con paginación. Requiere `ROLE_USER`.
+
+**Parámetros de consulta:**
+
+| Parámetro | Tipo | Requerido | Descripción |
+|---|---|---|---|
+| `page` | `integer` | No | Página (base 0, por defecto 0) |
+| `pageSize` | `integer` | No | Elementos por página (por defecto 20) |
+
+**Response body (200):**
+
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "reservationDate": "2025-06-15",
+      "startTime": "09:00",
+      "durationMinutes": 60,
+      "status": "CONFIRMED",
+      "priceTotal": 15.00,
+      "notes": "string",
+      "participants": [
+        {
+          "id": 1,
+          "userId": 5,
+          "nombre": "John Doe",
+          "statusPago": "PAID"
+        }
+      ]
+    }
+  ],
+  "total": 5,
+  "page": 0,
+  "pageSize": 20
+}
+```
+
+**Códigos de estado:**
+
+| Código | Escenario |
+|---|---|
+| `200 OK` | Lista devuelta correctamente |
+| `401 Unauthorized` | Token ausente o inválido |
+
+**Validaciones:**
+- Solo se devuelven reservas en las que el usuario autenticado es propietario o participante.
+
+---
+
+#### POST /api/reservas
+
+Crea una nueva reserva. El usuario autenticado es automáticamente añadido como primer participante. Requiere `ROLE_USER`.
+
+**Request body:**
+
+```json
+{
+  "reservationDate": "2025-06-15",
+  "startTime": "09:00",
+  "durationMinutes": 60,
+  "notes": "string",
+  "participantesAdicionales": [
+    {
+      "userId": 7
+    },
+    {
+      "externalName": "Carlos García"
+    }
+  ]
+}
+```
+
+**Response body (201):**
+
+```json
+{
+  "id": "integer",
+  "reservationDate": "2025-06-15",
+  "startTime": "09:00",
+  "durationMinutes": 60,
+  "status": "PENDING_CONFIRMATION",
+  "priceTotal": 15.00,
+  "notes": "string",
+  "participants": [
+    {
+      "id": 1,
+      "userId": 5,
+      "nombre": "John Doe",
+      "statusPago": "PENDING"
+    }
+  ]
+}
+```
+
+**Códigos de estado:**
+
+| Código | Escenario |
+|---|---|
+| `201 Created` | Reserva creada correctamente |
+| `400 Bad Request` | Campos inválidos o ausentes |
+| `401 Unauthorized` | Token ausente o inválido |
+| `409 Conflict` | El tramo horario ya está ocupado |
+| `422 Unprocessable Entity` | Número máximo de participantes superado |
+
+**Validaciones:**
+- `reservationDate` requerido, formato `YYYY-MM-DD`, no puede ser en el pasado.
+- `startTime` requerido, formato `HH:mm`.
+- `durationMinutes` requerido, valores permitidos: `60` o `90`.
+- El número total de participantes (creador + adicionales) no puede superar `SYSTEM_CONFIG.max_participants` (4).
+- Cada participante adicional debe incluir `userId` (usuario registrado) o `externalName` (participante externo), pero no ambos.
+- Se envía OTP de tipo `RESERVATION_CONFIRM` al creador vía Telegram.
+
+---
+
+#### GET /api/reservas/{id}
+
+Obtiene el detalle de una reserva concreta. Requiere `ROLE_USER`.
+
+**Parámetros de ruta:**
+
+| Parámetro | Tipo | Descripción |
+|---|---|---|
+| `id` | `integer` | Identificador de la reserva |
+
+**Response body (200):** mismo esquema que el elemento de la lista en `GET /api/reservas`.
+
+**Códigos de estado:**
+
+| Código | Escenario |
+|---|---|
+| `200 OK` | Reserva encontrada |
+| `401 Unauthorized` | Token ausente o inválido |
+| `403 Forbidden` | El usuario no es propietario ni participante |
+| `404 Not Found` | No existe una reserva con ese `id` |
+
+---
+
+#### DELETE /api/reservas/{id}
+
+Cancela una reserva. Solo puede hacerlo el propietario. Requiere `ROLE_USER`.
+
+**Parámetros de ruta:**
+
+| Parámetro | Tipo | Descripción |
+|---|---|---|
+| `id` | `integer` | Identificador de la reserva |
+
+**Response body:** vacío (`204 No Content`).
+
+**Códigos de estado:**
+
+| Código | Escenario |
+|---|---|
+| `204 No Content` | Reserva cancelada correctamente |
+| `401 Unauthorized` | Token ausente o inválido |
+| `403 Forbidden` | El usuario no es el propietario de la reserva |
+| `404 Not Found` | No existe una reserva con ese `id` |
+| `422 Unprocessable Entity` | La cancelación está fuera del plazo permitido (`SYSTEM_CONFIG.cancellation_deadline_hours`) |
+
+**Validaciones:**
+- Solo el propietario (`owner_id`) puede cancelar.
+- La cancelación debe realizarse con al menos `cancellation_deadline_hours` de antelación.
+- Se envía OTP de tipo `CANCELLATION_CONFIRM` al propietario vía Telegram.
+- El estado de la reserva pasa a `CANCELLED`.
+
+---
+
+#### POST /api/reservas/{id}/unirse
+
+Permite a un usuario autenticado unirse a una reserva existente como participante. Requiere `ROLE_USER`.
+
+**Parámetros de ruta:**
+
+| Parámetro | Tipo | Descripción |
+|---|---|---|
+| `id` | `integer` | Identificador de la reserva |
+
+**Request body:** ninguno.
+
+**Response body (200):**
+
+```json
+{
+  "participanteId": "integer",
+  "reservaId": "integer",
+  "userId": "integer",
+  "nombre": "string",
+  "statusPago": "PENDING"
+}
+```
+
+**Códigos de estado:**
+
+| Código | Escenario |
+|---|---|
+| `200 OK` | Usuario añadido como participante |
+| `401 Unauthorized` | Token ausente o inválido |
+| `404 Not Found` | No existe una reserva con ese `id` |
+| `409 Conflict` | El usuario ya es participante en esa reserva |
+| `422 Unprocessable Entity` | La reserva está completa o en un estado que no admite nuevos participantes |
+
+**Validaciones:**
+- La reserva debe estar en estado `PENDING_CONFIRMATION` o `CONFIRMED`.
+- El número de participantes no puede superar `SYSTEM_CONFIG.max_participants`.
+- Un usuario no puede unirse a la misma reserva dos veces.
+
+---
+
+#### GET /api/admin/reservas
+
+Lista todas las reservas con filtros y paginación. Requiere `ROLE_ADMIN`.
+
+**Parámetros de consulta:**
+
+| Parámetro | Tipo | Requerido | Descripción |
+|---|---|---|---|
+| `fecha` | `string (YYYY-MM-DD)` | No | Filtrar por fecha de reserva |
+| `status` | `string` | No | Filtrar por estado: `PENDING_CONFIRMATION`, `CONFIRMED`, `CANCELLED`, `COMPLETED` |
+| `page` | `integer` | No | Página (base 0, por defecto 0) |
+| `pageSize` | `integer` | No | Elementos por página (por defecto 20) |
+
+**Response body (200):**
+
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "reservationDate": "2025-06-15",
+      "startTime": "09:00",
+      "durationMinutes": 60,
+      "status": "CONFIRMED",
+      "ownerId": 5,
+      "ownerName": "John Doe",
+      "priceTotal": 15.00,
+      "notes": "string",
+      "participants": []
+    }
+  ],
+  "total": 120,
+  "page": 0,
+  "pageSize": 20
+}
+```
+
+**Códigos de estado:**
+
+| Código | Escenario |
+|---|---|
+| `200 OK` | Lista devuelta correctamente |
+| `401 Unauthorized` | Token ausente o inválido |
+| `403 Forbidden` | El usuario no tiene rol `ROLE_ADMIN` |
+
+---
+
+#### PATCH /api/admin/reservas/{id}/estado
+
+Cambia el estado de una reserva. Requiere `ROLE_ADMIN`.
+
+**Parámetros de ruta:**
+
+| Parámetro | Tipo | Descripción |
+|---|---|---|
+| `id` | `integer` | Identificador de la reserva |
+
+**Request body:**
+
+```json
+{
+  "status": "CONFIRMED"
+}
+```
+
+**Response body (200):**
+
+```json
+{
+  "id": "integer",
+  "status": "CONFIRMED"
+}
+```
+
+**Códigos de estado:**
+
+| Código | Escenario |
+|---|---|
+| `200 OK` | Estado actualizado correctamente |
+| `400 Bad Request` | Valor de `status` inválido |
+| `401 Unauthorized` | Token ausente o inválido |
+| `403 Forbidden` | El usuario no tiene rol `ROLE_ADMIN` |
+| `404 Not Found` | No existe una reserva con ese `id` |
+| `422 Unprocessable Entity` | La transición de estado no está permitida |
+
+**Validaciones:**
+- Transiciones permitidas: `PENDING_CONFIRMATION → CONFIRMED`, `CONFIRMED → COMPLETED`, `CONFIRMED → CANCELLED`.
+- El campo `status` debe ser uno de los valores del enum de estados de reserva.
+
+---
+
+### 5.6 Módulo `pagos`
+
+#### GET /api/pagos
+
+Lista los pagos del usuario autenticado con paginación. Requiere `ROLE_USER`.
+
+**Parámetros de consulta:**
+
+| Parámetro | Tipo | Requerido | Descripción |
+|---|---|---|---|
+| `page` | `integer` | No | Página (base 0, por defecto 0) |
+| `pageSize` | `integer` | No | Elementos por página (por defecto 20) |
+
+**Response body (200):**
+
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "reservaId": 10,
+      "participanteId": 3,
+      "amount": 15.00,
+      "method": "REDSYS",
+      "status": "PAID",
+      "redsysOrderId": "ORDER-20250615-001",
+      "redsysUrl": null,
+      "paidAt": "2025-06-14T10:30:00Z"
+    }
+  ],
+  "total": 8,
+  "page": 0,
+  "pageSize": 20
+}
+```
+
+**Códigos de estado:**
+
+| Código | Escenario |
+|---|---|
+| `200 OK` | Lista devuelta correctamente |
+| `401 Unauthorized` | Token ausente o inválido |
+
+**Validaciones:**
+- Solo se devuelven pagos vinculados al participante correspondiente al usuario autenticado.
+
+---
+
+#### POST /api/pagos/iniciar
+
+Inicia el proceso de pago de una reserva vía Redsys. Devuelve la URL de redirección al TPV virtual. Requiere `ROLE_USER`.
+
+**Request body:**
+
+```json
+{
+  "reservaId": "integer",
+  "participanteId": "integer"
+}
+```
+
+**Response body (200):**
+
+```json
+{
+  "pagoId": "integer",
+  "redsysOrderId": "string",
+  "redsysUrl": "https://sis-t.redsys.es:25443/sis/realizarPago",
+  "amount": 15.00,
+  "status": "PENDING"
+}
+```
+
+**Códigos de estado:**
+
+| Código | Escenario |
+|---|---|
+| `200 OK` | Pago iniciado, URL de redirección devuelta |
+| `400 Bad Request` | Campos ausentes o inválidos |
+| `401 Unauthorized` | Token ausente o inválido |
+| `404 Not Found` | La reserva o el participante no existen |
+| `409 Conflict` | El pago ya está en estado `PAID` o `IN_PROGRESS` |
+| `422 Unprocessable Entity` | La reserva no está en un estado pagable |
+
+**Validaciones:**
+- El `participanteId` debe corresponder al usuario autenticado.
+- La reserva debe estar en estado `CONFIRMED` para admitir pagos.
+- Se genera un `redsys_order_id` único y se firma la petición con HMAC SHA-256 usando `SYSTEM_CONFIG.redsys_secret_key`.
+
+> **Nota:** El endpoint `POST /api/pagos/webhook` es de uso interno exclusivo para la notificación de Redsys (`notificationURL`) y está excluido de la especificación pública OpenAPI. Solo es accesible desde las IPs de Redsys y no requiere autenticación JWT.
+
+---
+
+#### POST /api/admin/pagos/{reservaId}/efectivo
+
+Registra el pago en efectivo de todos los participantes de una reserva. Requiere `ROLE_ADMIN`.
+
+**Parámetros de ruta:**
+
+| Parámetro | Tipo | Descripción |
+|---|---|---|
+| `reservaId` | `integer` | Identificador de la reserva |
+
+**Request body:** ninguno.
+
+**Response body (200):**
+
+```json
+{
+  "reservaId": "integer",
+  "pagosActualizados": 3,
+  "totalCobrado": 45.00
+}
+```
+
+**Códigos de estado:**
+
+| Código | Escenario |
+|---|---|
+| `200 OK` | Pago en efectivo registrado correctamente |
+| `401 Unauthorized` | Token ausente o inválido |
+| `403 Forbidden` | El usuario no tiene rol `ROLE_ADMIN` |
+| `404 Not Found` | No existe una reserva con ese `reservaId` |
+| `422 Unprocessable Entity` | La reserva ya tiene todos los pagos completados |
+
+---
+
+#### GET /api/admin/pagos
+
+Lista todos los pagos con filtros y paginación. Requiere `ROLE_ADMIN`.
+
+**Parámetros de consulta:**
+
+| Parámetro | Tipo | Requerido | Descripción |
+|---|---|---|---|
+| `page` | `integer` | No | Página (base 0, por defecto 0) |
+| `pageSize` | `integer` | No | Elementos por página (por defecto 20) |
+| `status` | `string` | No | Filtrar por estado: `PENDING`, `IN_PROGRESS`, `PAID`, `FAILED`, `REFUNDED` |
+
+**Response body (200):**
+
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "reservaId": 10,
+      "participanteId": 3,
+      "amount": 15.00,
+      "method": "REDSYS",
+      "status": "PAID",
+      "redsysOrderId": "ORDER-20250615-001",
+      "redsysUrl": null,
+      "paidAt": "2025-06-14T10:30:00Z"
+    }
+  ],
+  "total": 85,
+  "page": 0,
+  "pageSize": 20
+}
+```
+
+**Códigos de estado:**
+
+| Código | Escenario |
+|---|---|
+| `200 OK` | Lista devuelta correctamente |
+| `401 Unauthorized` | Token ausente o inválido |
+| `403 Forbidden` | El usuario no tiene rol `ROLE_ADMIN` |
+
+---
+
+### 5.7 Módulo `otp`
+
+#### POST /api/otp/verificar
+
+Verifica un código OTP. Este endpoint complementa la verificación que realiza el bot de Telegram; permite que el frontend confirme operaciones (confirmación de reserva, cancelación) vía REST cuando el usuario no usa Telegram directamente. Requiere `ROLE_USER`.
+
+**Request body:**
+
+```json
+{
+  "codigo": "string",
+  "tipo": "RESERVATION_CONFIRM"
+}
+```
+
+**Response body (200):**
+
+```json
+{
+  "verificado": true,
+  "tipo": "RESERVATION_CONFIRM",
+  "message": "Código OTP verificado correctamente."
+}
+```
+
+**Códigos de estado:**
+
+| Código | Escenario |
+|---|---|
+| `200 OK` | OTP verificado correctamente |
+| `400 Bad Request` | Campos ausentes o tipo inválido |
+| `401 Unauthorized` | Token ausente o inválido |
+| `422 Unprocessable Entity` | OTP incorrecto, expirado o ya utilizado |
+
+**Validaciones:**
+- `codigo` requerido, no vacío.
+- `tipo` requerido, debe ser uno de: `RESERVATION_CONFIRM`, `CANCELLATION_CONFIRM`, `PASSWORD_RESET`.
+- El OTP se busca para el usuario autenticado (`user_id` del JWT) con el `tipo` indicado.
+- El OTP debe tener `used = false` y `expires_at > now()` (TTL de 10 minutos).
+- Tras la verificación exitosa, el campo `used` se establece a `true`.
+
+> **Nota:** La verificación vía bot de Telegram es equivalente y se procesa internamente sin pasar por este endpoint REST. El webhook de Telegram (`POST /api/telegram/webhook`) está excluido de la especificación pública OpenAPI.
+
+---
+
+### 5.8 Esquema OpenAPI 3.0
+
+```yaml
+openapi: 3.0.3
+info:
+  title: PadelPro API
+  description: >
+    API REST del sistema de gestión de reservas de pádel PadelPro.
+    Proporciona endpoints para autenticación, gestión de usuarios,
+    reservas, pagos y verificación OTP.
+  version: 1.0.0
+  contact:
+    name: Equipo PadelPro
+    email: soporte@padelpro.local
+
+servers:
+  - url: https://padelpro.local/api
+    description: Servidor de producción (on-premise)
+  - url: http://localhost:8080/api
+    description: Servidor de desarrollo local
+
+# ---------------------------------------------------------------------------
+# Seguridad global: todos los endpoints salvo los de /auth/* requieren JWT
+# ---------------------------------------------------------------------------
+security:
+  - BearerAuth: []
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: >
+        Token JWT obtenido en POST /auth/login o POST /auth/refresh.
+        Se debe incluir en la cabecera: Authorization: Bearer <token>
+
+  # -------------------------------------------------------------------------
+  # Esquemas reutilizables
+  # -------------------------------------------------------------------------
+  schemas:
+
+    # --- Errores -----------------------------------------------------------
+    ErrorResponse:
+      type: object
+      required: [code, message, errors]
+      properties:
+        code:
+          type: string
+          example: VALIDATION_ERROR
+          description: Código de error de aplicación
+        message:
+          type: string
+          example: Los datos de la solicitud no son válidos.
+          description: Descripción legible del error
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldError'
+          description: Lista de errores de campo (vacía si el error no es de validación)
+
+    FieldError:
+      type: object
+      required: [field, message]
+      properties:
+        field:
+          type: string
+          example: email
+        message:
+          type: string
+          example: El formato del email no es válido.
+
+    # --- Paginación --------------------------------------------------------
+    PaginatedResponseMeta:
+      type: object
+      required: [total, page, pageSize]
+      properties:
+        total:
+          type: integer
+          example: 47
+          description: Total de elementos en la colección completa
+        page:
+          type: integer
+          example: 0
+          description: Índice de la página actual (base 0)
+        pageSize:
+          type: integer
+          example: 20
+          description: Número de elementos por página
+
+    # --- Auth --------------------------------------------------------------
+    LoginRequest:
+      type: object
+      required: [login, password]
+      properties:
+        login:
+          type: string
+          example: jdoe
+        password:
+          type: string
+          format: password
+          example: "SecureP4ss!"
+
+    LoginResponse:
+      type: object
+      required: [accessToken, refreshToken, expiresIn]
+      properties:
+        accessToken:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        refreshToken:
+          type: string
+          example: dGhpcyBpcyBhIHJlZnJlc2ggdG9rZW4...
+        expiresIn:
+          type: integer
+          example: 3600
+          description: Segundos hasta la expiración del accessToken
+
+    RefreshRequest:
+      type: object
+      required: [refreshToken]
+      properties:
+        refreshToken:
+          type: string
+          example: dGhpcyBpcyBhIHJlZnJlc2ggdG9rZW4...
+
+    LogoutRequest:
+      type: object
+      required: [refreshToken]
+      properties:
+        refreshToken:
+          type: string
+
+    RegisterRequest:
+      type: object
+      required: [login, email, phone, name, password]
+      properties:
+        login:
+          type: string
+          minLength: 3
+          maxLength: 50
+          pattern: '^[a-zA-Z0-9_]+$'
+          example: jdoe
+        email:
+          type: string
+          format: email
+          example: jdoe@example.com
+        phone:
+          type: string
+          pattern: '^\+[1-9]\d{7,14}$'
+          example: "+34612345678"
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+          example: John Doe
+        password:
+          type: string
+          format: password
+          minLength: 8
+          example: "SecureP4ss!"
+
+    SolicitarResetRequest:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+          example: jdoe@example.com
+
+    ConfirmarResetRequest:
+      type: object
+      required: [email, codigo, nuevaPassword]
+      properties:
+        email:
+          type: string
+          format: email
+          example: jdoe@example.com
+        codigo:
+          type: string
+          example: "482910"
+        nuevaPassword:
+          type: string
+          format: password
+          minLength: 8
+          example: "NuevaP4ss!"
+
+    MessageResponse:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+          example: Operación completada correctamente.
+
+    # --- Usuarios ----------------------------------------------------------
+    UsuarioResponse:
+      type: object
+      required: [id, login, email, phone, name, role, status, telegramLinked]
+      properties:
+        id:
+          type: integer
+          example: 1
+        login:
+          type: string
+          example: jdoe
+        email:
+          type: string
+          format: email
+          example: jdoe@example.com
+        phone:
+          type: string
+          example: "+34612345678"
+        name:
+          type: string
+          example: John Doe
+        role:
+          type: string
+          enum: [ROLE_USER, ROLE_ADMIN]
+          example: ROLE_USER
+        status:
+          type: string
+          enum: [PENDING, ACTIVE, INACTIVE]
+          example: ACTIVE
+        telegramLinked:
+          type: boolean
+          example: true
+        telegramLinkedAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2025-03-10T14:22:00Z"
+
+    UsuarioCreateRequest:
+      type: object
+      required: [login, email, phone, name, password, role]
+      properties:
+        login:
+          type: string
+          minLength: 3
+          maxLength: 50
+          pattern: '^[a-zA-Z0-9_]+$'
+          example: jdoe
+        email:
+          type: string
+          format: email
+          example: jdoe@example.com
+        phone:
+          type: string
+          pattern: '^\+[1-9]\d{7,14}$'
+          example: "+34612345678"
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+          example: John Doe
+        password:
+          type: string
+          format: password
+          minLength: 8
+          example: "SecureP4ss!"
+        role:
+          type: string
+          enum: [ROLE_USER, ROLE_ADMIN]
+          example: ROLE_USER
+
+    UsuarioPatchRequest:
+      type: object
+      description: Todos los campos son opcionales (semántica PATCH)
+      properties:
+        email:
+          type: string
+          format: email
+          example: nuevoemail@example.com
+        phone:
+          type: string
+          pattern: '^\+[1-9]\d{7,14}$'
+          example: "+34698765432"
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+          example: John Updated Doe
+        role:
+          type: string
+          enum: [ROLE_USER, ROLE_ADMIN]
+          example: ROLE_USER
+        status:
+          type: string
+          enum: [PENDING, ACTIVE, INACTIVE]
+          example: ACTIVE
+        password:
+          type: string
+          format: password
+          minLength: 8
+          example: "NuevaP4ss!"
+
+    AprobarResponse:
+      type: object
+      required: [id, login, status]
+      properties:
+        id:
+          type: integer
+          example: 5
+        login:
+          type: string
+          example: jdoe
+        status:
+          type: string
+          enum: [ACTIVE]
+          example: ACTIVE
+
+    PaginatedUsuariosResponse:
+      allOf:
+        - $ref: '#/components/schemas/PaginatedResponseMeta'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/UsuarioResponse'
+
+    # --- Reservas ----------------------------------------------------------
+    ParticipanteRequest:
+      type: object
+      description: >
+        Exactamente uno de userId o externalName debe estar presente.
+      properties:
+        userId:
+          type: integer
+          nullable: true
+          example: 7
+          description: ID del usuario registrado en el sistema
+        externalName:
+          type: string
+          nullable: true
+          example: Carlos García
+          description: Nombre del participante externo sin cuenta en el sistema
+
+    ParticipanteResponse:
+      type: object
+      required: [id, nombre, statusPago]
+      properties:
+        id:
+          type: integer
+          example: 3
+        userId:
+          type: integer
+          nullable: true
+          example: 7
+        nombre:
+          type: string
+          example: Carlos García
+        statusPago:
+          type: string
+          enum: [PENDING, PAID, FAILED, REFUNDED]
+          example: PENDING
+
+    ReservaRequest:
+      type: object
+      required: [reservationDate, startTime, durationMinutes]
+      properties:
+        reservationDate:
+          type: string
+          format: date
+          example: "2025-06-15"
+        startTime:
+          type: string
+          pattern: '^([01]\d|2[0-3]):[0-5]\d$'
+          example: "09:00"
+        durationMinutes:
+          type: integer
+          enum: [60, 90]
+          example: 60
+        notes:
+          type: string
+          maxLength: 500
+          nullable: true
+          example: Reserva para partido de entrenamiento
+        participantesAdicionales:
+          type: array
+          items:
+            $ref: '#/components/schemas/ParticipanteRequest'
+          maxItems: 3
+          description: >
+            Máximo 3 participantes adicionales (el creador ocupa el primer puesto).
+
+    ReservaResponse:
+      type: object
+      required: [id, reservationDate, startTime, durationMinutes, status, priceTotal, participants]
+      properties:
+        id:
+          type: integer
+          example: 1
+        reservationDate:
+          type: string
+          format: date
+          example: "2025-06-15"
+        startTime:
+          type: string
+          example: "09:00"
+        durationMinutes:
+          type: integer
+          example: 60
+        status:
+          type: string
+          enum: [PENDING_CONFIRMATION, CONFIRMED, CANCELLED, COMPLETED]
+          example: CONFIRMED
+        ownerId:
+          type: integer
+          example: 5
+        ownerName:
+          type: string
+          example: John Doe
+        priceTotal:
+          type: number
+          format: double
+          example: 15.00
+        notes:
+          type: string
+          nullable: true
+          example: Reserva para partido de entrenamiento
+        participants:
+          type: array
+          items:
+            $ref: '#/components/schemas/ParticipanteResponse'
+
+    ReservaEstadoRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [CONFIRMED, CANCELLED, COMPLETED]
+          example: CONFIRMED
+
+    ReservaEstadoResponse:
+      type: object
+      required: [id, status]
+      properties:
+        id:
+          type: integer
+          example: 1
+        status:
+          type: string
+          enum: [PENDING_CONFIRMATION, CONFIRMED, CANCELLED, COMPLETED]
+          example: CONFIRMED
+
+    DisponibilidadResponse:
+      type: object
+      required: [fecha, tramosDisponibles]
+      properties:
+        fecha:
+          type: string
+          format: date
+          example: "2025-06-15"
+        tramosDisponibles:
+          type: array
+          items:
+            type: object
+            required: [horaInicio, duracionMinutos, plazasLibres]
+            properties:
+              horaInicio:
+                type: string
+                example: "09:00"
+              duracionMinutos:
+                type: integer
+                example: 60
+              plazasLibres:
+                type: integer
+                example: 3
+
+    PaginatedReservasResponse:
+      allOf:
+        - $ref: '#/components/schemas/PaginatedResponseMeta'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/ReservaResponse'
+
+    # --- Pagos -------------------------------------------------------------
+    PagoResponse:
+      type: object
+      required: [id, reservaId, participanteId, amount, method, status]
+      properties:
+        id:
+          type: integer
+          example: 1
+        reservaId:
+          type: integer
+          example: 10
+        participanteId:
+          type: integer
+          example: 3
+        amount:
+          type: number
+          format: double
+          example: 15.00
+        method:
+          type: string
+          enum: [REDSYS, CASH]
+          example: REDSYS
+        status:
+          type: string
+          enum: [PENDING, IN_PROGRESS, PAID, FAILED, REFUNDED]
+          example: PAID
+        redsysOrderId:
+          type: string
+          nullable: true
+          example: ORDER-20250615-001
+        redsysUrl:
+          type: string
+          format: uri
+          nullable: true
+          example: null
+        paidAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2025-06-14T10:30:00Z"
+
+    IniciarPagoRequest:
+      type: object
+      required: [reservaId, participanteId]
+      properties:
+        reservaId:
+          type: integer
+          example: 10
+        participanteId:
+          type: integer
+          example: 3
+
+    IniciarPagoResponse:
+      type: object
+      required: [pagoId, redsysOrderId, redsysUrl, amount, status]
+      properties:
+        pagoId:
+          type: integer
+          example: 5
+        redsysOrderId:
+          type: string
+          example: ORDER-20250615-001
+        redsysUrl:
+          type: string
+          format: uri
+          example: "https://sis-t.redsys.es:25443/sis/realizarPago"
+        amount:
+          type: number
+          format: double
+          example: 15.00
+        status:
+          type: string
+          enum: [PENDING]
+          example: PENDING
+
+    EfectivoPagoResponse:
+      type: object
+      required: [reservaId, pagosActualizados, totalCobrado]
+      properties:
+        reservaId:
+          type: integer
+          example: 10
+        pagosActualizados:
+          type: integer
+          example: 3
+        totalCobrado:
+          type: number
+          format: double
+          example: 45.00
+
+    PaginatedPagosResponse:
+      allOf:
+        - $ref: '#/components/schemas/PaginatedResponseMeta'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/PagoResponse'
+
+    # --- OTP ---------------------------------------------------------------
+    OtpVerificarRequest:
+      type: object
+      required: [codigo, tipo]
+      properties:
+        codigo:
+          type: string
+          example: "482910"
+        tipo:
+          type: string
+          enum: [RESERVATION_CONFIRM, CANCELLATION_CONFIRM, PASSWORD_RESET]
+          example: RESERVATION_CONFIRM
+
+    OtpVerificarResponse:
+      type: object
+      required: [verificado, tipo, message]
+      properties:
+        verificado:
+          type: boolean
+          example: true
+        tipo:
+          type: string
+          enum: [RESERVATION_CONFIRM, CANCELLATION_CONFIRM, PASSWORD_RESET]
+          example: RESERVATION_CONFIRM
+        message:
+          type: string
+          example: Código OTP verificado correctamente.
+
+# ---------------------------------------------------------------------------
+# Paths
+# ---------------------------------------------------------------------------
+paths:
+
+  # --- Auth ----------------------------------------------------------------
+
+  /auth/login:
+    post:
+      tags: [auth]
+      summary: Iniciar sesión
+      description: Autentica un usuario y devuelve un par de tokens JWT.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Autenticación correcta
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          description: Datos de entrada inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Credenciales incorrectas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Cuenta inactiva o pendiente de aprobación
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/register:
+    post:
+      tags: [auth]
+      summary: Autoregistro de usuario
+      description: >
+        Registra un nuevo usuario. La cuenta queda en estado PENDING
+        hasta que un administrador la apruebe.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Usuario registrado correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsuarioResponse'
+        '400':
+          description: Datos de entrada inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Login o email ya en uso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/refresh:
+    post:
+      tags: [auth]
+      summary: Renovar token de acceso
+      description: Obtiene un nuevo accessToken usando un refreshToken válido.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '200':
+          description: Tokens renovados correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          description: Campo refreshToken ausente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Refresh token inválido o expirado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/logout:
+    post:
+      tags: [auth]
+      summary: Cerrar sesión
+      description: Invalida el refreshToken del usuario autenticado.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogoutRequest'
+      responses:
+        '204':
+          description: Sesión cerrada correctamente
+        '400':
+          description: Campo refreshToken ausente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Access token inválido o expirado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/password/solicitar-reset:
+    post:
+      tags: [auth]
+      summary: Solicitar restablecimiento de contraseña
+      description: >
+        Envía un código OTP de tipo PASSWORD_RESET al Telegram del usuario
+        asociado al email indicado. La respuesta es siempre 200 por seguridad.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SolicitarResetRequest'
+      responses:
+        '200':
+          description: Solicitud procesada (respuesta neutral)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          description: Email ausente o formato inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/password/confirmar-reset:
+    post:
+      tags: [auth]
+      summary: Confirmar restablecimiento de contraseña
+      description: Verifica el OTP recibido y establece la nueva contraseña.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfirmarResetRequest'
+      responses:
+        '200':
+          description: Contraseña restablecida correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          description: Datos inválidos o ausentes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: OTP incorrecto, expirado o ya utilizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # --- Usuarios (perfil propio) --------------------------------------------
+
+  /usuarios/me:
+    get:
+      tags: [usuarios]
+      summary: Obtener perfil propio
+      description: Devuelve el perfil del usuario autenticado.
+      responses:
+        '200':
+          description: Perfil del usuario
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsuarioResponse'
+        '401':
+          description: Token ausente o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    patch:
+      tags: [usuarios]
+      summary: Actualizar perfil propio
+      description: Actualiza los datos del perfil del usuario autenticado (semántica PATCH).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UsuarioPatchRequest'
+      responses:
+        '200':
+          description: Perfil actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsuarioResponse'
+        '400':
+          description: Datos inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Token ausente o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Email ya en uso por otro usuario
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # --- Usuarios (admin) ----------------------------------------------------
+
+  /admin/usuarios:
+    get:
+      tags: [admin-usuarios]
+      summary: Listar todos los usuarios
+      description: Lista todos los usuarios con paginación y filtrado por estado. Requiere ROLE_ADMIN.
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [PENDING, ACTIVE, INACTIVE]
+      responses:
+        '200':
+          description: Lista de usuarios
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedUsuariosResponse'
+        '401':
+          description: Token ausente o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Rol insuficiente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags: [admin-usuarios]
+      summary: Crear usuario (admin)
+      description: Crea un nuevo usuario directamente en estado ACTIVE. Requiere ROLE_ADMIN.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UsuarioCreateRequest'
+      responses:
+        '201':
+          description: Usuario creado correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsuarioResponse'
+        '400':
+          description: Datos inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Token ausente o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Rol insuficiente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Login o email ya en uso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /admin/usuarios/{id}:
+    get:
+      tags: [admin-usuarios]
+      summary: Obtener usuario por ID
+      description: Devuelve los datos de un usuario concreto. Requiere ROLE_ADMIN.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Datos del usuario
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsuarioResponse'
+        '401':
+          description: Token ausente o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Rol insuficiente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Usuario no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    patch:
+      tags: [admin-usuarios]
+      summary: Actualizar usuario (admin)
+      description: Actualiza los datos de un usuario. Requiere ROLE_ADMIN.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UsuarioPatchRequest'
+      responses:
+        '200':
+          description: Usuario actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsuarioResponse'
+        '400':
+          description: Datos inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Token ausente o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Rol insuficiente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Usuario no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Email ya en uso por otro usuario
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags: [admin-usuarios]
+      summary: Desactivar usuario (borrado lógico)
+      description: Cambia el estado del usuario a INACTIVE. Requiere ROLE_ADMIN.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Usuario desactivado correctamente
+        '401':
+          description: Token ausente o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Rol insuficiente o intento de auto-desactivación
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Usuario no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: No se puede desactivar el propio usuario admin activo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /admin/usuarios/{id}/aprobar:
+    patch:
+      tags: [admin-usuarios]
+      summary: Aprobar cuenta de usuario
+      description: >
+        Cambia el estado del usuario de PENDING a ACTIVE.
+        Requiere ROLE_ADMIN.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Cuenta aprobada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AprobarResponse'
+        '401':
+          description: Token ausente o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Rol insuficiente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Usuario no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: El usuario no está en estado PENDING
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # --- Reservas (usuario) --------------------------------------------------
+
+  /reservas/disponibles:
+    get:
+      tags: [reservas]
+      summary: Consultar disponibilidad
+      description: Devuelve los tramos horarios disponibles para una fecha concreta.
+      parameters:
+        - name: fecha
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          example: "2025-06-15"
+      responses:
+        '200':
+          description: Tramos disponibles para la fecha solicitada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DisponibilidadResponse'
+        '400':
+          description: Parámetro fecha ausente o formato inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Token ausente o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /reservas:
+    get:
+      tags: [reservas]
+      summary: Listar reservas propias
+      description: Lista las reservas del usuario autenticado (como propietario o participante).
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+      responses:
+        '200':
+          description: Lista de reservas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedReservasResponse'
+        '401':
+          description: Token ausente o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags: [reservas]
+      summary: Crear reserva
+      description: >
+        Crea una nueva reserva. El usuario autenticado se añade automáticamente
+        como primer participante. Se envía OTP de tipo RESERVATION_CONFIRM al creador.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReservaRequest'
+      responses:
+        '201':
+          description: Reserva creada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservaResponse'
+        '400':
+          description: Datos inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Token ausente o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: El tramo horario ya está ocupado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Número máximo de participantes superado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /reservas/{id}:
+    get:
+      tags: [reservas]
+      summary: Obtener reserva por ID
+      description: Devuelve el detalle de una reserva. Solo accesible para propietario y participantes.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Detalle de la reserva
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservaResponse'
+        '401':
+          description: Token ausente o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: El usuario no es propietario ni participante
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Reserva no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags: [reservas]
+      summary: Cancelar reserva
+      description: >
+        Cancela una reserva. Solo puede hacerlo el propietario.
+        Se envía OTP de tipo CANCELLATION_CONFIRM al propietario.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Reserva cancelada correctamente
+        '401':
+          description: Token ausente o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: El usuario no es el propietario de la reserva
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Reserva no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Cancelación fuera del plazo permitido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /reservas/{id}/unirse:
+    post:
+      tags: [reservas]
+      summary: Unirse a una reserva
+      description: Permite al usuario autenticado unirse a una reserva existente como participante.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Usuario añadido como participante
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParticipanteResponse'
+        '401':
+          description: Token ausente o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Reserva no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: El usuario ya es participante en esta reserva
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Reserva completa o en estado que no admite nuevos participantes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # --- Reservas (admin) ----------------------------------------------------
+
+  /admin/reservas:
+    get:
+      tags: [admin-reservas]
+      summary: Listar todas las reservas
+      description: Lista todas las reservas con filtros y paginación. Requiere ROLE_ADMIN.
+      parameters:
+        - name: fecha
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [PENDING_CONFIRMATION, CONFIRMED, CANCELLED, COMPLETED]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+      responses:
+        '200':
+          description: Lista de reservas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedReservasResponse'
+        '401':
+          description: Token ausente o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Rol insuficiente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /admin/reservas/{id}/estado:
+    patch:
+      tags: [admin-reservas]
+      summary: Cambiar estado de reserva
+      description: Cambia el estado de una reserva. Requiere ROLE_ADMIN.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReservaEstadoRequest'
+      responses:
+        '200':
+          description: Estado actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservaEstadoResponse'
+        '400':
+          description: Valor de status inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Token ausente o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Rol insuficiente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Reserva no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Transición de estado no permitida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # --- Pagos (usuario) -----------------------------------------------------
+
+  /pagos:
+    get:
+      tags: [pagos]
+      summary: Listar pagos propios
+      description: Lista los pagos del usuario autenticado con paginación.
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+      responses:
+        '200':
+          description: Lista de pagos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPagosResponse'
+        '401':
+          description: Token ausente o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /pagos/iniciar:
+    post:
+      tags: [pagos]
+      summary: Iniciar pago con Redsys
+      description: >
+        Inicia el proceso de pago de una reserva vía Redsys.
+        Devuelve la URL de redirección al TPV virtual.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IniciarPagoRequest'
+      responses:
+        '200':
+          description: Pago iniciado, URL de redirección devuelta
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IniciarPagoResponse'
+        '400':
+          description: Datos inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Token ausente o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Reserva o participante no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Pago ya en estado PAID o IN_PROGRESS
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: La reserva no está en un estado pagable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # --- Pagos (admin) -------------------------------------------------------
+
+  /admin/pagos/{reservaId}/efectivo:
+    post:
+      tags: [admin-pagos]
+      summary: Registrar pago en efectivo
+      description: >
+        Registra el pago en efectivo de todos los participantes de una reserva.
+        Requiere ROLE_ADMIN.
+      parameters:
+        - name: reservaId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Pago en efectivo registrado correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EfectivoPagoResponse'
+        '401':
+          description: Token ausente o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Rol insuficiente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Reserva no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: La reserva ya tiene todos los pagos completados
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /admin/pagos:
+    get:
+      tags: [admin-pagos]
+      summary: Listar todos los pagos
+      description: Lista todos los pagos con filtros y paginación. Requiere ROLE_ADMIN.
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [PENDING, IN_PROGRESS, PAID, FAILED, REFUNDED]
+      responses:
+        '200':
+          description: Lista de pagos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPagosResponse'
+        '401':
+          description: Token ausente o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Rol insuficiente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # --- OTP -----------------------------------------------------------------
+
+  /otp/verificar:
+    post:
+      tags: [otp]
+      summary: Verificar código OTP
+      description: >
+        Verifica un código OTP recibido por Telegram.
+        Complementa la verificación que realiza el bot directamente.
+        TTL del OTP: 10 minutos.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OtpVerificarRequest'
+      responses:
+        '200':
+          description: OTP verificado correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OtpVerificarResponse'
+        '400':
+          description: Campos ausentes o tipo inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Token ausente o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: OTP incorrecto, expirado o ya utilizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+```
+
+---
+
