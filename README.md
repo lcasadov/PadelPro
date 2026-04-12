@@ -1,5 +1,14 @@
 # PadelPro - Sistema de Gestión de Reservas de Pádel
 
+0. Ficha del proyecto
+  0.1. Tu nombre completo: Luis Casado Vinuesa
+  0.2. Nombre del proyecto: PadelPro
+  0.3. Descripción breve del proyecto: **PadelPro** es una plataforma digital integral para la gestión de reservas de pistas de pádel en instalaciones pequeñas y medianas
+  0.4. URL del proyecto: https://github.com/lcasadov/PadelPro/tree/feature-entrega1-LCV
+
+  0.5. URL o archivo comprimido del repositorio
+
+
 ---
 
 ## Índice
@@ -11,7 +20,6 @@
    - 3.2 [Visión General](#32-visión-general-del-sistema)
    - 3.3 [Arquitectura General — C4 L2](#33-diagrama-de-arquitectura-general--c4-level-2)
    - 3.4 [Arquitectura Hexagonal — C4 L3](#34-arquitectura-hexagonal-por-módulos--c4-level-3)
-     - 3.4.5 [Diagrama de Clases — C4 L4 · Módulo `reservas`](#345-diagrama-de-clases--c4-level-4--módulo-reservas)
    - 3.5 [Diagrama de Componentes del Backend](#35-diagrama-de-componentes-del-backend-por-módulos)
    - 3.6 [Diagrama de Despliegue — Docker Compose](#36-diagrama-de-despliegue--docker-compose-on-premise)
    - 3.7 [Diagrama de Seguridad — JWT y OTP](#37-diagrama-de-seguridad--flujo-jwt-y-otp)
