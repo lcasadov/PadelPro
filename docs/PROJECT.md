@@ -1,7 +1,7 @@
 # PadelPro — Variables operativas del proyecto
 
 > **Fuente de verdad** que TODOS los agentes leen al inicio de cualquier operación. Si una variable no está aquí, se cancela la operación.
-> Última actualización: 2026-05-02 — alta inicial post-migración Azure DevOps → GitHub Projects.
+> Última actualización: 2026-05-02 — Project v2 reubicado bajo `lcasadov` (owner) con `orquestadoria` como Admin; el Project temporal bajo `orquestadoria` ha sido eliminado.
 
 ---
 
@@ -20,29 +20,30 @@
 
 | Variable | Valor |
 |---|---|
-| `GITHUB_PROJECT_OWNER` | `orquestadoria` (user-owned; ver nota) |
+| `GITHUB_PROJECT_OWNER` | `lcasadov` (owner; el dueño del repo es también dueño del Project) |
+| `GITHUB_PROJECT_MANAGER` | `orquestadoria` (Admin collaborator; ejecuta todas las operaciones de gestión) |
 | `GITHUB_PROJECT_NUMBER` | `1` |
-| `GITHUB_PROJECT_ID` (GraphQL node ID) | `PVT_kwHOEBUzE84BWYUx` |
-| `GITHUB_PROJECT_URL` | https://github.com/users/orquestadoria/projects/1 |
+| `GITHUB_PROJECT_ID` (GraphQL node ID) | `PVT_kwHOAGwvnc4BWZD6` |
+| `GITHUB_PROJECT_URL` | https://github.com/users/lcasadov/projects/1 |
 
-> **Nota — propietario del Project**: el Project v2 está bajo la cuenta de `orquestadoria` (no de `lcasadov`) porque GitHub solo permite a un usuario crear Projects sobre su propia cuenta. La cuenta `lcasadov` está añadida como **colaborador con rol `ADMIN`**, así que tiene control completo desde la UI. Las Issues siguen residiendo en `lcasadov/PadelPro` y se añaden al Project como items linkados — el board agrupa Issues, no las dueña.
+> **Modelo de propiedad**: el Project v2 lo crea y posee `lcasadov` (mismo owner que el repo `lcasadov/PadelPro`). `orquestadoria` está añadido como **Admin collaborator** del Project, por lo que puede crear/modificar/cerrar Issues, gestionar fields, transicionar status y añadir items al board sin necesidad de intervención humana. Todas las operaciones automáticas (inc. el agente `gh-projects-sync`) se ejecutan con el token de `orquestadoria`.
 
 ### Custom fields del Project v2
 
 | Field | Tipo | Field ID |
 |---|---|---|
-| `Status` | SingleSelect | `PVTSSF_lAHOEBUzE84BWYUxzhRtKxs` |
-| `Story Points` | Number | `PVTF_lAHOEBUzE84BWYUxzhRtLQs` |
-| `Sprint` | Number | `PVTF_lAHOEBUzE84BWYUxzhRtLQw` |
+| `Status` | SingleSelect | `PVTSSF_lAHOAGwvnc4BWZD6zhRtylM` |
+| `Story Points` | Number | `PVTF_lAHOAGwvnc4BWZD6zhRt524` |
+| `Sprint` | Number | `PVTF_lAHOAGwvnc4BWZD6zhRt528` |
 
 ### Opciones del Status field (single-select option IDs)
 
 | Estado | Color | Option ID |
 |---|---|---|
-| `Backlog` | GRAY | `bf489219` |
-| `In Progress` | YELLOW | `612425ba` |
-| `In Review` | ORANGE | `6e056ecf` |
-| `Done` | PURPLE | `b9da9a00` |
+| `Backlog` | GRAY | `fb163cf2` |
+| `In Progress` | YELLOW | `6ae6fd13` |
+| `In Review` | ORANGE | `e07fdcb0` |
+| `Done` | PURPLE | `98463b93` |
 
 ---
 
@@ -147,10 +148,13 @@
 
 ## Estado actual (2026-05-02)
 
-- ✅ Project v2 creado (`#1`) con 4 columnas y custom fields `Story Points` + `Sprint`.
+- ✅ Project v2 `#1` creado bajo `lcasadov` (https://github.com/users/lcasadov/projects/1) con `orquestadoria` como Admin collaborator.
+- ✅ Status field configurado: `Backlog` / `In Progress` / `In Review` / `Done`.
+- ✅ Custom fields añadidos: `Story Points` (number) y `Sprint` (number).
 - ✅ 6 Milestones de Épicas creados (`EP-01` … `EP-06`).
 - ✅ 30+ labels canónicos creados (`type:*`, `priority:*`, `sprint:*`, `area:*`, `auto-detected`).
 - ✅ 6 Issues de Sprint 1 creados (`#2` … `#7`) y añadidos al Project con `Status=Backlog`, `Sprint=1` y `Story Points` correctos.
+- ✅ Project v2 temporal bajo `orquestadoria/projects/1` eliminado (ya no es necesario).
 - 🔵 Pendiente: sincronizar Sprints 2 a 6 con `gh-projects-sync`.
 - 🔵 Pendiente: inicializar OpenSpec (`openspec/config.yaml` + primer change para TICKET-001).
 - 🔵 Pendiente: empezar implementación de TICKET-001 (scaffolding) con `devops-engineer`.
