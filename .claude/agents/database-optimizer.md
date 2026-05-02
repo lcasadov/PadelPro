@@ -319,10 +319,10 @@ Location: <file:line>
 Issue: <N+1 / missing index / unbounded query / unsafe migration>
 Evidence: <grep output>
 Fix: <recommended solution>" \
-  --label "type:bug,priority:p1,auto-detected,area:<modulo>"
+  --label "type:bug,priority:must,auto-detected,area:<modulo>"
 ```
 
-Use label `priority:p1` for N+1 in production paths or missing FK indexes; `priority:p2` for schema issues.
+Use label `priority:must` for N+1 in production paths or missing FK indexes; `priority:should` for schema issues.
 
 Si `gh` no está disponible, registra la acción en `.claude/gh-projects-offline-queue.json` con el tag `GH_PROJECTS_OFFLINE_QUEUE` antes de continuar (ver "gh offline fallback" en `CLAUDE.md`).
 

@@ -38,8 +38,8 @@ export GIT_AUTHOR_EMAIL=$(grep GIT_BOT_EMAIL .claude/agents/.env | cut -d= -f2)
 export GIT_COMMITTER_NAME="orquestadoria"
 export GIT_COMMITTER_EMAIL=$GIT_AUTHOR_EMAIL
 
-# Verificar que el token corresponde a orquestadoria
-gh auth status 2>&1 | grep -q "orquestadoria" || echo "⚠️  ADVERTENCIA: GH_TOKEN no corresponde a orquestadoria"
+# Verificar que el token corresponde a orquestadoria — fail-fast si no coincide
+gh auth status 2>&1 | grep -q "orquestadoria" || { echo "❌ ABORT: GH_TOKEN no corresponde a orquestadoria. Revisa .claude/agents/.env." >&2; unset GH_TOKEN GITHUB_TOKEN; exit 1; }
 ```
 
 El fichero `.claude/agents/.env` debe definir: `ORCHESTRATORIA_TOKEN` (token de `orquestadoria`), `GIT_BOT_EMAIL`.
@@ -197,7 +197,7 @@ La referencia entre código y GitHub Projects se hace **por convención de nombr
 | Closed | `Done` | closed |
 
 Otros campos:
-- **Prioridad**: labels `priority:p1` (crítica), `priority:p2` (alta), `priority:p3` (media).
+- **Prioridad (MoSCoW)**: labels `priority:must` (bloqueante MVP), `priority:should` (alto valor), `priority:could` (mejora UX), `priority:wont` (diferida).
 - **Área** (antiguo AreaPath): labels `area:<modulo>` (ej. `area:backend-auth`).
 - **Tiempo dedicado**: campo numérico custom `Effort (h)` en el Project v2; o anotado en comentario al cerrar.
 - **Auto-detected** (bugs reportados por agentes): label `auto-detected`.
@@ -232,7 +232,7 @@ gh issue create \
   --repo "$ORG/$REPO" \
   --title "<título>" \
   --body "<descripción>" \
-  --label "type:user-story,priority:p2,area:<modulo>" \
+  --label "type:user-story,priority:should,area:<modulo>" \
   --milestone "<nombre-epic-milestone-si-aplica>"
 
 # 3) Crear Task hija de una User Story
@@ -251,7 +251,7 @@ gh issue create \
   --repo "$ORG/$REPO" \
   --title "[<agent>] <descripción concisa>" \
   --body "<pasos de reproducción + evidencia>" \
-  --label "type:bug,priority:p1,auto-detected,area:<modulo>"
+  --label "type:bug,priority:must,auto-detected,area:<modulo>"
 
 # 5) Editar Issue (cambiar labels / asignar / mover entre milestones)
 gh issue edit <ID> --repo "$ORG/$REPO" \

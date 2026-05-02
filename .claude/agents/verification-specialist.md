@@ -145,7 +145,7 @@ Check: <what was verified>
 Command: <exact command>
 Output: <exact output>
 Expected: <what should happen>" \
-  --label "type:bug,priority:p1,auto-detected,area:<modulo>"
+  --label "type:bug,priority:must,auto-detected,area:<modulo>"
 ```
 
 Si `gh` no está disponible, registra la acción en `.claude/gh-projects-offline-queue.json` con el tag `GH_PROJECTS_OFFLINE_QUEUE` antes de continuar (ver "gh offline fallback" en `CLAUDE.md`).

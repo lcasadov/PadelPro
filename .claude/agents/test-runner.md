@@ -141,7 +141,7 @@ Test fallido: <nombre del test>
 Error: <mensaje de error>
 Archivo: <ruta>
 Branch: <branch>" \
-  --label "type:bug,priority:p1,auto-detected,test-failure,area:<modulo>" \
+  --label "type:bug,priority:must,auto-detected,test-failure,area:<modulo>" \
   --json number --jq .number)
 
 # Añadir comentario al bug con detalle del fallo
@@ -158,7 +158,7 @@ Si `gh` no está disponible, registra la acción en `.claude/gh-projects-offline
 ### Reglas para bugs
 
 - **No bloquees el commit de tests** — commitea los tests aunque detecten bugs. El bug es en el código, no en el test.
-- **Severidad**: usa label `priority:p1` para bugs en flujos críticos (reserva, pago, OTP), `priority:p2` para el resto.
+- **Severidad (MoSCoW)**: usa `priority:must` para bugs en flujos críticos (reserva, pago, OTP); `priority:should` para el resto.
 - **Un bug por defecto distinto** — no agrupes múltiples defectos en un único Bug Issue.
 - **Si el bug impide alcanzar el umbral de cobertura** (80% líneas / 75% ramas), añade ese dato al título del bug.
 - **Reporta al orquestador** la lista de bugs creados con sus números de Issue para que los reasigne.

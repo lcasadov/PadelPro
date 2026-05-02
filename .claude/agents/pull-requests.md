@@ -235,8 +235,12 @@ PR_URL=$(gh pr create \
   --draft=false)        # usa --draft=true si aún es WIP
 
 # 3. Asignar reviewer obligatorio
+# REVIEWER debe ser un username de GitHub válido (sin puntos) o un team slug
+# (ej. "lcasadov" o "padelpro-dev/maintainers"). Leer de docs/PROJECT.md
+# o pasarse explícitamente al agente.
+REVIEWER="${REVIEWER:-lcasadov}"
 gh pr edit "$PR_URL" --repo "$ORG/$REPO" \
-  --add-reviewer "luis.casado-handle"
+  --add-reviewer "$REVIEWER"
 
 # 4. Vincular Issue (automático vía 'Closes #<ID>' en el cuerpo de la PR);
 #    además etiquetar el Issue como in-review en GitHub Projects v2

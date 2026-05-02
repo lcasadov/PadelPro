@@ -122,7 +122,7 @@ La referencia entre código y GitHub Projects se hace **por convención de nombr
 | Closed | `Done` | closed |
 
 Otros campos:
-- **Prioridad**: labels `priority:p1` (crítica), `priority:p2` (alta), `priority:p3` (media).
+- **Prioridad (MoSCoW)**: labels `priority:must` (bloqueante MVP), `priority:should` (alto valor), `priority:could` (mejora UX), `priority:wont` (diferida).
 - **Área** (antiguo AreaPath): labels `area:<modulo>` (ej. `area:backend-auth`).
 - **Tiempo dedicado**: campo numérico custom `Effort (h)` en el Project v2; o anotado en comentario al cerrar.
 - **Auto-detected** (bugs reportados por agentes): label `auto-detected`.
@@ -157,7 +157,7 @@ gh issue create \
   --repo "$ORG/$REPO" \
   --title "<título>" \
   --body "<descripción>" \
-  --label "type:user-story,priority:p2,area:<modulo>" \
+  --label "type:user-story,priority:should,area:<modulo>" \
   --milestone "<nombre-epic-milestone-si-aplica>"
 
 # 3) Crear Task hija de una User Story
@@ -176,7 +176,7 @@ gh issue create \
   --repo "$ORG/$REPO" \
   --title "[<agent>] <descripción concisa>" \
   --body "<pasos de reproducción + evidencia>" \
-  --label "type:bug,priority:p1,auto-detected,area:<modulo>"
+  --label "type:bug,priority:must,auto-detected,area:<modulo>"
 
 # 5) Editar Issue (cambiar labels / asignar / mover entre milestones)
 gh issue edit <ID> --repo "$ORG/$REPO" \
@@ -200,13 +200,14 @@ gh issue comment <ID> --repo "$ORG/$REPO" \
   --body "Branch creado: feature/<ID>-<slug>. Commit: <hash>"
 
 # 8) Registrar tiempo dedicado (campo numérico custom Effort en Project v2)
+EFFORT_HOURS="2.5"   # decimal, en horas — sustituir por el valor real
 gh api graphql -f query='
 mutation($project:ID!,$item:ID!,$field:ID!,$value:Float!) {
   updateProjectV2ItemFieldValue(input: {
     projectId:$project, itemId:$item, fieldId:$field,
     value: { number: $value }
   }) { projectV2Item { id } }
-}' -F project="$PROJECT_ID" -F item="$ITEM_ID" -F field="$EFFORT_FIELD_ID" -F value=<horas_decimal>
+}' -F project="$PROJECT_ID" -F item="$ITEM_ID" -F field="$EFFORT_FIELD_ID" -F value="$EFFORT_HOURS"
 
 # 9) Cerrar Issue (estado final = Done)
 gh issue close <ID> --repo "$ORG/$REPO" \

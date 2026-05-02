@@ -296,9 +296,11 @@ update_project_sp() {
 }
 
 # Crear / actualizar Milestone
+# IMPORTANTE: usar --paginate para garantizar idempotencia incluso con >30 milestones
+# (la API por defecto devuelve solo la primera página de 30 elementos).
 ensure_milestone() {
   local title="$1" desc="$2"
-  local existing=$(gh api "/repos/$GITHUB_ORG/$GITHUB_REPO/milestones?state=all" \
+  local existing=$(gh api --paginate "/repos/$GITHUB_ORG/$GITHUB_REPO/milestones?state=all&per_page=100" \
     --jq ".[] | select(.title==\"$title\") | .number")
   if [[ -z "$existing" ]]; then
     gh api -X POST "/repos/$GITHUB_ORG/$GITHUB_REPO/milestones" \

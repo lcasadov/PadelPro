@@ -223,10 +223,10 @@ Command: <exact curl>
 Response: <status + body>
 Expected: <what should happen>
 OWASP ref: <API1/API2 if security issue>" \
-  --label "type:bug,priority:p1,auto-detected,area:<modulo>"
+  --label "type:bug,priority:must,auto-detected,area:<modulo>"
 ```
 
-Use label `priority:p1` for security issues, `priority:p2` for functional failures.
+Use label `priority:must` for security issues; `priority:should` for functional failures.
 
 Si `gh` no está disponible, registra la acción en `.claude/gh-projects-offline-queue.json` con el tag `GH_PROJECTS_OFFLINE_QUEUE` antes de continuar (ver "gh offline fallback" en `CLAUDE.md`).
 

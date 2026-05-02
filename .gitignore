@@ -27,6 +27,8 @@ secrets/
 .claude/cache/
 .claude/logs/
 .claude/settings.local.json
+.claude/agents/old/
+
 
 # ----- Node / Frontend -----
 node_modules/
