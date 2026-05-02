@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(powershell -Command \"Get-Content 'C:\\\\proyectos\\\\PadelPro\\\\backlog.md' | Select-Object -First 2464 | Set-Content 'C:\\\\proyectos\\\\PadelPro\\\\backlog.md' -Encoding UTF8\")",
+      "Bash(python3 -)"
+    ]
+  }
+}
