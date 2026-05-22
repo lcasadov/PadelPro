@@ -1,0 +1,113 @@
+schema: spec-driven
+
+project:
+  name: PadelPro
+  description: Sistema de gestión de reservas de pádel para instalaciones pequeñas (On-Premise, v1.0)
+  owner: lcasadov
+  language: es
+  version: "1.0"
+
+stack:
+  backend: "Spring Boot 3.2 (Java 21, arquitectura hexagonal Maven multi-módulo)"
+  frontend: "React 18 + Vite + TypeScript"
+  database: "PostgreSQL 15"
+  migrations: Flyway
+  orm: "Spring Data JPA + Hibernate"
+  infra_local: Docker Compose
+  ci: GitHub Actions
+  payment_gateway: "Redsys (HMAC SHA-256)"
+  bot: "Telegram Bot API"
+
+conventions:
+  api_base_path: /api  # verificado contra docs/openapi.yaml — usa /api, NO /api/v1
+  api_spec: docs/openapi.yaml
+  data_model: docs/data-model.md
+  security_design: docs/security-design.md
+  testing_strategy: docs/TESTING-STRATEGY.md
+  project_vars: docs/PROJECT.md
+  openspec_root: openspec/
+  language: es
+
+github:
+  org: lcasadov
+  repo: PadelPro
+  project_owner: lcasadov
+  project_manager: orquestadoria
+  project_number: 1
+  base_branch: develop
+  release_branch: main
+
+roles:
+  # v1.0 — exactamente 2 roles definidos en docs/security-design.md
+  - id: ADMIN
+    description: "Administrador del sistema; acceso total incluidos endpoints /admin/**"
+  - id: USER
+    description: "Jugador registrado; acceso a sus propios recursos (reservas, pagos, perfil)"
+  # Planificados para Fase 2+:
+  # - MANAGER_CLUB: responsable del club (subconjunto de capacidades de ADMIN)
+  # - INVITADO: lectura pública (consultar disponibilidad sin autenticación)
+
+phases:
+  - id: fase-1
+    name: "MVP — reservas, pagos Redsys y bot Telegram básico"
+    status: active
+    capabilities:
+      - auth-local
+      - auth-otp-telegram
+      - usuarios
+      - roles-permisos
+      - configuracion-club
+      - pistas
+      - reservas
+      - partidas
+      - pagos-redsys
+      - disponibilidad-pistas
+      - notificaciones
+      - auditoria
+      - exportaciones-rgpd
+  - id: fase-2
+    name: "Dashboard de gestión y partidas avanzadas"
+    status: planned
+    capabilities:
+      - administracion-club
+  - id: fase-3
+    name: "Multi-club y federaciones"
+    status: planned
+    capabilities: []
+
+business_rules:
+  source: docs/security-design.md
+  prefix: RN-
+  domains:
+    - RN-AUTH  # autenticación y autorización
+    - RN-RES   # reservas
+    - RN-PAY   # pagos
+    - RN-TEL   # Telegram
+    - RN-RGPD  # protección de datos
+    - RN-SEC   # seguridad transversal
+
+mapping_to_github:
+  capability_to_label: "area:<capability>"
+  user_story_format: "US-NNN · <descripción>"
+  ticket_format: "TICKET-NNN · <descripción>"
+  change_folder: "openspec/changes/<slug>/"
+
+# ─── Reglas por artefacto ─────────────────────────────────────────────────────
+rules:
+  proposal:
+    - Incluir siempre sección "Fuera de alcance"
+    - Referenciar capabilities afectadas con sus IDs exactos
+    - Indicar la fase del producto (fase-1, fase-2, fase-3)
+  design:
+    - Toda decisión de diseño debe referenciar la regla de negocio (RN-xx) que la motiva
+    - Los riesgos deben incluir su plan de mitigación
+    - Nunca incluir código de implementación — solo comportamiento y decisiones
+  tasks:
+    - Separar tareas por capa: Backend / Frontend / Testing / Infraestructura
+    - Cada tarea debe poder completarse en menos de 4 horas
+    - Las tareas de testing se escriben antes de las de implementación (TDD)
+  spec:
+    - Usar formato Given/When/Then estricto — sin prosa narrativa
+    - Referenciar RN-xx explícitamente en cada scenario donde aplique
+    - Las tablas de permisos usan solo los roles de v1.0: ADMIN y USER
+    - No incluir DDL, código Java ni detalles de implementación

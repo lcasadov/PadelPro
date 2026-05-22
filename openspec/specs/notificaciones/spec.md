@@ -1,0 +1,113 @@
+# Capability: `notificaciones`
+
+## Resumen
+Gestión del envío de notificaciones automáticas por email y Telegram en respuesta a eventos
+de negocio: confirmación de reserva, cancelación, recordatorio previo al partido y recibo de
+pago. Es una capability interna disparada por los servicios de aplicación de `reservas`,
+`pagos-redsys` y `autenticacion`; no expone ningún endpoint REST directo.
+
+## Fase
+🟢 Fase 1
+
+## Reglas de negocio implicadas
+- **RN-TEL-03**: Solo las cuentas con `telegram_chat_id NOT NULL` reciben notificaciones vía Telegram; las demás solo reciben email.
+- **RN-RGPD-04**: Los logs no deben contener contraseñas, tokens JWT, códigos OTP ni datos de tarjeta; los campos `recipient` y `message` de `notification_log` nunca incluyen esos datos.
+- **RN-NOT-01**: Un fallo en el envío de Telegram (cuenta no vinculada, bot bloqueado, timeout de API) no bloquea el flujo principal de negocio; el sistema continúa y registra el fallo en `notification_log`.
+- **RN-NOT-02**: Un fallo en el envío de email (SMTP caído, timeout) se registra en `notification_log` con `status=FAILED` y se reintenta en el siguiente ciclo del job de reintentos (máx. 3 intentos con backoff exponencial).
+- **RN-NOT-03**: Cada notificación enviada genera un registro en `notification_log` con `status=SENT` o `status=FAILED`.
+
+## Entidades implicadas
+- **`notification_log`**: registro de cada intento de envío de notificación.
+  - `id` (BIGSERIAL PK), `user_id` (FK nullable → `users`), `type` (EMAIL / TELEGRAM_DIRECT / TELEGRAM_GROUP), `recipient`, `subject` (solo email), `message`, `status` (PENDING / SENT / FAILED), `error_message`, `related_entity_type`, `related_entity_id`, `sent_at`, `created_at`.
+- **`users`**: columna `telegram_chat_id` determina elegibilidad para notificaciones Telegram directas; `email` para notificaciones por correo.
+- **`system_config`**: contiene `telegram_bot_token` (cifrado AES-256), `telegram_group_id`, `smtp_host`, `smtp_port`, `smtp_user`, `smtp_password` (cifrado AES-256).
+- **`reservations`**: evento origen de notificaciones de confirmación, cancelación y recordatorio.
+- **`payments`**: evento origen de notificaciones de recibo de pago.
+
+## Endpoints
+Sin endpoint REST directo — procesamiento interno/event-driven.
+Las notificaciones se disparan desde `ReservaApplicationService` y `PagoApplicationService`
+a través del puerto de salida `MensajeriaPort`. El job de recordatorios usa `@Scheduled`.
+
+## Permisos
+| Operación | ADMIN | USER | No autenticado |
+|---|---|---|---|
+| Disparar notificación (interno) | N/A — lógica de aplicación | N/A — lógica de aplicación | — |
+| Consultar `notification_log` (futuro) | — | — | — |
+
+> Nota: en v1.0 no existe endpoint de lectura de `notification_log`. El ADMIN accede a los
+> registros directamente en BD para diagnóstico de fallos.
+
+## Requirements
+
+### Requirement 1: Notificación de confirmación de reserva
+**El sistema DEBE enviar una notificación de confirmación cuando una reserva pase al estado `CONFIRMED`, incluyendo los datos de la pista, fecha, hora, duración e importe total.**
+
+#### Scenario 1: Reserva confirmada con Telegram vinculado — se envían email y Telegram
+- **GIVEN** un usuario con `telegram_chat_id NOT NULL` y `status=ACTIVE` que acaba de confirmar una reserva
+- **WHEN** `ReservaApplicationService` transiciona la reserva al estado `CONFIRMED`
+- **THEN** el sistema envía un email de confirmación a `users.email` con los detalles de la reserva Y envía un mensaje directo por Telegram al `telegram_chat_id` del usuario, Y registra dos entradas en `notification_log` con `status=SENT`
+
+#### Scenario 2: Reserva confirmada sin Telegram vinculado — solo email
+- **GIVEN** un usuario con `telegram_chat_id IS NULL` que acaba de confirmar una reserva
+- **WHEN** `ReservaApplicationService` transiciona la reserva al estado `CONFIRMED`
+- **THEN** el sistema envía únicamente el email de confirmación, Y registra una entrada en `notification_log` con `type=EMAIL` y `status=SENT`, Y no se crea ningún intento de envío Telegram
+
+### Requirement 2: Fallo en el envío de Telegram no bloquea el flujo principal
+**El sistema DEBE continuar el flujo de negocio normal aunque el envío de la notificación por Telegram falle, registrando el error en `notification_log`.**
+
+#### Scenario 3: Envío Telegram falla (bot bloqueado) — flujo principal continúa
+- **GIVEN** un usuario con `telegram_chat_id NOT NULL` cuya reserva acaba de ser confirmada, Y el bot de Telegram está bloqueado por ese usuario
+- **WHEN** `MensajeriaPort` intenta enviar el mensaje Telegram
+- **THEN** la reserva permanece en estado `CONFIRMED`, Y se registra en `notification_log` con `type=TELEGRAM_DIRECT`, `status=FAILED`, `error_message` con la descripción del error de la API de Telegram, Y el email de confirmación se envía igualmente si el SMTP está disponible
+
+#### Scenario 4: Telegram API devuelve timeout — flujo principal no se bloquea
+- **GIVEN** una reserva recién confirmada con usuario que tiene `telegram_chat_id NOT NULL`
+- **WHEN** la llamada a la API de Telegram supera el timeout configurado (10 s lectura)
+- **THEN** la transacción de negocio (reserva `CONFIRMED`) ya está commiteada, Y la notificación Telegram se registra en `notification_log` con `status=FAILED`, Y el sistema no lanza excepción no controlada al hilo principal
+
+### Requirement 3: Fallo SMTP — registro en `notification_log` y reintento
+**El sistema DEBE registrar en `notification_log` con `status=FAILED` cualquier fallo en el envío de email, y reintentarlo automáticamente hasta 3 veces con backoff exponencial.**
+
+#### Scenario 5: SMTP caído — notificación pasa a FAILED y se reintenta
+- **GIVEN** una reserva recién confirmada Y el servidor SMTP está caído
+- **WHEN** `MensajeriaPort` intenta enviar el email de confirmación
+- **THEN** se crea una entrada en `notification_log` con `status=FAILED` y `error_message` describiendo el error SMTP, Y el job de reintentos (`@Scheduled`) detecta la entrada FAILED y reintenta el envío en el siguiente ciclo (máx. 3 intentos), Y si el tercer intento falla, `status` permanece `FAILED` sin más reintentos automáticos
+
+### Requirement 4: Notificación de cancelación de reserva
+**El sistema DEBE enviar una notificación de cancelación cuando una reserva pase al estado `CANCELLED`, indicando el motivo de cancelación si está disponible.**
+
+#### Scenario 6: Reserva cancelada — notificación enviada al titular
+- **GIVEN** una reserva en estado `CONFIRMED` cuyo titular la cancela mediante `DELETE /api/reservas/{id}`
+- **WHEN** `ReservaApplicationService` transiciona la reserva al estado `CANCELLED`
+- **THEN** el sistema envía notificación de cancelación al titular (email siempre, Telegram si `telegram_chat_id NOT NULL`), Y registra las entradas correspondientes en `notification_log`, Y no se envían notificaciones a los participantes que no son titulares en v1.0
+
+### Requirement 5: Notificación de recibo de pago confirmado
+**El sistema DEBE enviar un recibo de pago al titular de la reserva cuando el estado de `payments` pase a `PAID`.**
+
+#### Scenario 7: Pago confirmado vía webhook Redsys — recibo enviado
+- **GIVEN** un pago en estado `IN_PROGRESS` cuyo webhook Redsys válido llega al backend confirmando el pago (Ds_Response en rango 0000-0099)
+- **WHEN** `PagoApplicationService` transiciona el pago a `PAID`
+- **THEN** el sistema envía un recibo de pago al email del titular con importe, fecha y referencia Redsys, Y si el titular tiene `telegram_chat_id NOT NULL` también recibe confirmación por Telegram, Y se registran las entradas correspondientes en `notification_log`
+
+### Requirement 6: Notificación al grupo de Telegram tras confirmar reserva
+**El sistema DEBE publicar un mensaje en el grupo de Telegram configurado en `system_config.telegram_group_id` cuando una reserva pase a `CONFIRMED`, indicando la fecha, hora y plazas disponibles para que otros jugadores puedan unirse.**
+
+#### Scenario 8: Reserva confirmada — mensaje publicado en el grupo
+- **GIVEN** una reserva recién confirmada Y `system_config.telegram_group_id NOT NULL`
+- **WHEN** `ReservaApplicationService` completa la transición a `CONFIRMED`
+- **THEN** el bot publica un mensaje en el grupo con los datos de la reserva y las plazas libres, Y el `reservations.telegram_message_id` se actualiza con el ID del mensaje publicado, Y se registra en `notification_log` con `type=TELEGRAM_GROUP` y `status=SENT`
+
+## Casos límite
+- Si `system_config.telegram_bot_token IS NULL`, no se intentan envíos Telegram; solo email.
+- Si `system_config.telegram_group_id IS NULL`, no se publica en el grupo; solo mensajes directos.
+- Si tanto SMTP como Telegram fallan simultáneamente, ambos quedan registrados en `notification_log` con `status=FAILED`; el flujo de negocio no se revierte.
+- Un usuario anonimizado (RGPD) no recibe notificaciones porque `email` y `telegram_chat_id` han sido nullificados; el sistema omite el envío sin error.
+- El campo `message` de `notification_log` no debe contener códigos OTP, tokens JWT ni contraseñas (RN-RGPD-04).
+- El job de recordatorios no debe disparar notificaciones para reservas en estado `CANCELLED` o `COMPLETED`.
+
+## Dependencias con otras capabilities
+- **`reservas`**: los eventos `RESERVATION_CREATED` y `RESERVATION_CANCELLED` disparan notificaciones.
+- **`pagos-redsys`**: el evento `PAYMENT_CONFIRMED` dispara el recibo de pago.
+- **`autenticacion`**: el flujo de reset de contraseña usa `MensajeriaPort` para enviar el OTP por Telegram.
+- **`auditoria`**: los fallos de envío Telegram con secret inválido generan entradas en `audit_log` con `action=TELEGRAM_WEBHOOK_INVALID_SECRET`.
