@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PadelPro · 22 · Confirmar unión</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./_shared/styles.css">
+</head>
+<body>
+<div class="chrome">
+  <div class="chrome-brand"><span class="dot"></span> PadelPro · Mockups</div>
+  <div style="font-family:'Geist Mono',monospace;font-size:11px;color:var(--muted-light)">22 · Confirmar unión → <a href="./index.html" style="color:var(--lime)">índice</a></div>
+</div>
+
+<div class="stage active" style="display:flex;">
+  <div class="stage-header">
+    <div class="stage-title">
+      <span class="num">16 · PARTIDAS · MOBILE</span>
+      Confirmar unión
+    </div>
+    <div class="stage-meta">
+      Capability: <span>partidas, pagos-redsys</span><br>
+      Endpoint: <span>POST /api/v1/partidas/{id}/unirse</span><br>
+      Permisos: <span>JUGADOR autenticado</span>
+    </div>
+  </div>
+  <div class="stage-body">
+    <div class="phone">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <div class="phone-status dark"><span>9:41</span><span>● ● ●</span></div>
+        <div class="phone-content">
+          <div class="resdet">
+            <div class="resdet-hero">
+              <div class="resdet-back">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+              </div>
+              <div class="resdet-status">
+                <span class="dot"></span> Partida pública · Hoy 18:30
+              </div>
+              <h1>Falta<br>1 jugador</h1>
+              <div class="meta">Pista Central · Cristal · Indoor</div>
+              <div class="code">PARTIDA-2026-094</div>
+            </div>
+            <div class="resdet-body">
+              <div class="resdet-section">
+                <h3>Jugadores · 3 confirmados</h3>
+                <div class="players-row">
+                  <div class="player-chip">
+                    <div class="av">MR</div>
+                    Marcos R. · Anfitrión
+                  </div>
+                  <div class="player-chip">
+                    <div class="av">PG</div>
+                    Pablo G.
+                  </div>
+                  <div class="player-chip">
+                    <div class="av">AS</div>
+                    Andrea S.
+                  </div>
+                  <div class="player-chip empty">
+                    <div class="av">?</div>
+                    Tú
+                  </div>
+                </div>
+              </div>
+
+              <div class="resdet-section">
+                <h3>Detalles</h3>
+                <div class="resdet-info-grid">
+                  <div class="info-pill">
+                    <div class="lab">Horario</div>
+                    <div class="val">18:30 — 20:00</div>
+                  </div>
+                  <div class="info-pill">
+                    <div class="lab">Nivel</div>
+                    <div class="val">Medio · 3-4</div>
+                  </div>
+                  <div class="info-pill">
+                    <div class="lab">Tu parte</div>
+                    <div class="val">4,50€</div>
+                  </div>
+                  <div class="info-pill">
+                    <div class="lab">Total partida</div>
+                    <div class="val">18,00€</div>
+                  </div>
+                </div>
+              </div>
+
+              <div style="background:var(--bg-warm);border-radius:14px;padding:14px;font-size:12px;color:var(--muted);line-height:1.5;margin-top:14px;">
+                <b style="color:var(--ink);">¡Compatible con tu nivel!</b><br>
+                Tu nivel registrado es 3-4. Si la partida no se completa antes de 1h del inicio, se cancela y se reembolsa.
+              </div>
+            </div>
+            <div class="resdet-footer">
+              <button class="p-btn lime" style="flex:1;">Unirme · 4,50€ →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <aside class="stage-notes">
+      <h3>Notas de diseño</h3>
+      <ul>
+        <li><b>Tú como hueco vacío</b> en la lista: posiciona al usuario en el equipo antes de unirse.</li>
+        <li><b>Anfitrión destacado</b>: si hay conflicto, hay un responsable.</li>
+        <li><b>Tu parte / Total</b> en pills separadas: claridad de precio en pago compartido.</li>
+        <li><b>Política de cancelación automática</b>: protege al usuario de pagar por partidas que no se completen.</li>
+        <li>Cubre <span class="cap">partidas</span> Req "unirse" + cobro <span class="cap">pagos-redsys</span>.</li>
+      </ul>
+    </aside>
+  </div>
+</div>
+</body>
+</html>

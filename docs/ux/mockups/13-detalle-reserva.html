@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PadelPro · 13 · Detalle de mi reserva</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./_shared/styles.css">
+</head>
+<body>
+<div class="chrome">
+  <div class="chrome-brand"><span class="dot"></span> PadelPro · Mockups</div>
+  <div style="font-family:'Geist Mono',monospace;font-size:11px;color:var(--muted-light)">13 · Detalle de mi reserva → <a href="./index.html" style="color:var(--lime)">índice</a></div>
+</div>
+
+<div class="stage active" style="display:flex;">
+  <div class="stage-header">
+    <div class="stage-title">
+      <span class="num">13 · RESERVAS · MOBILE</span>
+      Detalle de mi reserva
+    </div>
+    <div class="stage-meta">
+      Capability: <span>reservas</span><br>
+      Endpoint: <span>GET /api/v1/reservas/{id} · DELETE /api/v1/reservas/{id}</span><br>
+      Permisos: <span>JUGADOR (propias)</span>
+    </div>
+  </div>
+  <div class="stage-body">
+    <div class="phone">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <div class="phone-status dark"><span>9:41</span><span>● ● ●</span></div>
+        <div class="phone-content">
+          <div class="resdet">
+            <div class="resdet-hero">
+              <div class="resdet-back">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+              </div>
+              <div class="resdet-status">
+                <span class="dot"></span> Confirmada · empieza en 3h
+              </div>
+              <h1>Pista 3</h1>
+              <div class="meta">Cristal · Outdoor · Club Madrid Este</div>
+              <div class="code">R-2026-0512</div>
+            </div>
+            <div class="resdet-body">
+              <div class="resdet-section">
+                <h3>Horario</h3>
+                <div class="resdet-info-grid">
+                  <div class="info-pill">
+                    <div class="lab">Día</div>
+                    <div class="val">Jue 22 May</div>
+                  </div>
+                  <div class="info-pill">
+                    <div class="lab">Hora</div>
+                    <div class="val">18:30 — 20:00</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="resdet-section">
+                <h3>Jugadores · 3 de 4</h3>
+                <div class="players-row">
+                  <div class="player-chip">
+                    <div class="av">LC</div>
+                    Laura · Tú
+                  </div>
+                  <div class="player-chip">
+                    <div class="av">MR</div>
+                    Marcos R.
+                  </div>
+                  <div class="player-chip">
+                    <div class="av">PG</div>
+                    Pablo G.
+                  </div>
+                  <div class="player-chip empty">
+                    <div class="av">+</div>
+                    Invitar
+                  </div>
+                </div>
+              </div>
+
+              <div class="resdet-section">
+                <h3>Pago</h3>
+                <div class="resdet-info-grid">
+                  <div class="info-pill">
+                    <div class="lab">Importe</div>
+                    <div class="val">16,00 €</div>
+                  </div>
+                  <div class="info-pill">
+                    <div class="lab">Método</div>
+                    <div class="val">VISA •7421</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="resdet-footer">
+              <button class="p-btn outline" style="flex: 1;">Modificar</button>
+              <button class="p-btn danger" style="flex: 1.4;">Cancelar reserva</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <aside class="stage-notes">
+      <h3>Notas de diseño</h3>
+      <ul>
+        <li><b>Hero olive con código de reserva en lima</b>: jerarquía clara, código fácil de leer/citar.</li>
+        <li><b>Player chips con avatar</b>: ver al equipo de un vistazo + invitar a cuarto miembro.</li>
+        <li><b>Cancelar en rojo</b> como acción peligrosa, modificar neutro. Jerarquía de riesgo visible.</li>
+        <li><b>Sin overlay confuso</b>: el cancelar abre un modal con la política <span class="rn">RN-04</span> aplicada al caso.</li>
+        <li>Cubre <span class="cap">reservas</span> Req "ver detalle" + "cancelar".</li>
+      </ul>
+    </aside>
+  </div>
+</div>
+</body>
+</html>

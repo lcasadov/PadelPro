@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PadelPro · 20 · Crear partida pública</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./_shared/styles.css">
+</head>
+<body>
+<div class="chrome">
+  <div class="chrome-brand"><span class="dot"></span> PadelPro · Mockups</div>
+  <div style="font-family:'Geist Mono',monospace;font-size:11px;color:var(--muted-light)">20 · Crear partida pública → <a href="./index.html" style="color:var(--lime)">índice</a></div>
+</div>
+
+<div class="stage active" style="display:flex;">
+  <div class="stage-header">
+    <div class="stage-title">
+      <span class="num">14 · PARTIDAS · MOBILE</span>
+      Crear partida pública
+    </div>
+    <div class="stage-meta">
+      Capability: <span>partidas</span><br>
+      Endpoint: <span>POST /api/v1/partidas</span><br>
+      Permisos: <span>JUGADOR autenticado</span>
+    </div>
+  </div>
+  <div class="stage-body">
+    <div class="phone">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <div class="phone-status"><span>9:41</span><span>● ● ●</span></div>
+        <div class="phone-content">
+          <div class="p-screen partidas">
+            <div class="p-top">
+              <div class="p-back">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+              </div>
+              <h1>Nueva partida</h1>
+            </div>
+
+            <div class="crear-step">
+              <h3>Reserva base</h3>
+              <div style="background:var(--ink);color:var(--bg-cream);border-radius:16px;padding:16px;display:flex;align-items:center;gap:14px;">
+                <div style="text-align:center;padding-right:14px;border-right:1px solid #2a2a28;">
+                  <div style="font-family:'Bricolage Grotesque',sans-serif;font-size:24px;font-weight:700;letter-spacing:-0.02em;line-height:1;">18:30</div>
+                  <div style="font-family:'Geist Mono',monospace;font-size:9px;color:var(--muted-light);margin-top:4px;letter-spacing:0.08em;">90 MIN</div>
+                </div>
+                <div style="flex:1;">
+                  <div style="font-family:'Bricolage Grotesque',sans-serif;font-size:16px;font-weight:700;">Pista 3 · Jue 22</div>
+                  <div style="font-size:11px;color:var(--muted-light);margin-top:2px;">Cristal · Outdoor · 16€</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="crear-step">
+              <h3>Tipo de partida</h3>
+              <div class="toggle-row">
+                <div>
+                  <div class="name">Partida pública</div>
+                  <div class="sub">Otros jugadores pueden unirse</div>
+                </div>
+                <div class="switch"></div>
+              </div>
+              <div class="toggle-row">
+                <div>
+                  <div class="name">Pago compartido</div>
+                  <div class="sub">El coste se divide entre 4</div>
+                </div>
+                <div class="switch"></div>
+              </div>
+            </div>
+
+            <div class="crear-step">
+              <h3>Nivel</h3>
+              <div class="level-pick">
+                <div class="opt">
+                  <div class="num">1-2</div>
+                  <div class="lab">Inicia</div>
+                </div>
+                <div class="opt active">
+                  <div class="num">3-4</div>
+                  <div class="lab">Medio</div>
+                </div>
+                <div class="opt">
+                  <div class="num">5-6</div>
+                  <div class="lab">Avanz.</div>
+                </div>
+                <div class="opt">
+                  <div class="num">7+</div>
+                  <div class="lab">Pro</div>
+                </div>
+              </div>
+            </div>
+
+            <button class="p-btn lime">
+              Crear partida <span class="arrow">→</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <aside class="stage-notes">
+      <h3>Notas de diseño</h3>
+      <ul>
+        <li><b>Reserva base como card destacada</b>: deja claro que la partida cuelga de una reserva existente.</li>
+        <li><b>Switches lima</b>: público + pago compartido como toggles intuitivos.</li>
+        <li><b>Nivel en 4 segmentos</b> compatible con Playtomic: facilita migración de usuarios habituales.</li>
+        <li><b>Sin scroll</b>: el flujo de creación cabe en una pantalla.</li>
+        <li>Cubre <span class="cap">partidas</span> Req "crear partida" (Fase 2).</li>
+      </ul>
+    </aside>
+  </div>
+</div>
+</body>
+</html>

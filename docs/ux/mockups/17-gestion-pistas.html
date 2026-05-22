@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PadelPro · 17 · Gestión de pistas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./_shared/styles.css">
+</head>
+<body>
+<div class="chrome">
+  <div class="chrome-brand"><span class="dot"></span> PadelPro · Mockups</div>
+  <div style="font-family:'Geist Mono',monospace;font-size:11px;color:var(--muted-light)">17 · Gestión de pistas → <a href="./index.html" style="color:var(--lime)">índice</a></div>
+</div>
+
+<div class="stage active" style="display:flex;">
+  <div class="stage-header">
+    <div class="stage-title">
+      <span class="num">17 · ADMIN CLUB · DESKTOP</span>
+      Gestión de pistas
+    </div>
+    <div class="stage-meta">
+      Capability: <span>pistas</span><br>
+      Endpoint: <span>GET /api/v1/admin/pistas</span><br>
+      Permisos: <span>MANAGER_CLUB · ADMIN</span>
+    </div>
+  </div>
+  <div class="stage-body" style="gap: 40px;">
+    <div class="desktop">
+      <div class="desktop-bar">
+        <div class="traffic"><span></span><span></span><span></span></div>
+        <div class="url">padelpro.app/admin/pistas</div>
+      </div>
+      <div class="desktop-content">
+        <div class="admin">
+          <div class="admin-sidebar">
+            <div class="admin-brand"><span class="dot"></span> PadelPro</div>
+            <div class="admin-club-pill">
+              <div class="lab">Gestionando</div>
+              <div class="name">Club Madrid Este</div>
+            </div>
+            <div class="admin-nav-section">Operación</div>
+            <div class="admin-nav">
+              <div class="admin-nav-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Dashboard</div>
+              <div class="admin-nav-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Calendario</div>
+              <div class="admin-nav-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 17 9 11 13 15 21 7"/><polyline points="14 7 21 7 21 14"/></svg>Reservas</div>
+              <div class="admin-nav-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>Pagos</div>
+            </div>
+            <div class="admin-nav-section">Configuración</div>
+            <div class="admin-nav">
+              <div class="admin-nav-item active"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="9" x2="9" y2="21"/></svg>Pistas</div>
+              <div class="admin-nav-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a7 7 0 0114 0v1"/></svg>Usuarios</div>
+              <div class="admin-nav-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Política</div>
+            </div>
+          </div>
+
+          <div class="admin-main">
+            <div class="admin-topbar">
+              <div>
+                <h1>Pistas del club</h1>
+                <div class="date">6 pistas activas · 1 en mantenimiento</div>
+              </div>
+              <div class="admin-topbar-actions">
+                <button class="admin-btn">Importar</button>
+                <button class="admin-btn dark">+ Nueva pista</button>
+              </div>
+            </div>
+
+            <div class="admin-content">
+              <div class="courts-grid">
+                <div class="court-card">
+                  <span class="badge active">Activa</span>
+                  <div class="ico-court"></div>
+                  <div class="name">Pista Central</div>
+                  <div class="meta">Cristal · Indoor</div>
+                  <div class="stats">
+                    <div class="stat">
+                      <div class="lab">Ocupación</div>
+                      <div class="val">91%</div>
+                    </div>
+                    <div class="stat">
+                      <div class="lab">Tarifa hora</div>
+                      <div class="val">18€</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="court-card">
+                  <span class="badge active">Activa</span>
+                  <div class="ico-court"></div>
+                  <div class="name">Pista 3</div>
+                  <div class="meta">Cristal · Outdoor</div>
+                  <div class="stats">
+                    <div class="stat">
+                      <div class="lab">Ocupación</div>
+                      <div class="val">84%</div>
+                    </div>
+                    <div class="stat">
+                      <div class="lab">Tarifa hora</div>
+                      <div class="val">16€</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="court-card">
+                  <span class="badge active">Activa</span>
+                  <div class="ico-court"></div>
+                  <div class="name">Pista 5</div>
+                  <div class="meta">Muro · Outdoor</div>
+                  <div class="stats">
+                    <div class="stat">
+                      <div class="lab">Ocupación</div>
+                      <div class="val">72%</div>
+                    </div>
+                    <div class="stat">
+                      <div class="lab">Tarifa hora</div>
+                      <div class="val">14€</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="court-card">
+                  <span class="badge active">Activa</span>
+                  <div class="ico-court"></div>
+                  <div class="name">Pista 6</div>
+                  <div class="meta">Cristal · Indoor</div>
+                  <div class="stats">
+                    <div class="stat">
+                      <div class="lab">Ocupación</div>
+                      <div class="val">88%</div>
+                    </div>
+                    <div class="stat">
+                      <div class="lab">Tarifa hora</div>
+                      <div class="val">18€</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="court-card">
+                  <span class="badge maint">Mantenimiento</span>
+                  <div class="ico-court" style="opacity:0.4;"></div>
+                  <div class="name">Pista 7</div>
+                  <div class="meta">Cristal · Outdoor</div>
+                  <div class="stats">
+                    <div class="stat">
+                      <div class="lab">Reapertura</div>
+                      <div class="val" style="font-size:14px;">28 May</div>
+                    </div>
+                    <div class="stat">
+                      <div class="lab">Tarifa hora</div>
+                      <div class="val">16€</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="court-card add">
+                  <div class="plus">+</div>
+                  <div class="lab">Añadir pista</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <aside class="stage-notes" style="width: 280px;">
+      <h3>Notas de diseño</h3>
+      <ul>
+        <li><b>Icono visual de pista</b> con líneas tipo cancha de pádel: hace memorable y reconocible.</li>
+        <li><b>Mantenimiento con icono opaco</b>: comunica "fuera de servicio" sin tener que leer.</li>
+        <li><b>KPIs por pista</b>: el manager evalúa ROI individual.</li>
+        <li><b>Card de "añadir"</b> visualmente distinto, dashed: acción de bajo riesgo y no compite con cards reales.</li>
+        <li>Cubre <span class="cap">pistas</span> Req CRUD.</li>
+      </ul>
+    </aside>
+  </div>
+</div>
+</body>
+</html>

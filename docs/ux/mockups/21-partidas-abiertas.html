@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PadelPro · 21 · Partidas abiertas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./_shared/styles.css">
+</head>
+<body>
+<div class="chrome">
+  <div class="chrome-brand"><span class="dot"></span> PadelPro · Mockups</div>
+  <div style="font-family:'Geist Mono',monospace;font-size:11px;color:var(--muted-light)">21 · Partidas abiertas → <a href="./index.html" style="color:var(--lime)">índice</a></div>
+</div>
+
+<div class="stage active" style="display:flex;">
+  <div class="stage-header">
+    <div class="stage-title">
+      <span class="num">15 · PARTIDAS · MOBILE</span>
+      Partidas abiertas
+    </div>
+    <div class="stage-meta">
+      Capability: <span>partidas</span><br>
+      Endpoint: <span>GET /api/v1/partidas/abiertas</span><br>
+      Permisos: <span>JUGADOR autenticado</span>
+    </div>
+  </div>
+  <div class="stage-body">
+    <div class="phone">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <div class="phone-status"><span>9:41</span><span>● ● ●</span></div>
+        <div class="phone-content">
+          <div class="p-screen partidas">
+            <h1 class="p-h1" style="margin-bottom:6px;">Partidas<br><em style="font-style:italic;font-weight:500;color:var(--olive);">abiertas</em></h1>
+            <div style="color:var(--muted);font-size:13px;margin-bottom:24px;">12 buscan jugador en tu nivel</div>
+
+            <div class="partidas-tabs">
+              <div class="partidas-tab active">Hoy</div>
+              <div class="partidas-tab">Mañana</div>
+              <div class="partidas-tab">Semana</div>
+            </div>
+
+            <div class="partida-card">
+              <div class="head">
+                <div class="when-block">
+                  18:30
+                  <div class="d">Hoy · 90min</div>
+                </div>
+                <span class="level med">Nivel 3-4</span>
+              </div>
+              <div class="court-line">Pista Central · Cristal · Indoor</div>
+              <div class="players">
+                <div class="av">MR</div>
+                <div class="av">PG</div>
+                <div class="av">AS</div>
+                <div class="av empty">+1</div>
+                <span class="count"><b>3</b> · falta 1 jugador</span>
+              </div>
+              <div class="footer">
+                <div class="price">4,50€ <small>/jugador</small></div>
+                <button class="join-btn">Unirme →</button>
+              </div>
+            </div>
+
+            <div class="partida-card">
+              <div class="head">
+                <div class="when-block">
+                  20:00
+                  <div class="d">Hoy · 90min</div>
+                </div>
+                <span class="level med">Nivel 4</span>
+              </div>
+              <div class="court-line">Pista 5 · Muro · Outdoor</div>
+              <div class="players">
+                <div class="av">CL</div>
+                <div class="av">DM</div>
+                <div class="av empty">+1</div>
+                <div class="av empty">+1</div>
+                <span class="count"><b>2</b> · faltan 2 jugadores</span>
+              </div>
+              <div class="footer">
+                <div class="price">3,50€ <small>/jugador</small></div>
+                <button class="join-btn">Unirme →</button>
+              </div>
+            </div>
+
+            <div class="partida-card">
+              <div class="head">
+                <div class="when-block">
+                  21:30
+                  <div class="d">Hoy · 60min</div>
+                </div>
+                <span class="level adv">Nivel 5-6</span>
+              </div>
+              <div class="court-line">Pista 3 · Cristal · Outdoor</div>
+              <div class="players">
+                <div class="av">NC</div>
+                <div class="av">SF</div>
+                <div class="av">JP</div>
+                <div class="av empty">+1</div>
+                <span class="count"><b>3</b> · falta 1 jugador</span>
+              </div>
+              <div class="footer">
+                <div class="price">4,00€ <small>/jugador</small></div>
+                <button class="join-btn">Unirme →</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="p-tabbar">
+            <div class="p-tab">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12L12 3l9 9v9a2 2 0 01-2 2h-4v-7H9v7H5a2 2 0 01-2-2v-9z"/></svg>
+              Inicio
+            </div>
+            <div class="p-tab active">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>
+              Buscar
+            </div>
+            <div class="p-tab">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              Reservas
+            </div>
+            <div class="p-tab">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a7 7 0 0114 0v1"/></svg>
+              Perfil
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <aside class="stage-notes">
+      <h3>Notas de diseño</h3>
+      <ul>
+        <li><b>Avatares apilados</b> con huecos para faltantes: la falta es visible y tentadora.</li>
+        <li><b>Nivel destacado</b> con color (azul medio, rojo avanzado): match rápido visualmente.</li>
+        <li><b>Precio por jugador</b>: cálculo hecho, sin tener que dividir mentalmente.</li>
+        <li><b>"Unirme →" en lima</b>: acción dominante. Botón único, decisión clara.</li>
+        <li>Cubre <span class="cap">partidas</span> Req "listar abiertas" (Fase 2).</li>
+      </ul>
+    </aside>
+  </div>
+</div>
+</body>
+</html>

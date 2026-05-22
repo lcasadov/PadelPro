@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PadelPro · 11 · Checkout Redsys</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./_shared/styles.css">
+</head>
+<body>
+<div class="chrome">
+  <div class="chrome-brand"><span class="dot"></span> PadelPro · Mockups</div>
+  <div style="font-family:'Geist Mono',monospace;font-size:11px;color:var(--muted-light)">11 · Checkout Redsys → <a href="./index.html" style="color:var(--lime)">índice</a></div>
+</div>
+
+<div class="stage active" style="display:flex;">
+  <div class="stage-header">
+    <div class="stage-title">
+      <span class="num">11 · PAGO · MOBILE</span>
+      Checkout Redsys
+    </div>
+    <div class="stage-meta">
+      Capability: <span>pagos-redsys</span><br>
+      Endpoint: <span>POST /api/v1/pagos/iniciar → redirect Redsys</span><br>
+      Permisos: <span>JUGADOR autenticado</span>
+    </div>
+  </div>
+  <div class="stage-body">
+    <div class="phone">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <div class="phone-status"><span>9:41</span><span>● ● ●</span></div>
+        <div class="phone-content">
+          <div class="checkout">
+            <div class="checkout-header">
+              <div class="p-back">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+              </div>
+              <h1>Pagar con tarjeta</h1>
+            </div>
+            <div class="checkout-merch">
+              <div class="logo">PP</div>
+              <div class="info">
+                <div class="name">PadelPro · Club Madrid Este</div>
+                <div class="url">checkout.redsys.es/sis</div>
+              </div>
+              <div class="secure">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                3DSv2
+              </div>
+            </div>
+            <div class="checkout-amount">
+              <div class="lab">Importe</div>
+              <div class="price">16,00€</div>
+              <div class="desc">Pista 3 · Jue 22 May · 18:30</div>
+            </div>
+
+            <div class="card-preview">
+              <div class="chip"></div>
+              <div class="num">4539 •••• •••• 7421</div>
+              <div class="row">
+                <div>Titular<b>Laura Casado</b></div>
+                <div>Caducidad<b>09 / 28</b></div>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <span class="lab">Número de tarjeta</span>
+              <input class="form-input" type="text" value="4539 ••••  ••••  7421">
+            </div>
+            <div class="form-grid">
+              <div class="form-row" style="margin-bottom:0;">
+                <span class="lab">Caducidad</span>
+                <input class="form-input" type="text" value="09 / 28">
+              </div>
+              <div class="form-row" style="margin-bottom:0;">
+                <span class="lab">CVV</span>
+                <input class="form-input" type="text" value="•••">
+              </div>
+            </div>
+
+            <button class="p-btn lime">
+              Pagar 16,00€ <span class="arrow">→</span>
+            </button>
+
+            <div style="text-align: center; margin-top: 16px; font-family: 'Geist Mono', monospace; font-size: 10px; color: var(--muted); letter-spacing: 0.04em;">
+              Procesado por Redsys · HMAC SHA-256 · PCI-DSS L1
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <aside class="stage-notes">
+      <h3>Notas de diseño</h3>
+      <ul>
+        <li><b>Merchant header</b> con URL Redsys + 3DSv2: el usuario entiende que es checkout externo seguro.</li>
+        <li><b>Tarjeta visual</b> con bandas olive como simulación de Resy/Stripe: refuerza confianza.</li>
+        <li><b>Precio enorme</b> en hero del checkout: el usuario sabe exactamente qué paga.</li>
+        <li><b>Footer técnico discreto</b>: HMAC + PCI-DSS, sin asustar.</li>
+        <li>Cubre <span class="cap">pagos-redsys</span> Req "iniciar pago" + <span class="rn">RN-pago-01</span> firma HMAC SHA-256.</li>
+      </ul>
+    </aside>
+  </div>
+</div>
+</body>
+</html>

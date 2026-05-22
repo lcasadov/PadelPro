@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PadelPro · 12 · Pago confirmado</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./_shared/styles.css">
+</head>
+<body>
+<div class="chrome">
+  <div class="chrome-brand"><span class="dot"></span> PadelPro · Mockups</div>
+  <div style="font-family:'Geist Mono',monospace;font-size:11px;color:var(--muted-light)">12 · Pago confirmado → <a href="./index.html" style="color:var(--lime)">índice</a></div>
+</div>
+
+<div class="stage active" style="display:flex;">
+  <div class="stage-header">
+    <div class="stage-title">
+      <span class="num">12 · PAGO · MOBILE</span>
+      Pago confirmado
+    </div>
+    <div class="stage-meta">
+      Capability: <span>pagos-redsys, reservas, notificaciones</span><br>
+      Endpoint: <span>Webhook Redsys → callback HMAC verificado</span><br>
+      Permisos: <span>JUGADOR autenticado</span>
+    </div>
+  </div>
+  <div class="stage-body">
+    <div class="phone">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <div class="phone-status dark"><span>9:41</span><span>● ● ●</span></div>
+        <div class="phone-content">
+          <div class="success">
+            <div class="success-ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+            </div>
+            <h1>¡Pista <em>reservada!</em></h1>
+            <div class="sub">Te esperamos en pista el jueves a las 18:30</div>
+
+            <div class="success-card">
+              <div class="row">
+                <span class="lab">Reserva</span>
+                <span class="val">R-2026-0512</span>
+              </div>
+              <div class="row">
+                <span class="lab">Pista</span>
+                <span class="val">Pista 3 · Cristal</span>
+              </div>
+              <div class="row">
+                <span class="lab">Cuándo</span>
+                <span class="val">Jue 22 May · 18:30</span>
+              </div>
+              <div class="row">
+                <span class="lab">Importe</span>
+                <span class="val">16,00€</span>
+              </div>
+              <div class="row">
+                <span class="lab">Pago</span>
+                <span class="val" style="color:var(--lime);">✓ Confirmado</span>
+              </div>
+            </div>
+
+            <div style="text-align:center;font-family:'Geist Mono',monospace;font-size:10px;color:var(--muted-light);letter-spacing:0.08em;margin-bottom:8px;">
+              Recibo enviado a laura.casado@email.com
+            </div>
+
+            <div class="actions">
+              <button class="p-btn">Añadir al calendario</button>
+              <button class="p-btn outline">Ver reserva →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <aside class="stage-notes">
+      <h3>Notas de diseño</h3>
+      <ul>
+        <li><b>Verde lima sobre negro</b>: éxito sin caer en el cliché del checkmark verde.</li>
+        <li><b>Glow radial detrás del ícono</b>: refuerza el momento de celebración.</li>
+        <li><b>Resumen escaneable</b> con check explícito en "Pago confirmado".</li>
+        <li><b>Recibo por email</b> mencionado: cierre del flujo + confianza.</li>
+        <li>Cubre <span class="cap">pagos-redsys</span> Req "callback OK", <span class="cap">notificaciones</span> "AFTER_COMMIT" <span class="rn">RN-notif-01</span>.</li>
+      </ul>
+    </aside>
+  </div>
+</div>
+</body>
+</html>

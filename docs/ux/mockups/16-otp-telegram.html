@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PadelPro · 16 · Introducir OTP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./_shared/styles.css">
+</head>
+<body>
+<div class="chrome">
+  <div class="chrome-brand"><span class="dot"></span> PadelPro · Mockups</div>
+  <div style="font-family:'Geist Mono',monospace;font-size:11px;color:var(--muted-light)">16 · Introducir OTP → <a href="./index.html" style="color:var(--lime)">índice</a></div>
+</div>
+
+<div class="stage active" style="display:flex;">
+  <div class="stage-header">
+    <div class="stage-title">
+      <span class="num">16 · TELEGRAM · MOBILE</span>
+      Introducir OTP
+    </div>
+    <div class="stage-meta">
+      Capability: <span>auth-otp-telegram</span><br>
+      Endpoint: <span>POST /api/v1/telegram/link/verify</span><br>
+      Permisos: <span>JUGADOR autenticado</span>
+    </div>
+  </div>
+  <div class="stage-body">
+    <div class="phone">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <div class="phone-status"><span>9:41</span><span>● ● ●</span></div>
+        <div class="phone-content">
+          <div class="otp">
+            <div class="p-back" style="margin-bottom: 28px;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+            </div>
+            <div class="otp-hero">
+              <h1>Introduce el código</h1>
+              <p>Te hemos enviado un código de 6 dígitos a tu chat de Telegram <b>@laucasado</b>. Cópialo aquí abajo.</p>
+            </div>
+
+            <div class="otp-boxes">
+              <div class="otp-box filled">4</div>
+              <div class="otp-box filled">9</div>
+              <div class="otp-box filled">2</div>
+              <div class="otp-box filled">7</div>
+              <div class="otp-box active"><div class="cursor"></div></div>
+              <div class="otp-box"></div>
+            </div>
+
+            <div class="otp-timer">
+              Expira en <span class="num">4:12</span>
+            </div>
+
+            <button class="p-btn lime">
+              Verificar <span class="arrow">→</span>
+            </button>
+
+            <div class="otp-resend">
+              ¿No te llegó? <a href="#">Reenviar código</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <aside class="stage-notes">
+      <h3>Notas de diseño</h3>
+      <ul>
+        <li><b>6 cajas independientes</b>: feedback inmediato de cuántos dígitos faltan.</li>
+        <li><b>Active state con shadow olive</b>: el usuario sabe dónde escribir aunque tape el cursor con el teclado.</li>
+        <li><b>Timer en mono</b> con el segundero contando: presión sutil pero clara, conecta con <span class="rn">RN-otp-01</span>.</li>
+        <li><b>Username Telegram</b> visible: confirma que va al chat correcto antes de pegar.</li>
+        <li>Cubre <span class="cap">auth-otp-telegram</span> Req "verificar OTP".</li>
+      </ul>
+    </aside>
+  </div>
+</div>
+</body>
+</html>
