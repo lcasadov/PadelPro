@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PadelPro · 08 · Crear cuenta</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./_shared/styles.css">
+</head>
+<body>
+<div class="chrome">
+  <div class="chrome-brand"><span class="dot"></span> PadelPro · Mockups</div>
+  <div style="font-family:'Geist Mono',monospace;font-size:11px;color:var(--muted-light)">08 · Crear cuenta → <a href="./index.html" style="color:var(--lime)">índice</a></div>
+</div>
+
+<div class="stage active" style="display:flex;">
+  <div class="stage-header">
+    <div class="stage-title">
+      <span class="num">08 · ONBOARDING · MOBILE</span>
+      Crear cuenta
+    </div>
+    <div class="stage-meta">
+      Capability: <span>auth-local, usuarios</span><br>
+      Endpoint: <span>POST /api/v1/auth/register</span><br>
+      Permisos: <span>público</span>
+    </div>
+  </div>
+  <div class="stage-body">
+    <div class="phone">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <div class="phone-status"><span>9:41</span><span>● ● ●</span></div>
+        <div class="phone-content">
+          <div class="reg">
+            <div class="p-back" style="margin-bottom: 24px;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+            </div>
+            <div class="reg-hero">
+              <div class="step">Paso 1 de 1</div>
+              <h1>Crea tu<br><em>cuenta.</em></h1>
+            </div>
+            <div class="reg-form">
+              <div class="row">
+                <span class="p-input-label">Nombre completo</span>
+                <input class="p-input" type="text" value="Laura Casado">
+              </div>
+              <div class="row">
+                <span class="p-input-label">Email</span>
+                <input class="p-input" type="email" value="laura.casado@email.com">
+              </div>
+              <div class="row">
+                <span class="p-input-label">Teléfono</span>
+                <input class="p-input" type="tel" value="+34 612 345 678">
+              </div>
+              <div class="row">
+                <span class="p-input-label">Contraseña</span>
+                <input class="p-input" type="password" value="••••••••••">
+              </div>
+              <div class="check">
+                <input type="checkbox" checked>
+                <span>Acepto los <a href="#">términos</a> y la <a href="#">política de privacidad</a>. He leído cómo se tratan mis datos según el RGPD.</span>
+              </div>
+              <button class="p-btn lime" style="margin-top: auto;">
+                Crear cuenta <span class="arrow">→</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <aside class="stage-notes">
+      <h3>Notas de diseño</h3>
+      <ul>
+        <li><b>Un solo paso</b>: minimizamos fricción frente al wizard multi-pantalla típico.</li>
+        <li><b>Itálica en "cuenta"</b>: refuerza identidad editorial.</li>
+        <li><b>Check RGPD explícito</b>: requisito legal y cumple <span class="rn">RN-rgpd-01</span>.</li>
+        <li>El "Paso 1 de 1" parece innecesario pero comunica al usuario "no hay más".</li>
+        <li>Cubre <span class="cap">auth-local</span> Req registro y <span class="cap">usuarios</span> creación.</li>
+      </ul>
+    </aside>
+  </div>
+</div>
+</body>
+</html>
