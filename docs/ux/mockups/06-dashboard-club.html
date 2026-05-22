@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PadelPro · 06 · Dashboard del club</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./_shared/styles.css">
+</head>
+<body>
+<div class="chrome">
+  <div class="chrome-brand"><span class="dot"></span> PadelPro · Mockups</div>
+  <div style="font-family:'Geist Mono',monospace;font-size:11px;color:var(--muted-light)">06 · Dashboard del club → <a href="./index.html" style="color:var(--lime)">índice</a></div>
+</div>
+
+<div class="stage active" style="display:flex;">
+  <div class="stage-header">
+    <div class="stage-title">
+      <span class="num">06 · ADMIN CLUB · DESKTOP</span>
+      Dashboard del club
+    </div>
+    <div class="stage-meta">
+      Capability: <span>administracion-club</span><br>
+      Endpoints: <span>GET /admin/kpis, GET /admin/ocupacion</span><br>
+      Permisos: <span>MANAGER_CLUB · ADMIN</span>
+    </div>
+  </div>
+  <div class="stage-body" style="gap: 40px;">
+    <div class="desktop">
+      <div class="desktop-bar">
+        <div class="traffic"><span></span><span></span><span></span></div>
+        <div class="url">padelpro.app/admin/dashboard</div>
+      </div>
+      <div class="desktop-content">
+        <div class="admin">
+          <div class="admin-sidebar">
+            <div class="admin-brand"><span class="dot"></span> PadelPro</div>
+            <div class="admin-club-pill">
+              <div class="lab">Gestionando</div>
+              <div class="name">Club Madrid Este</div>
+            </div>
+            <div class="admin-nav-section">Operación</div>
+            <div class="admin-nav">
+              <div class="admin-nav-item active">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                Dashboard
+              </div>
+              <div class="admin-nav-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                Calendario
+              </div>
+              <div class="admin-nav-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 17 9 11 13 15 21 7"/><polyline points="14 7 21 7 21 14"/></svg>
+                Reservas
+              </div>
+              <div class="admin-nav-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+                Pagos
+              </div>
+            </div>
+            <div class="admin-nav-section">Configuración</div>
+            <div class="admin-nav">
+              <div class="admin-nav-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="9" x2="9" y2="21"/></svg>
+                Pistas
+              </div>
+              <div class="admin-nav-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a7 7 0 0114 0v1"/></svg>
+                Usuarios
+              </div>
+              <div class="admin-nav-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+                Política
+              </div>
+            </div>
+          </div>
+
+          <div class="admin-main">
+            <div class="admin-topbar">
+              <div>
+                <h1>Buenos días, Marcos.</h1>
+                <div class="date">Jueves · 22 mayo 2026 · semana 21</div>
+              </div>
+              <div class="admin-topbar-actions">
+                <button class="admin-btn">Exportar</button>
+                <button class="admin-btn dark">+ Nueva pista</button>
+              </div>
+            </div>
+
+            <div class="admin-content">
+              <div class="admin-kpis">
+                <div class="kpi hero">
+                  <div class="lab">Ocupación hoy</div>
+                  <div class="num">87%</div>
+                  <div class="delta">↑ 12% vs ayer</div>
+                </div>
+                <div class="kpi">
+                  <div class="lab">Reservas hoy</div>
+                  <div class="num">42</div>
+                  <div class="delta">↑ 6 vs media</div>
+                </div>
+                <div class="kpi">
+                  <div class="lab">Ingresos día</div>
+                  <div class="num">714€</div>
+                  <div class="delta">↑ 9%</div>
+                </div>
+                <div class="kpi">
+                  <div class="lab">Cancelaciones</div>
+                  <div class="num">3</div>
+                  <div class="delta neg">↑ 1 vs media</div>
+                </div>
+              </div>
+
+              <div class="admin-grid">
+                <div class="admin-panel">
+                  <div class="admin-panel-head">
+                    <h3>Ocupación hoy · por pista</h3>
+                    <span class="filter">15:00 — 23:00 ▾</span>
+                  </div>
+                  <div class="timeline">
+                    <div class="timeline-hours">
+                      <div></div>
+                      <div class="scale">
+                        <span>15</span><span>16</span><span>17</span><span>18</span><span>19</span><span>20</span><span>21</span><span>22</span><span>23</span><span></span><span></span><span></span>
+                      </div>
+                    </div>
+                    <div class="timeline-row">
+                      <div class="timeline-court">P. Central<span class="t">Cristal · IN</span></div>
+                      <div class="timeline-bar">
+                        <div class="timeline-slot" style="left:8%;width:18%;background:var(--olive);">Sergio M.</div>
+                        <div class="timeline-slot" style="left:30%;width:18%;background:var(--olive-dark);">Laura C.</div>
+                        <div class="timeline-slot" style="left:52%;width:18%;background:var(--olive);">Iván R.</div>
+                        <div class="timeline-slot" style="left:74%;width:14%;background:var(--lime);color:var(--ink);">Libre</div>
+                      </div>
+                    </div>
+                    <div class="timeline-row">
+                      <div class="timeline-court">Pista 3<span class="t">Cristal · OUT</span></div>
+                      <div class="timeline-bar">
+                        <div class="timeline-slot" style="left:0%;width:14%;background:var(--olive);">M. Sanz</div>
+                        <div class="timeline-slot" style="left:16%;width:18%;background:var(--lime);color:var(--ink);">Libre</div>
+                        <div class="timeline-slot" style="left:36%;width:18%;background:var(--olive-dark);">Equipo Aldi</div>
+                        <div class="timeline-slot" style="left:58%;width:18%;background:var(--olive);">Carla L.</div>
+                        <div class="timeline-slot" style="left:80%;width:18%;background:var(--olive-dark);">P. Vega</div>
+                      </div>
+                    </div>
+                    <div class="timeline-row">
+                      <div class="timeline-court">Pista 5<span class="t">Muro · OUT</span></div>
+                      <div class="timeline-bar">
+                        <div class="timeline-slot" style="left:0%;width:36%;background:var(--olive);">Liga municipal</div>
+                        <div class="timeline-slot" style="left:38%;width:14%;background:var(--olive-dark);">D. Ríos</div>
+                        <div class="timeline-slot" style="left:54%;width:14%;background:var(--lime);color:var(--ink);">Libre</div>
+                        <div class="timeline-slot" style="left:70%;width:14%;background:var(--olive);">J. Pérez</div>
+                        <div class="timeline-slot" style="left:86%;width:12%;background:var(--olive-dark);">Trío Sur</div>
+                      </div>
+                    </div>
+                    <div class="timeline-row">
+                      <div class="timeline-court">Pista 6<span class="t">Cristal · IN</span></div>
+                      <div class="timeline-bar">
+                        <div class="timeline-slot" style="left:0%;width:14%;background:var(--olive);">Sara F.</div>
+                        <div class="timeline-slot" style="left:16%;width:14%;background:var(--olive-dark);">N. Castro</div>
+                        <div class="timeline-slot" style="left:32%;width:18%;background:var(--olive);">A. Rivas</div>
+                        <div class="timeline-slot" style="left:52%;width:18%;background:var(--olive-dark);">Cuarteto J.</div>
+                        <div class="timeline-slot" style="left:72%;width:14%;background:var(--danger);">Mantenim.</div>
+                        <div class="timeline-slot" style="left:88%;width:10%;background:var(--lime);color:var(--ink);">Libre</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="admin-side">
+                  <div class="admin-panel">
+                    <div class="admin-panel-head">
+                      <h3>Últimos pagos</h3>
+                      <span class="filter">Hoy ▾</span>
+                    </div>
+                    <div class="admin-list">
+                      <div class="admin-list-item">
+                        <div class="av">LC</div>
+                        <div class="info">
+                          <div class="name">Laura Casado</div>
+                          <div class="meta">P3 · 18:00 · Redsys</div>
+                        </div>
+                        <div class="amount">+16€</div>
+                      </div>
+                      <div class="admin-list-item">
+                        <div class="av">SM</div>
+                        <div class="info">
+                          <div class="name">Sergio Martín</div>
+                          <div class="meta">PC · 17:00 · Redsys</div>
+                        </div>
+                        <div class="amount">+18€</div>
+                      </div>
+                      <div class="admin-list-item">
+                        <div class="av">IR</div>
+                        <div class="info">
+                          <div class="name">Iván Reyes</div>
+                          <div class="meta">PC · 19:00 · Redsys</div>
+                        </div>
+                        <div class="amount">+18€</div>
+                      </div>
+                      <div class="admin-list-item">
+                        <div class="av">MS</div>
+                        <div class="info">
+                          <div class="name">María Sanz</div>
+                          <div class="meta">P3 · 15:00 · Redsys</div>
+                        </div>
+                        <div class="amount">+16€</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <aside class="stage-notes" style="width: 280px;">
+      <h3>Notas de diseño</h3>
+      <ul>
+        <li><b>Sidebar negro</b> con club activo en pill: contexto siempre visible, evita errores entre clubes en multi-tenant.</li>
+        <li><b>KPI hero "Ocupación"</b> en negro con burbuja lima: misma fórmula que mobile, sistema consistente.</li>
+        <li><b>Timeline con tonos de olive</b> para reservas y lima para huecos libres: el manager ve "donde puedo meter más" en segundos.</li>
+        <li><b>Mantenimiento en rojo</b>: única excepción cromática reservada para estados problemáticos.</li>
+        <li><b>Lateral de pagos en vivo</b>: refuerza la sensación de "negocio funcionando".</li>
+        <li>Cubre <span class="cap">administracion-club</span> Req 1-2.</li>
+      </ul>
+    </aside>
+  </div>
+</div>
+</body>
+</html>

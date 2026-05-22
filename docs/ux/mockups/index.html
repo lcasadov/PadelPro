@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PadelPro · Mockups · Índice</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./_shared/styles.css">
+<style>
+  .index-hero {
+    padding: 48px 40px 32px;
+    border-bottom: 1px solid var(--line);
+    background: var(--bg-cream);
+  }
+  .index-hero h1 {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 36px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    color: var(--ink);
+    margin: 0 0 6px;
+  }
+  .index-hero .sub {
+    font-size: 14px;
+    color: var(--muted);
+  }
+  .index-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 20px;
+    padding: 36px 40px 60px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  .idx-card {
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 20px;
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .idx-card:hover {
+    border-color: var(--olive);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+  }
+  .idx-num {
+    font-family: 'Geist Mono', monospace;
+    font-size: 11px;
+    color: var(--muted-light);
+    letter-spacing: 0.06em;
+  }
+  .idx-name {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+  }
+  .idx-cap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 2px;
+  }
+  .idx-badge {
+    font-family: 'Geist Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.04em;
+    padding: 3px 7px;
+    border-radius: 6px;
+    background: var(--ink);
+    color: var(--lime);
+    font-weight: 500;
+  }
+  .idx-device {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: auto;
+    padding-top: 8px;
+    border-top: 1px solid var(--line-soft);
+  }
+  .section-label {
+    grid-column: 1 / -1;
+    font-family: 'Geist Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--muted-light);
+    text-transform: uppercase;
+    padding-top: 8px;
+  }
+</style>
+</head>
+<body style="background:var(--bg-warm);min-height:100vh;">
+
+<div class="chrome">
+  <div class="chrome-brand"><span class="dot"></span> PadelPro · Mockups</div>
+  <div style="font-family:'Geist Mono',monospace;font-size:11px;color:var(--muted-light)">Índice · 24 pantallas</div>
+</div>
+
+<div class="index-hero">
+  <h1>PadelPro · Mockups</h1>
+  <div class="sub">24 pantallas · Sistema de diseño unificado · Entrega 1 + Entrega 2</div>
+</div>
+
+<div class="index-grid">
+
+  <div class="section-label">Auth &amp; Onboarding</div>
+
+  <a class="idx-card" href="./07-splash.html">
+    <div class="idx-num">01 · SPLASH · MOBILE</div>
+    <div class="idx-name">Splash &amp; bienvenida</div>
+    <div class="idx-cap"><span class="idx-badge">auth-local</span></div>
+    <div class="idx-device">Mobile · Público</div>
+  </a>
+
+  <a class="idx-card" href="./01-login.html">
+    <div class="idx-num">02 · AUTH · MOBILE</div>
+    <div class="idx-name">Login</div>
+    <div class="idx-cap"><span class="idx-badge">auth-local</span></div>
+    <div class="idx-device">Mobile · Público</div>
+  </a>
+
+  <a class="idx-card" href="./08-crear-cuenta.html">
+    <div class="idx-num">03 · AUTH · MOBILE</div>
+    <div class="idx-name">Crear cuenta</div>
+    <div class="idx-cap"><span class="idx-badge">auth-local</span><span class="idx-badge">usuarios</span></div>
+    <div class="idx-device">Mobile · Público</div>
+  </a>
+
+  <a class="idx-card" href="./09-recuperar-password.html">
+    <div class="idx-num">04 · AUTH · MOBILE</div>
+    <div class="idx-name">Recuperar contraseña</div>
+    <div class="idx-cap"><span class="idx-badge">auth-local</span></div>
+    <div class="idx-device">Mobile · Público</div>
+  </a>
+
+  <a class="idx-card" href="./10-nueva-password.html">
+    <div class="idx-num">05 · AUTH · MOBILE</div>
+    <div class="idx-name">Nueva contraseña</div>
+    <div class="idx-cap"><span class="idx-badge">auth-local</span></div>
+    <div class="idx-device">Mobile · Token reset</div>
+  </a>
+
+  <div class="section-label">Reservas · Jugador</div>
+
+  <a class="idx-card" href="./02-home-jugador.html">
+    <div class="idx-num">06 · HOME · MOBILE</div>
+    <div class="idx-name">Home jugador</div>
+    <div class="idx-cap"><span class="idx-badge">reservas</span><span class="idx-badge">disponibilidad-pistas</span></div>
+    <div class="idx-device">Mobile · JUGADOR</div>
+  </a>
+
+  <a class="idx-card" href="./03-buscar-disponibilidad.html">
+    <div class="idx-num">07 · RESERVAS · MOBILE</div>
+    <div class="idx-name">Buscar disponibilidad</div>
+    <div class="idx-cap"><span class="idx-badge">disponibilidad-pistas</span></div>
+    <div class="idx-device">Mobile · JUGADOR / INVITADO</div>
+  </a>
+
+  <a class="idx-card" href="./04-confirmar-reserva.html">
+    <div class="idx-num">08 · RESERVAS · MOBILE</div>
+    <div class="idx-name">Confirmar reserva</div>
+    <div class="idx-cap"><span class="idx-badge">reservas</span><span class="idx-badge">pagos-redsys</span></div>
+    <div class="idx-device">Mobile · JUGADOR</div>
+  </a>
+
+  <a class="idx-card" href="./11-checkout-redsys.html">
+    <div class="idx-num">09 · PAGOS · MOBILE</div>
+    <div class="idx-name">Checkout Redsys</div>
+    <div class="idx-cap"><span class="idx-badge">pagos-redsys</span></div>
+    <div class="idx-device">Mobile · JUGADOR</div>
+  </a>
+
+  <a class="idx-card" href="./12-pago-confirmado.html">
+    <div class="idx-num">10 · PAGOS · MOBILE</div>
+    <div class="idx-name">Pago confirmado</div>
+    <div class="idx-cap"><span class="idx-badge">pagos-redsys</span><span class="idx-badge">reservas</span></div>
+    <div class="idx-device">Mobile · JUGADOR</div>
+  </a>
+
+  <a class="idx-card" href="./05-mis-reservas.html">
+    <div class="idx-num">11 · RESERVAS · MOBILE</div>
+    <div class="idx-name">Mis reservas</div>
+    <div class="idx-cap"><span class="idx-badge">reservas</span></div>
+    <div class="idx-device">Mobile · JUGADOR</div>
+  </a>
+
+  <a class="idx-card" href="./13-detalle-reserva.html">
+    <div class="idx-num">12 · RESERVAS · MOBILE</div>
+    <div class="idx-name">Detalle de reserva</div>
+    <div class="idx-cap"><span class="idx-badge">reservas</span></div>
+    <div class="idx-device">Mobile · JUGADOR</div>
+  </a>
+
+  <div class="section-label">Perfil &amp; Telegram</div>
+
+  <a class="idx-card" href="./14-mi-perfil.html">
+    <div class="idx-num">13 · PERFIL · MOBILE</div>
+    <div class="idx-name">Mi perfil</div>
+    <div class="idx-cap"><span class="idx-badge">usuarios</span><span class="idx-badge">auth-otp-telegram</span></div>
+    <div class="idx-device">Mobile · JUGADOR</div>
+  </a>
+
+  <a class="idx-card" href="./15-vincular-telegram.html">
+    <div class="idx-num">14 · TELEGRAM · MOBILE</div>
+    <div class="idx-name">Vincular Telegram</div>
+    <div class="idx-cap"><span class="idx-badge">auth-otp-telegram</span></div>
+    <div class="idx-device">Mobile · JUGADOR</div>
+  </a>
+
+  <a class="idx-card" href="./16-otp-telegram.html">
+    <div class="idx-num">15 · TELEGRAM · MOBILE</div>
+    <div class="idx-name">Introducir OTP</div>
+    <div class="idx-cap"><span class="idx-badge">auth-otp-telegram</span></div>
+    <div class="idx-device">Mobile · JUGADOR</div>
+  </a>
+
+  <div class="section-label">Partidas (Fase 2)</div>
+
+  <a class="idx-card" href="./21-partidas-abiertas.html">
+    <div class="idx-num">16 · PARTIDAS · MOBILE</div>
+    <div class="idx-name">Partidas abiertas</div>
+    <div class="idx-cap"><span class="idx-badge">partidas</span></div>
+    <div class="idx-device">Mobile · JUGADOR</div>
+  </a>
+
+  <a class="idx-card" href="./20-crear-partida.html">
+    <div class="idx-num">17 · PARTIDAS · MOBILE</div>
+    <div class="idx-name">Crear partida pública</div>
+    <div class="idx-cap"><span class="idx-badge">partidas</span></div>
+    <div class="idx-device">Mobile · JUGADOR</div>
+  </a>
+
+  <a class="idx-card" href="./22-confirmar-union.html">
+    <div class="idx-num">18 · PARTIDAS · MOBILE</div>
+    <div class="idx-name">Confirmar unión</div>
+    <div class="idx-cap"><span class="idx-badge">partidas</span><span class="idx-badge">pagos-redsys</span></div>
+    <div class="idx-device">Mobile · JUGADOR</div>
+  </a>
+
+  <div class="section-label">RGPD &amp; Privacidad</div>
+
+  <a class="idx-card" href="./23-mis-datos.html">
+    <div class="idx-num">19 · RGPD · MOBILE</div>
+    <div class="idx-name">Mis datos y privacidad</div>
+    <div class="idx-cap"><span class="idx-badge">exportaciones-rgpd</span></div>
+    <div class="idx-device">Mobile · JUGADOR</div>
+  </a>
+
+  <a class="idx-card" href="./24-eliminar-cuenta.html">
+    <div class="idx-num">20 · RGPD · MOBILE</div>
+    <div class="idx-name">Confirmar eliminación</div>
+    <div class="idx-cap"><span class="idx-badge">exportaciones-rgpd</span><span class="idx-badge">auditoria</span></div>
+    <div class="idx-device">Mobile · JUGADOR</div>
+  </a>
+
+  <div class="section-label">Admin Club</div>
+
+  <a class="idx-card" href="./06-dashboard-club.html">
+    <div class="idx-num">21 · ADMIN · DESKTOP</div>
+    <div class="idx-name">Dashboard club</div>
+    <div class="idx-cap"><span class="idx-badge">administracion-club</span></div>
+    <div class="idx-device">Desktop · MANAGER_CLUB · ADMIN</div>
+  </a>
+
+  <a class="idx-card" href="./18-calendario-semanal.html">
+    <div class="idx-num">22 · ADMIN · DESKTOP</div>
+    <div class="idx-name">Calendario semanal</div>
+    <div class="idx-cap"><span class="idx-badge">reservas</span><span class="idx-badge">disponibilidad-pistas</span></div>
+    <div class="idx-device">Desktop · MANAGER_CLUB · ADMIN</div>
+  </a>
+
+  <a class="idx-card" href="./19-reservas-club.html">
+    <div class="idx-num">23 · ADMIN · DESKTOP</div>
+    <div class="idx-name">Reservas del club</div>
+    <div class="idx-cap"><span class="idx-badge">reservas</span><span class="idx-badge">pagos-redsys</span></div>
+    <div class="idx-device">Desktop · MANAGER_CLUB · ADMIN</div>
+  </a>
+
+  <a class="idx-card" href="./17-gestion-pistas.html">
+    <div class="idx-num">24 · ADMIN · DESKTOP</div>
+    <div class="idx-name">Gestión de pistas</div>
+    <div class="idx-cap"><span class="idx-badge">pistas</span></div>
+    <div class="idx-device">Desktop · MANAGER_CLUB · ADMIN</div>
+  </a>
+
+</div>
+</body>
+</html>

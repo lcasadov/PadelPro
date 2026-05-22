@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PadelPro · 19 · Reservas del club</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./_shared/styles.css">
+</head>
+<body>
+<div class="chrome">
+  <div class="chrome-brand"><span class="dot"></span> PadelPro · Mockups</div>
+  <div style="font-family:'Geist Mono',monospace;font-size:11px;color:var(--muted-light)">19 · Reservas del club → <a href="./index.html" style="color:var(--lime)">índice</a></div>
+</div>
+
+<div class="stage active" style="display:flex;">
+  <div class="stage-header">
+    <div class="stage-title">
+      <span class="num">19 · ADMIN CLUB · DESKTOP</span>
+      Reservas del club
+    </div>
+    <div class="stage-meta">
+      Capability: <span>reservas, pagos-redsys</span><br>
+      Endpoint: <span>GET /api/v1/admin/reservas</span><br>
+      Permisos: <span>MANAGER_CLUB · ADMIN</span>
+    </div>
+  </div>
+  <div class="stage-body" style="gap: 40px;">
+    <div class="desktop">
+      <div class="desktop-bar">
+        <div class="traffic"><span></span><span></span><span></span></div>
+        <div class="url">padelpro.app/admin/reservas</div>
+      </div>
+      <div class="desktop-content">
+        <div class="admin">
+          <div class="admin-sidebar">
+            <div class="admin-brand"><span class="dot"></span> PadelPro</div>
+            <div class="admin-club-pill">
+              <div class="lab">Gestionando</div>
+              <div class="name">Club Madrid Este</div>
+            </div>
+            <div class="admin-nav-section">Operación</div>
+            <div class="admin-nav">
+              <div class="admin-nav-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Dashboard</div>
+              <div class="admin-nav-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Calendario</div>
+              <div class="admin-nav-item active"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 17 9 11 13 15 21 7"/><polyline points="14 7 21 7 21 14"/></svg>Reservas</div>
+              <div class="admin-nav-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>Pagos</div>
+            </div>
+          </div>
+
+          <div class="admin-main">
+            <div class="admin-topbar">
+              <div>
+                <h1>Reservas</h1>
+                <div class="date">Esta semana · 184 reservas · 2.890€</div>
+              </div>
+              <div class="admin-topbar-actions">
+                <button class="admin-btn">Exportar CSV</button>
+                <button class="admin-btn dark">+ Reserva manual</button>
+              </div>
+            </div>
+
+            <div class="admin-content">
+              <div class="filters-bar">
+                <div class="filter-chip active">Todas <span class="count">184</span></div>
+                <div class="filter-chip">Confirmadas <span class="count">162</span></div>
+                <div class="filter-chip">Pendientes <span class="count">8</span></div>
+                <div class="filter-chip">Canceladas <span class="count">14</span></div>
+                <div class="search-box">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>
+                  <input type="text" placeholder="Buscar por email, código o jugador…">
+                </div>
+              </div>
+
+              <div style="background:white;border:1px solid var(--line);border-radius:16px;overflow:hidden;">
+                <div class="table-head">
+                  <div class="col">Código</div>
+                  <div class="col">Jugador</div>
+                  <div class="col">Día / hora</div>
+                  <div class="col">Pista</div>
+                  <div class="col">Importe</div>
+                  <div class="col">Estado</div>
+                  <div></div>
+                </div>
+
+                <div class="table-row">
+                  <div class="code">R-2026-0512</div>
+                  <div class="player">
+                    <div class="av">LC</div>
+                    <div><div class="name">Laura Casado</div><div class="email">laura.casado@email.com</div></div>
+                  </div>
+                  <div class="when"><div class="d">Jue 22 May</div><div class="h">18:30 — 20:00</div></div>
+                  <div class="court-name">Pista 3<span class="sub">Cristal · OUT</span></div>
+                  <div class="amount">16,00€</div>
+                  <div class="pill ok">OK</div>
+                  <div style="color:var(--muted-light);">→</div>
+                </div>
+
+                <div class="table-row">
+                  <div class="code">R-2026-0517</div>
+                  <div class="player">
+                    <div class="av">SM</div>
+                    <div><div class="name">Sergio Martín</div><div class="email">s.martin@padelpro.com</div></div>
+                  </div>
+                  <div class="when"><div class="d">Vie 23 May</div><div class="h">20:00 — 21:30</div></div>
+                  <div class="court-name">P. Central<span class="sub">Cristal · IN</span></div>
+                  <div class="amount">18,00€</div>
+                  <div class="pill warn">Pago</div>
+                  <div style="color:var(--muted-light);">→</div>
+                </div>
+
+                <div class="table-row">
+                  <div class="code">R-2026-0521</div>
+                  <div class="player">
+                    <div class="av">IR</div>
+                    <div><div class="name">Iván Reyes</div><div class="email">ivan.reyes@email.com</div></div>
+                  </div>
+                  <div class="when"><div class="d">Sáb 24 May</div><div class="h">10:30 — 12:00</div></div>
+                  <div class="court-name">Pista 5<span class="sub">Muro · OUT</span></div>
+                  <div class="amount">14,00€</div>
+                  <div class="pill ok">OK</div>
+                  <div style="color:var(--muted-light);">→</div>
+                </div>
+
+                <div class="table-row">
+                  <div class="code">R-2026-0508</div>
+                  <div class="player">
+                    <div class="av">MS</div>
+                    <div><div class="name">María Sanz</div><div class="email">maria.sanz@email.com</div></div>
+                  </div>
+                  <div class="when"><div class="d">Jue 22 May</div><div class="h">15:00 — 16:30</div></div>
+                  <div class="court-name">Pista 3<span class="sub">Cristal · OUT</span></div>
+                  <div class="amount">16,00€</div>
+                  <div class="pill ok">OK</div>
+                  <div style="color:var(--muted-light);">→</div>
+                </div>
+
+                <div class="table-row">
+                  <div class="code">R-2026-0498</div>
+                  <div class="player">
+                    <div class="av">PG</div>
+                    <div><div class="name">Pablo García</div><div class="email">p.garcia@email.com</div></div>
+                  </div>
+                  <div class="when"><div class="d">Mié 21 May</div><div class="h">19:00 — 20:30</div></div>
+                  <div class="court-name">Pista 6<span class="sub">Cristal · IN</span></div>
+                  <div class="amount">−18,00€</div>
+                  <div class="pill bad">Cancelada</div>
+                  <div style="color:var(--muted-light);">→</div>
+                </div>
+
+                <div class="table-row">
+                  <div class="code">R-2026-0492</div>
+                  <div class="player">
+                    <div class="av">CL</div>
+                    <div><div class="name">Carla López</div><div class="email">carla.lopez@email.com</div></div>
+                  </div>
+                  <div class="when"><div class="d">Mié 21 May</div><div class="h">11:00 — 12:30</div></div>
+                  <div class="court-name">Pista 3<span class="sub">Cristal · OUT</span></div>
+                  <div class="amount">16,00€</div>
+                  <div class="pill ok">OK</div>
+                  <div style="color:var(--muted-light);">→</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <aside class="stage-notes" style="width: 280px;">
+      <h3>Notas de diseño</h3>
+      <ul>
+        <li><b>Filtros con contador</b>: el admin sabe cuántas hay sin filtrar primero.</li>
+        <li><b>Buscador por email/código</b>: caso típico de atención al cliente.</li>
+        <li><b>Importe negativo en cancelaciones</b>: reembolso visible sin tener que leer.</li>
+        <li><b>Pills minimalistas</b>: OK / Pago / Cancelada en 3 estados claros.</li>
+        <li><b>Exportar CSV</b> para conciliación contable.</li>
+        <li>Cubre <span class="cap">reservas</span> + <span class="cap">pagos-redsys</span> vista operativa.</li>
+      </ul>
+    </aside>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PadelPro · 23 · Mis datos y privacidad</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./_shared/styles.css">
+</head>
+<body>
+<div class="chrome">
+  <div class="chrome-brand"><span class="dot"></span> PadelPro · Mockups</div>
+  <div style="font-family:'Geist Mono',monospace;font-size:11px;color:var(--muted-light)">23 · Mis datos y privacidad → <a href="./index.html" style="color:var(--lime)">índice</a></div>
+</div>
+
+<div class="stage active" style="display:flex;">
+  <div class="stage-header">
+    <div class="stage-title">
+      <span class="num">17 · RGPD · MOBILE</span>
+      Mis datos y privacidad
+    </div>
+    <div class="stage-meta">
+      Capability: <span>exportaciones-rgpd</span><br>
+      Endpoint: <span>POST /api/v1/users/me/export · DELETE /api/v1/users/me</span><br>
+      Permisos: <span>JUGADOR autenticado</span>
+    </div>
+  </div>
+  <div class="stage-body">
+    <div class="phone">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <div class="phone-status"><span>9:41</span><span>● ● ●</span></div>
+        <div class="phone-content">
+          <div class="rgpd">
+            <div class="p-top" style="margin-bottom:18px;">
+              <div class="p-back">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+              </div>
+            </div>
+            <h1>Tus<br><em>datos.</em></h1>
+            <div class="sub">Bajo el Reglamento General de Protección de Datos, tienes pleno control sobre tu información en PadelPro.</div>
+
+            <div class="rgpd-block">
+              <div class="head">
+                <div class="ico">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                </div>
+                <div class="info">
+                  <div class="name">Descargar mis datos</div>
+                  <div class="law">Art. 15 RGPD · Derecho de acceso</div>
+                </div>
+              </div>
+              <div class="desc">Te enviamos un archivo JSON con todo lo que tenemos sobre ti: perfil, reservas, partidas y pagos.</div>
+              <button class="action-btn">Solicitar exportación</button>
+            </div>
+
+            <div class="rgpd-block">
+              <div class="head">
+                <div class="ico">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><polygon points="18.5 2.5 22 6 12 16 8 16 8 12 18.5 2.5"/></svg>
+                </div>
+                <div class="info">
+                  <div class="name">Editar mis datos</div>
+                  <div class="law">Art. 16 RGPD · Rectificación</div>
+                </div>
+              </div>
+              <div class="desc">Modifica tu nombre, email o teléfono. Los cambios quedan registrados en auditoría.</div>
+              <button class="action-btn">Editar perfil</button>
+            </div>
+
+            <div class="rgpd-block">
+              <div class="head">
+                <div class="ico" style="background:#FBE8E0;color:var(--danger);">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                </div>
+                <div class="info">
+                  <div class="name">Eliminar mi cuenta</div>
+                  <div class="law">Art. 17 RGPD · Derecho al olvido</div>
+                </div>
+              </div>
+              <div class="desc">Tu cuenta queda anonimizada inmediatamente. Las reservas pasadas se conservan según ley fiscal (4 años).</div>
+              <button class="action-btn danger">Eliminar cuenta</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <aside class="stage-notes">
+      <h3>Notas de diseño</h3>
+      <ul>
+        <li><b>Referencia al artículo</b> RGPD en cada bloque: confianza legal y trazabilidad.</li>
+        <li><b>3 acciones diferenciadas</b>: descargar, editar, eliminar. Cada una con su semántica.</li>
+        <li><b>Eliminar en rojo</b> + icono distintivo: jerarquía de riesgo visible.</li>
+        <li><b>Mención a retención fiscal</b>: gestiona expectativa "qué significa eliminar".</li>
+        <li>Cubre <span class="cap">exportaciones-rgpd</span> Req "acceso, rectificación, olvido".</li>
+      </ul>
+    </aside>
+  </div>
+</div>
+</body>
+</html>

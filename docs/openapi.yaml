@@ -1,0 +1,2374 @@
+openapi: 3.1.0
+
+info:
+  title: PadelPro API
+  version: 0.1.0
+  description: |
+    API REST para el sistema de gestión de reservas de pádel PadelPro.
+    Sistema On-Premise para instalaciones pequeñas (v1.0).
+
+    ### Autenticación
+    Se usa JWT HS256 con doble token (access + refresh). El access token dura 15 minutos.
+    El refresh token dura 7 días y se almacena en cookie httpOnly.
+
+    ### RBAC
+    - `ADMIN`: acceso total, incluidos endpoints bajo `/api/admin/`.
+    - `USER`: acceso a sus propios recursos (reservas, pagos, perfil).
+    - Endpoints públicos: no requieren autenticación (marcados con `security: []`).
+  contact:
+    name: orquestadoria
+    url: https://github.com/lcasadov/PadelPro
+  license:
+    name: Proprietary
+
+servers:
+  - url: http://localhost:8080/api
+    description: "Entorno de desarrollo local"
+  - url: https://pre.padelpro.local/api
+    description: "Entorno de preproducción"
+  - url: https://padelpro.local/api
+    description: "Entorno de producción"
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Autenticación
+    description: Login, registro, refresh de token y gestión de contraseña
+  - name: Usuarios
+    description: Perfil del usuario autenticado y gestión administrativa de cuentas
+  - name: Reservas
+    description: Disponibilidad, creación, consulta y cancelación de reservas
+  - name: Pagos
+    description: Inicio de pago online (Redsys) y consulta de historial de pagos
+  - name: OTP
+    description: Verificación de códigos de un solo uso para operaciones críticas
+  - name: Sistema
+    description: Configuración global del club (singleton, solo ADMIN)
+
+# ---------------------------------------------------------------------------
+# Webhooks (server-to-server, no JWT)
+# ---------------------------------------------------------------------------
+webhooks:
+  redsysNotification:
+    post:
+      tags:
+        - Pagos
+      summary: Notificación de pago Redsys
+      description: |
+        Redsys llama a este endpoint cuando se completa o rechaza una transacción.
+        Validado mediante HMAC SHA-256 (no JWT). La ruta real es `POST /api/pagos/webhook`.
+        Excluida de la especificación pública — solo accesible desde las IPs de Redsys.
+      security:
+        - redsysWebhookSecret: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RedsysWebhookPayload'
+      responses:
+        '200':
+          description: Notificación procesada. Redsys espera siempre 200.
+
+  telegramUpdate:
+    post:
+      tags:
+        - Sistema
+      summary: Update de Telegram Bot API
+      description: |
+        Telegram envía los mensajes del grupo y del chat personal del bot a este endpoint.
+        Validado mediante header `X-Telegram-Bot-Api-Secret-Token`. No usa JWT.
+        La ruta real es `POST /api/bot/telegram`.
+      security:
+        - telegramWebhookSecret: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Objeto TelegramUpdate de la Bot API
+              additionalProperties: true
+      responses:
+        '200':
+          description: Update recibido y procesado.
+        '403':
+          description: Secret token inválido.
+
+# ---------------------------------------------------------------------------
+# Paths
+# ---------------------------------------------------------------------------
+paths:
+
+  # ─── Autenticación ────────────────────────────────────────────────────────
+
+  /auth/login:
+    post:
+      tags: [Autenticación]
+      operationId: login
+      summary: Iniciar sesión
+      description: |
+        Autentica un usuario con login y contraseña. Devuelve un access token JWT (15 min)
+        y establece el refresh token en una cookie httpOnly (7 días).
+        Si el usuario está en estado PENDING o INACTIVE, devuelve 403.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            examples:
+              ejemplo:
+                summary: Login de usuario estándar
+                value:
+                  login: "jdoe"
+                  password: "SecureP4ss!"
+      responses:
+        '200':
+          description: Autenticación correcta
+          headers:
+            Set-Cookie:
+              description: Cookie httpOnly con el refresh token
+              schema:
+                type: string
+                example: "refresh_token=dGhpcy...; HttpOnly; Secure; SameSite=Strict; Path=/api/auth/refresh; Max-Age=604800"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+              examples:
+                ejemplo:
+                  summary: Respuesta de login exitoso
+                  value:
+                    accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                    refreshToken: "dGhpcyBpcyBhIHJlZnJlc2ggdG9rZW4..."
+                    expiresIn: 900
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /auth/register:
+    post:
+      tags: [Autenticación]
+      operationId: register
+      summary: Auto-registro de usuario
+      description: |
+        Registra un nuevo usuario. La cuenta queda en estado PENDING hasta que un
+        administrador la apruebe con `PATCH /api/admin/usuarios/{id}/aprobar`.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Usuario registrado correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsuarioResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /auth/refresh:
+    post:
+      tags: [Autenticación]
+      operationId: refreshToken
+      summary: Renovar access token
+      description: |
+        Obtiene un nuevo access token usando el refresh token almacenado en la cookie httpOnly,
+        o pasándolo explícitamente en el cuerpo. Devuelve nuevos tokens.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '200':
+          description: Tokens renovados correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/logout:
+    post:
+      tags: [Autenticación]
+      operationId: logout
+      summary: Cerrar sesión
+      description: Invalida el refresh token del usuario autenticado. El access token expira naturalmente en ≤15 min.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogoutRequest'
+      responses:
+        '204':
+          description: Sesión cerrada correctamente
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/password/solicitar-reset:
+    post:
+      tags: [Autenticación]
+      operationId: solicitarResetPassword
+      summary: Solicitar restablecimiento de contraseña
+      description: |
+        Inicia el flujo de restablecimiento de contraseña. Envía un OTP de tipo PASSWORD_RESET
+        al Telegram personal del usuario asociado al email. La respuesta es siempre 200 por seguridad
+        (no revela si el email existe en el sistema).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SolicitarResetRequest'
+      responses:
+        '200':
+          description: Solicitud procesada (respuesta neutral)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+
+  /auth/password/confirmar-reset:
+    post:
+      tags: [Autenticación]
+      operationId: confirmarResetPassword
+      summary: Confirmar restablecimiento de contraseña
+      description: |
+        Confirma el restablecimiento de contraseña usando el OTP recibido por Telegram.
+        El OTP debe ser de tipo PASSWORD_RESET, no haber sido usado y no haber expirado (TTL 10 min).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfirmarResetRequest'
+      responses:
+        '200':
+          description: Contraseña restablecida correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '422':
+          description: OTP incorrecto, expirado o ya utilizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ─── Usuarios — perfil propio ──────────────────────────────────────────────
+
+  /usuarios/me:
+    get:
+      tags: [Usuarios]
+      operationId: getMiPerfil
+      summary: Obtener perfil propio
+      description: Devuelve el perfil del usuario autenticado. Requiere ROLE_USER o ROLE_ADMIN.
+      responses:
+        '200':
+          description: Perfil devuelto correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsuarioResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    patch:
+      tags: [Usuarios]
+      operationId: actualizarMiPerfil
+      summary: Actualizar perfil propio
+      description: |
+        Actualiza los campos permitidos del perfil del usuario autenticado (semántica PATCH).
+        No permite modificar `role` ni `status` — esos campos son exclusivos de ADMIN.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UsuarioPatchRequest'
+      responses:
+        '200':
+          description: Perfil actualizado correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsuarioResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  # ─── Usuarios — administración ─────────────────────────────────────────────
+
+  /admin/usuarios:
+    get:
+      tags: [Usuarios]
+      operationId: listarUsuarios
+      summary: Listar todos los usuarios (ADMIN)
+      description: Lista todos los usuarios con paginación y filtrado opcional por estado. Requiere ROLE_ADMIN.
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+        - name: status
+          in: query
+          description: Filtrar por estado de la cuenta
+          required: false
+          schema:
+            $ref: '#/components/schemas/UserStatus'
+      responses:
+        '200':
+          description: Lista de usuarios devuelta correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedUsuariosResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+    post:
+      tags: [Usuarios]
+      operationId: crearUsuario
+      summary: Crear usuario (ADMIN)
+      description: |
+        Crea un nuevo usuario directamente sin proceso de aprobación.
+        El usuario se crea con estado ACTIVE. Requiere ROLE_ADMIN.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UsuarioCreateRequest'
+      responses:
+        '201':
+          description: Usuario creado correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsuarioResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /admin/usuarios/{id}:
+    get:
+      tags: [Usuarios]
+      operationId: getUsuario
+      summary: Obtener usuario por ID (ADMIN)
+      description: Devuelve los datos completos de un usuario. Requiere ROLE_ADMIN.
+      parameters:
+        - $ref: '#/components/parameters/UserIdParam'
+      responses:
+        '200':
+          description: Usuario encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsuarioResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      tags: [Usuarios]
+      operationId: actualizarUsuario
+      summary: Actualizar usuario (ADMIN)
+      description: |
+        Actualiza los datos de un usuario concreto, incluyendo rol y estado.
+        Requiere ROLE_ADMIN.
+      parameters:
+        - $ref: '#/components/parameters/UserIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UsuarioAdminPatchRequest'
+      responses:
+        '200':
+          description: Usuario actualizado correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsuarioResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+    delete:
+      tags: [Usuarios]
+      operationId: desactivarUsuario
+      summary: Desactivar usuario (ADMIN)
+      description: |
+        Borrado lógico: el estado pasa a INACTIVE. El registro permanece en base de datos.
+        Un administrador no puede desactivarse a sí mismo.
+        Requiere ROLE_ADMIN.
+      parameters:
+        - $ref: '#/components/parameters/UserIdParam'
+      responses:
+        '204':
+          description: Usuario desactivado correctamente
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: No se puede desactivar el propio usuario administrador activo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /admin/usuarios/{id}/aprobar:
+    patch:
+      tags: [Usuarios]
+      operationId: aprobarUsuario
+      summary: Aprobar cuenta pendiente (ADMIN)
+      description: |
+        Aprueba una cuenta de usuario en estado PENDING, cambiando su estado a ACTIVE.
+        Requiere ROLE_ADMIN.
+      parameters:
+        - $ref: '#/components/parameters/UserIdParam'
+      responses:
+        '200':
+          description: Cuenta aprobada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AprobarResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: El usuario no estaba en estado PENDING
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ─── Reservas ─────────────────────────────────────────────────────────────
+
+  /reservas/disponibles:
+    get:
+      tags: [Reservas]
+      operationId: getDisponibilidad
+      summary: Consultar disponibilidad de la pista
+      description: |
+        Devuelve los tramos horarios disponibles para una fecha concreta.
+        Solo se devuelven tramos con al menos una plaza libre.
+        Requiere autenticación (USER o ADMIN).
+      parameters:
+        - name: fecha
+          in: query
+          description: Fecha para la que se consulta disponibilidad (formato YYYY-MM-DD)
+          required: true
+          schema:
+            type: string
+            format: date
+            example: "2025-06-15"
+      responses:
+        '200':
+          description: Disponibilidad calculada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DisponibilidadResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /reservas:
+    get:
+      tags: [Reservas]
+      operationId: listarMisReservas
+      summary: Listar reservas del usuario autenticado
+      description: |
+        Lista las reservas en las que el usuario autenticado es propietario o participante,
+        con paginación. Requiere ROLE_USER o ROLE_ADMIN.
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+      responses:
+        '200':
+          description: Lista devuelta correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedReservasResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags: [Reservas]
+      operationId: crearReserva
+      summary: Crear reserva
+      description: |
+        Crea una nueva reserva. El usuario autenticado es automáticamente añadido
+        como primer participante (titular). Se envía OTP de tipo RESERVATION_CONFIRM
+        al creador vía Telegram si la reserva proviene del canal Telegram.
+        Requiere ROLE_USER o ROLE_ADMIN.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReservaRequest'
+            examples:
+              ejemplo:
+                summary: Reserva de 60 min con un participante adicional externo
+                value:
+                  reservationDate: "2025-06-15"
+                  startTime: "09:00"
+                  durationMinutes: 60
+                  notes: "Reserva para partido de entrenamiento"
+                  participantesAdicionales:
+                    - externalName: "Carlos García"
+      responses:
+        '201':
+          description: Reserva creada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservaResponse'
+              examples:
+                ejemplo:
+                  summary: Reserva creada en estado PENDING_CONFIRMATION
+                  value:
+                    id: "550e8400-e29b-41d4-a716-446655440000"
+                    reservationDate: "2025-06-15"
+                    startTime: "09:00"
+                    durationMinutes: 60
+                    status: "PENDING_CONFIRMATION"
+                    ownerId: 5
+                    ownerName: "John Doe"
+                    priceTotal: 15.00
+                    notes: "Reserva para partido de entrenamiento"
+                    participants:
+                      - id: 1
+                        userId: 5
+                        nombre: "John Doe"
+                        statusPago: "PENDING"
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          description: Número máximo de participantes superado o regla de negocio incumplida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /reservas/{id}:
+    get:
+      tags: [Reservas]
+      operationId: getReserva
+      summary: Obtener detalle de reserva
+      description: |
+        Devuelve el detalle de una reserva. Un USER solo puede acceder si es propietario
+        o participante. ADMIN puede acceder a cualquier reserva.
+      parameters:
+        - $ref: '#/components/parameters/ReservationIdParam'
+      responses:
+        '200':
+          description: Reserva encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservaResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags: [Reservas]
+      operationId: cancelarReserva
+      summary: Cancelar reserva
+      description: |
+        Cancela una reserva. Solo puede hacerlo el propietario (o ADMIN).
+        La cancelación debe realizarse con al menos `cancellation_deadline_hours` de antelación.
+        Se envía OTP de tipo CANCELLATION_CONFIRM al propietario vía Telegram.
+      parameters:
+        - $ref: '#/components/parameters/ReservationIdParam'
+      responses:
+        '204':
+          description: Reserva cancelada correctamente
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: La cancelación está fuera del plazo permitido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /reservas/{id}/unirse:
+    post:
+      tags: [Reservas]
+      operationId: unirseAReserva
+      summary: Unirse a una reserva como participante
+      description: |
+        Permite a un usuario autenticado unirse a una reserva existente que tiene huecos disponibles.
+        Un usuario no puede unirse dos veces a la misma reserva.
+        La reserva debe estar en estado PENDING_CONFIRMATION o CONFIRMED.
+        Requiere ROLE_USER o ROLE_ADMIN.
+      parameters:
+        - $ref: '#/components/parameters/ReservationIdParam'
+      responses:
+        '200':
+          description: Usuario añadido como participante
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnirseResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          description: La reserva está completa o no admite nuevos participantes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ─── Reservas — administración ─────────────────────────────────────────────
+
+  /admin/reservas:
+    get:
+      tags: [Reservas]
+      operationId: listarTodasReservas
+      summary: Listar todas las reservas (ADMIN)
+      description: Lista todas las reservas con filtros y paginación. Requiere ROLE_ADMIN.
+      parameters:
+        - name: fecha
+          in: query
+          description: Filtrar por fecha de reserva (YYYY-MM-DD)
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: status
+          in: query
+          description: Filtrar por estado de la reserva
+          required: false
+          schema:
+            $ref: '#/components/schemas/ReservationStatus'
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+      responses:
+        '200':
+          description: Lista de reservas devuelta correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedReservasResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /admin/reservas/{id}/estado:
+    patch:
+      tags: [Reservas]
+      operationId: cambiarEstadoReserva
+      summary: Cambiar estado de reserva (ADMIN)
+      description: |
+        Cambia el estado de una reserva. Transiciones permitidas:
+        PENDING_CONFIRMATION → CONFIRMED, CONFIRMED → COMPLETED, CONFIRMED → CANCELLED.
+        Requiere ROLE_ADMIN.
+      parameters:
+        - $ref: '#/components/parameters/ReservationIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReservaEstadoRequest'
+      responses:
+        '200':
+          description: Estado actualizado correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservaEstadoResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: La transición de estado no está permitida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ─── Pagos ────────────────────────────────────────────────────────────────
+
+  /pagos:
+    get:
+      tags: [Pagos]
+      operationId: listarMisPagos
+      summary: Listar pagos del usuario autenticado
+      description: |
+        Lista los pagos vinculados al usuario autenticado con paginación.
+        Solo se devuelven pagos del propio usuario.
+        Requiere ROLE_USER o ROLE_ADMIN.
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+      responses:
+        '200':
+          description: Lista de pagos devuelta correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPagosResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /pagos/iniciar:
+    post:
+      tags: [Pagos]
+      operationId: iniciarPago
+      summary: Iniciar pago online (Redsys)
+      description: |
+        Inicia el proceso de pago de una reserva vía Redsys. Devuelve la URL del TPV virtual
+        y los parámetros firmados con HMAC SHA-256 para el formulario de redirección.
+        El importe se calcula en backend; nunca proviene del frontend.
+        El participante debe ser el usuario autenticado.
+        Requiere ROLE_USER o ROLE_ADMIN.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IniciarPagoRequest'
+      responses:
+        '200':
+          description: Pago iniciado, URL de redirección devuelta
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IniciarPagoResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          description: La reserva no está en un estado que admite pagos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /admin/pagos/{reservaId}/efectivo:
+    post:
+      tags: [Pagos]
+      operationId: registrarPagoEfectivo
+      summary: Registrar pago en efectivo (ADMIN)
+      description: |
+        Registra el pago en efectivo de la reserva. Solo el administrador puede usar este endpoint.
+        Actualiza el estado del pago asociado a la reserva.
+        Requiere ROLE_ADMIN.
+      parameters:
+        - name: reservaId
+          in: path
+          description: UUID de la reserva
+          required: true
+          schema:
+            type: string
+            format: uuid
+            example: "550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        '200':
+          description: Pago en efectivo registrado correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EfectivoPagoResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: La reserva ya tiene todos los pagos completados
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /admin/pagos:
+    get:
+      tags: [Pagos]
+      operationId: listarTodosPagos
+      summary: Listar todos los pagos (ADMIN)
+      description: Lista todos los pagos del sistema con filtros y paginación. Requiere ROLE_ADMIN.
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+        - name: status
+          in: query
+          description: Filtrar por estado del pago
+          required: false
+          schema:
+            $ref: '#/components/schemas/PaymentStatus'
+      responses:
+        '200':
+          description: Lista de pagos devuelta correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPagosResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  # ─── OTP ──────────────────────────────────────────────────────────────────
+
+  /otp/verificar:
+    post:
+      tags: [OTP]
+      operationId: verificarOtp
+      summary: Verificar código OTP
+      description: |
+        Verifica un código OTP enviado por Telegram para el usuario autenticado.
+        El OTP debe ser de tipo correcto, no haber sido usado y no haber expirado (TTL 10 min).
+        Tras la verificación exitosa, el campo `used` se establece a `true`.
+        Requiere ROLE_USER o ROLE_ADMIN.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OtpVerificarRequest'
+      responses:
+        '200':
+          description: OTP verificado correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OtpVerificarResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          description: OTP incorrecto, expirado o ya utilizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ─── Sistema ──────────────────────────────────────────────────────────────
+
+  /admin/sistema/config:
+    get:
+      tags: [Sistema]
+      operationId: getSystemConfig
+      summary: Obtener configuración del sistema (ADMIN)
+      description: |
+        Devuelve la configuración global del club (singleton). Los campos sensibles
+        (redsys_secret_key, telegram_bot_token, smtp_password) no se devuelven en claro.
+        Requiere ROLE_ADMIN.
+      responses:
+        '200':
+          description: Configuración devuelta correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemConfigResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+    patch:
+      tags: [Sistema]
+      operationId: actualizarSystemConfig
+      summary: Actualizar configuración del sistema (ADMIN)
+      description: |
+        Actualiza la configuración global del club (semántica PATCH). Solo los campos
+        incluidos en el cuerpo se actualizan. Invalida la caché de `system-config`.
+        Requiere ROLE_ADMIN.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SystemConfigUpdateRequest'
+      responses:
+        '200':
+          description: Configuración actualizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemConfigResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+# ---------------------------------------------------------------------------
+# Components
+# ---------------------------------------------------------------------------
+components:
+
+  # ─── Security Schemes ─────────────────────────────────────────────────────
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Token JWT HS256 obtenido en POST /auth/login o POST /auth/refresh.
+        Incluir en la cabecera: `Authorization: Bearer <token>`.
+        Lifetime: 15 minutos.
+
+    redsysWebhookSecret:
+      type: apiKey
+      in: header
+      name: X-Redsys-Signature
+      description: Firma HMAC SHA-256 de Redsys para validar el origen del webhook de notificación de pago.
+
+    telegramWebhookSecret:
+      type: apiKey
+      in: header
+      name: X-Telegram-Bot-Api-Secret-Token
+      description: Secret token configurado al registrar el webhook del bot de Telegram.
+
+  # ─── Reusable Parameters ──────────────────────────────────────────────────
+
+  parameters:
+    PageParam:
+      name: page
+      in: query
+      description: Índice de la página (base 0)
+      required: false
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+
+    PageSizeParam:
+      name: pageSize
+      in: query
+      description: Número de elementos por página (máximo 100)
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+
+    ReservationIdParam:
+      name: id
+      in: path
+      description: UUID de la reserva
+      required: true
+      schema:
+        type: string
+        format: uuid
+        example: "550e8400-e29b-41d4-a716-446655440000"
+
+    UserIdParam:
+      name: id
+      in: path
+      description: Identificador del usuario (BIGINT)
+      required: true
+      schema:
+        type: integer
+        format: int64
+        example: 42
+
+  # ─── Reusable Responses ───────────────────────────────────────────────────
+
+  responses:
+    Unauthorized:
+      description: Token ausente, expirado o inválido
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            tokenExpirado:
+              summary: Token expirado
+              value:
+                code: "UNAUTHORIZED"
+                message: "El token de acceso ha expirado."
+                errors: []
+
+    Forbidden:
+      description: El usuario autenticado no tiene permisos para esta operación
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            sinRol:
+              summary: Rol insuficiente
+              value:
+                code: "FORBIDDEN"
+                message: "No tiene permisos para realizar esta operación."
+                errors: []
+
+    NotFound:
+      description: Recurso no encontrado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            noEncontrado:
+              summary: Recurso no encontrado
+              value:
+                code: "NOT_FOUND"
+                message: "El recurso solicitado no existe."
+                errors: []
+
+    ValidationError:
+      description: Error de validación de parámetros o cuerpo de la petición
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            campoInvalido:
+              summary: Campo con formato inválido
+              value:
+                code: "VALIDATION_ERROR"
+                message: "Los datos de la solicitud no son válidos."
+                errors:
+                  - field: "email"
+                    message: "El formato del email no es válido."
+
+    Conflict:
+      description: Conflicto (p.ej. franja ya reservada, email duplicado)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            franjaOcupada:
+              summary: Franja horaria ya ocupada
+              value:
+                code: "CONFLICT"
+                message: "La franja horaria seleccionada ya está reservada."
+                errors: []
+
+    InternalError:
+      description: Error interno del servidor
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  # ─── Schemas ──────────────────────────────────────────────────────────────
+
+  schemas:
+
+    # --- Enums ---------------------------------------------------------------
+
+    UserStatus:
+      type: string
+      description: Estado de la cuenta de usuario
+      enum:
+        - PENDING
+        - ACTIVE
+        - INACTIVE
+      example: ACTIVE
+
+    UserRole:
+      type: string
+      description: Rol del usuario en la plataforma
+      enum:
+        - ADMIN
+        - USER
+      example: USER
+
+    ReservationStatus:
+      type: string
+      description: Estado del ciclo de vida de una reserva
+      enum:
+        - PENDING_CONFIRMATION
+        - CONFIRMED
+        - CANCELLED
+        - COMPLETED
+      example: CONFIRMED
+
+    ReservationChannel:
+      type: string
+      description: Canal por el que se creó o se unió a la reserva
+      enum:
+        - WEB
+        - TELEGRAM
+      example: WEB
+
+    PaymentStatus:
+      type: string
+      description: Estado del ciclo de pago
+      enum:
+        - PENDING
+        - IN_PROGRESS
+        - PAID
+        - FAILED
+        - CANCELLED
+        - REFUNDED
+      example: PAID
+
+    PaymentMethod:
+      type: string
+      description: Método de pago utilizado
+      enum:
+        - REDSYS
+        - CASH
+      example: REDSYS
+
+    OtpType:
+      type: string
+      description: Tipo de operación que confirma el OTP
+      enum:
+        - RESERVATION_CONFIRM
+        - CANCELLATION_CONFIRM
+        - PASSWORD_RESET
+      example: RESERVATION_CONFIRM
+
+    # --- Comunes -------------------------------------------------------------
+
+    ErrorResponse:
+      type: object
+      description: Respuesta de error estándar de la API
+      required:
+        - code
+        - message
+        - errors
+      properties:
+        code:
+          type: string
+          description: Código de error de aplicación
+          example: VALIDATION_ERROR
+        message:
+          type: string
+          description: Descripción legible del error
+          example: "Los datos de la solicitud no son válidos."
+        errors:
+          type: array
+          description: Lista de errores de campo (vacía si el error no es de validación)
+          items:
+            $ref: '#/components/schemas/FieldError'
+      examples:
+        validacionFallida:
+          summary: Error de validación de campos
+          value:
+            code: "VALIDATION_ERROR"
+            message: "Los datos de la solicitud no son válidos."
+            errors:
+              - field: "email"
+                message: "El formato del email no es válido."
+
+    FieldError:
+      type: object
+      description: Detalle de un error de campo específico
+      required:
+        - field
+        - message
+      properties:
+        field:
+          type: string
+          description: Nombre del campo con error
+          example: email
+        message:
+          type: string
+          description: Descripción del error de validación del campo
+          example: "El formato del email no es válido."
+
+    MessageResponse:
+      type: object
+      description: Respuesta genérica con un mensaje informativo
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          description: Mensaje informativo al cliente
+          example: "Operación completada correctamente."
+
+    PaginatedResponseMeta:
+      type: object
+      description: Metadatos de paginación compartidos por todas las respuestas paginadas
+      required:
+        - total
+        - page
+        - pageSize
+      properties:
+        total:
+          type: integer
+          format: int64
+          description: Total de elementos en la colección completa
+          example: 47
+        page:
+          type: integer
+          description: Índice de la página actual (base 0)
+          example: 0
+        pageSize:
+          type: integer
+          description: Número de elementos por página
+          example: 20
+
+    # --- Autenticación -------------------------------------------------------
+
+    LoginRequest:
+      type: object
+      description: Credenciales para iniciar sesión
+      required:
+        - login
+        - password
+      properties:
+        login:
+          type: string
+          description: Nombre de usuario (login)
+          example: jdoe
+        password:
+          type: string
+          format: password
+          description: Contraseña del usuario
+          example: "SecureP4ss!"
+
+    LoginResponse:
+      type: object
+      description: Respuesta de autenticación con los tokens JWT
+      required:
+        - accessToken
+        - refreshToken
+        - expiresIn
+      properties:
+        accessToken:
+          type: string
+          description: Token JWT de acceso (HS256, duración 15 min)
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        refreshToken:
+          type: string
+          description: Token JWT de refresco (duración 7 días). También enviado en cookie httpOnly.
+          example: "dGhpcyBpcyBhIHJlZnJlc2ggdG9rZW4..."
+        expiresIn:
+          type: integer
+          description: Segundos hasta la expiración del access token
+          example: 900
+
+    RefreshRequest:
+      type: object
+      description: Token de refresco para obtener un nuevo access token
+      required:
+        - refreshToken
+      properties:
+        refreshToken:
+          type: string
+          description: Refresh token obtenido en el login
+          example: "dGhpcyBpcyBhIHJlZnJlc2ggdG9rZW4..."
+
+    LogoutRequest:
+      type: object
+      description: Refresh token a invalidar en el logout
+      required:
+        - refreshToken
+      properties:
+        refreshToken:
+          type: string
+          description: Refresh token a revocar
+          example: "dGhpcyBpcyBhIHJlZnJlc2ggdG9rZW4..."
+
+    RegisterRequest:
+      type: object
+      description: Datos para el auto-registro de un nuevo usuario
+      required:
+        - login
+        - email
+        - phone
+        - name
+        - password
+      properties:
+        login:
+          type: string
+          description: Nombre de usuario (solo alfanumérico y guión bajo, 3-50 chars)
+          minLength: 3
+          maxLength: 50
+          pattern: '^[a-zA-Z0-9_]+$'
+          example: jdoe
+        email:
+          type: string
+          format: email
+          description: Correo electrónico del usuario
+          example: jdoe@example.com
+        phone:
+          type: string
+          description: Teléfono en formato E.164
+          pattern: '^\+[1-9]\d{7,14}$'
+          example: "+34612345678"
+        name:
+          type: string
+          description: Nombre completo del usuario
+          minLength: 2
+          maxLength: 100
+          example: "John Doe"
+        password:
+          type: string
+          format: password
+          description: Contraseña (mínimo 8 chars, al menos 1 mayúscula y 1 número)
+          minLength: 8
+          example: "SecureP4ss!"
+
+    SolicitarResetRequest:
+      type: object
+      description: Email del usuario que solicita el reset de contraseña
+      required:
+        - email
+      properties:
+        email:
+          type: string
+          format: email
+          description: Email asociado a la cuenta
+          example: jdoe@example.com
+
+    ConfirmarResetRequest:
+      type: object
+      description: Datos para confirmar el restablecimiento de contraseña
+      required:
+        - email
+        - codigo
+        - nuevaPassword
+      properties:
+        email:
+          type: string
+          format: email
+          description: Email de la cuenta
+          example: jdoe@example.com
+        codigo:
+          type: string
+          description: Código OTP de 6 dígitos recibido por Telegram
+          pattern: '^\d{6}$'
+          example: "482910"
+        nuevaPassword:
+          type: string
+          format: password
+          description: Nueva contraseña
+          minLength: 8
+          example: "NuevaP4ss!"
+
+    # --- Usuarios ------------------------------------------------------------
+
+    UsuarioResponse:
+      type: object
+      description: Datos completos de un usuario del sistema
+      required:
+        - id
+        - login
+        - email
+        - phone
+        - role
+        - status
+        - telegramLinked
+        - registeredAt
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Identificador único del usuario (BIGSERIAL)
+          example: 1
+        login:
+          type: string
+          description: Nombre de usuario para login
+          example: jdoe
+        email:
+          type: string
+          format: email
+          description: Correo electrónico
+          example: jdoe@example.com
+        phone:
+          type: string
+          description: Teléfono en formato E.164
+          example: "+34612345678"
+        firstName:
+          type: string
+          description: Nombre de pila
+          example: "John"
+        lastName:
+          type: string
+          description: Apellidos
+          example: "Doe"
+        role:
+          $ref: '#/components/schemas/UserRole'
+        status:
+          $ref: '#/components/schemas/UserStatus'
+        telegramLinked:
+          type: boolean
+          description: Indica si el usuario tiene su cuenta de Telegram vinculada
+          example: true
+        telegramLinkedAt:
+          type: string
+          format: date-time
+          description: Instante en que se vinculó Telegram (null si no está vinculado)
+          nullable: true
+          example: "2025-03-10T14:22:00Z"
+        registeredAt:
+          type: string
+          format: date-time
+          description: Fecha y hora de registro del usuario
+          example: "2025-01-15T10:00:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Última modificación del perfil
+          example: "2025-03-10T14:22:00Z"
+
+    UsuarioPatchRequest:
+      type: object
+      description: |
+        Campos actualizables por el propio usuario (semántica PATCH — todos opcionales).
+        No permite modificar `role` ni `status`.
+      properties:
+        email:
+          type: string
+          format: email
+          description: Nuevo correo electrónico
+          example: nuevoemail@example.com
+        phone:
+          type: string
+          description: Nuevo teléfono en formato E.164
+          pattern: '^\+[1-9]\d{7,14}$'
+          example: "+34698765432"
+        firstName:
+          type: string
+          description: Nuevo nombre de pila
+          minLength: 2
+          maxLength: 100
+          example: "John"
+        lastName:
+          type: string
+          description: Nuevos apellidos
+          minLength: 2
+          maxLength: 100
+          example: "Doe"
+        password:
+          type: string
+          format: password
+          description: Nueva contraseña
+          minLength: 8
+          example: "NuevaP4ss!"
+
+    UsuarioCreateRequest:
+      type: object
+      description: Datos para crear un usuario directamente (ADMIN). El usuario se crea como ACTIVE.
+      required:
+        - login
+        - email
+        - phone
+        - firstName
+        - lastName
+        - password
+        - role
+      properties:
+        login:
+          type: string
+          minLength: 3
+          maxLength: 50
+          pattern: '^[a-zA-Z0-9_]+$'
+          example: jdoe
+        email:
+          type: string
+          format: email
+          example: jdoe@example.com
+        phone:
+          type: string
+          pattern: '^\+[1-9]\d{7,14}$'
+          example: "+34612345678"
+        firstName:
+          type: string
+          minLength: 2
+          maxLength: 100
+          example: "John"
+        lastName:
+          type: string
+          minLength: 2
+          maxLength: 100
+          example: "Doe"
+        password:
+          type: string
+          format: password
+          minLength: 8
+          example: "SecureP4ss!"
+        role:
+          $ref: '#/components/schemas/UserRole'
+
+    UsuarioAdminPatchRequest:
+      type: object
+      description: |
+        Campos actualizables por el ADMIN (semántica PATCH — todos opcionales).
+        Permite modificar rol y estado además de datos personales.
+      properties:
+        email:
+          type: string
+          format: email
+          example: nuevoemail@example.com
+        phone:
+          type: string
+          pattern: '^\+[1-9]\d{7,14}$'
+          example: "+34698765432"
+        firstName:
+          type: string
+          minLength: 2
+          maxLength: 100
+          example: "John"
+        lastName:
+          type: string
+          minLength: 2
+          maxLength: 100
+          example: "Doe"
+        role:
+          $ref: '#/components/schemas/UserRole'
+        status:
+          $ref: '#/components/schemas/UserStatus'
+        password:
+          type: string
+          format: password
+          minLength: 8
+          example: "NuevaP4ss!"
+
+    AprobarResponse:
+      type: object
+      description: Respuesta de aprobación de cuenta de usuario
+      required:
+        - id
+        - login
+        - status
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 5
+        login:
+          type: string
+          example: jdoe
+        status:
+          type: string
+          enum:
+            - ACTIVE
+          example: ACTIVE
+
+    PaginatedUsuariosResponse:
+      allOf:
+        - $ref: '#/components/schemas/PaginatedResponseMeta'
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              type: array
+              description: Lista de usuarios de la página actual
+              items:
+                $ref: '#/components/schemas/UsuarioResponse'
+      examples:
+        paginaDeUsuarios:
+          summary: Primera página de usuarios
+          value:
+            total: 42
+            page: 0
+            pageSize: 20
+            data:
+              - id: 1
+                login: jdoe
+                email: jdoe@example.com
+                phone: "+34612345678"
+                firstName: "John"
+                lastName: "Doe"
+                role: USER
+                status: ACTIVE
+                telegramLinked: true
+                telegramLinkedAt: "2025-03-10T14:22:00Z"
+                registeredAt: "2025-01-15T10:00:00Z"
+                updatedAt: "2025-03-10T14:22:00Z"
+
+    # --- Reservas ------------------------------------------------------------
+
+    ParticipanteRequest:
+      type: object
+      description: |
+        Participante adicional para una reserva. Exactamente uno de `userId` o `externalName`
+        debe estar presente (no ambos, no ninguno).
+      properties:
+        userId:
+          type: integer
+          format: int64
+          description: ID del usuario registrado en el sistema
+          nullable: true
+          example: 7
+        externalName:
+          type: string
+          description: Nombre del participante externo sin cuenta en el sistema
+          nullable: true
+          maxLength: 100
+          example: "Carlos García"
+
+    ParticipanteResponse:
+      type: object
+      description: Información de un participante en la reserva
+      required:
+        - id
+        - nombre
+        - statusPago
+        - isOwner
+        - joinedAt
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Identificador del registro de participante
+          example: 3
+        userId:
+          type: integer
+          format: int64
+          description: ID del usuario registrado (null si es participante externo)
+          nullable: true
+          example: 7
+        nombre:
+          type: string
+          description: Nombre del participante (registrado o externo)
+          example: "Carlos García"
+        statusPago:
+          $ref: '#/components/schemas/PaymentStatus'
+        isOwner:
+          type: boolean
+          description: Indica si este participante es el titular de la reserva
+          example: false
+        slotPosition:
+          type: integer
+          description: Posición en la reserva (1 = titular, 2-4 = resto)
+          minimum: 1
+          maximum: 4
+          example: 2
+        joinedAt:
+          type: string
+          format: date-time
+          description: Instante en que se incorporó a la reserva
+          example: "2025-06-14T18:30:00Z"
+
+    ReservaRequest:
+      type: object
+      description: Datos para crear una nueva reserva
+      required:
+        - reservationDate
+        - startTime
+        - durationMinutes
+      properties:
+        reservationDate:
+          type: string
+          format: date
+          description: Fecha de la reserva (no puede ser en el pasado)
+          example: "2025-06-15"
+        startTime:
+          type: string
+          description: Hora de inicio (en punto o en media hora, formato HH:mm)
+          pattern: '^([01]\d|2[0-3]):[0-5]\d$'
+          example: "09:00"
+        durationMinutes:
+          type: integer
+          description: "Duración en minutos. Valores permitidos: 60, 90, 120, 150, 180"
+          enum:
+            - 60
+            - 90
+            - 120
+            - 150
+            - 180
+          example: 60
+        notes:
+          type: string
+          description: Observaciones libres del titular
+          nullable: true
+          maxLength: 500
+          example: "Reserva para partido de entrenamiento"
+        participantesAdicionales:
+          type: array
+          description: Participantes adicionales (máx. 3 — el creador ocupa el slot 1)
+          items:
+            $ref: '#/components/schemas/ParticipanteRequest'
+          maxItems: 3
+
+    ReservaResponse:
+      type: object
+      description: Datos completos de una reserva
+      required:
+        - id
+        - reservationDate
+        - startTime
+        - durationMinutes
+        - status
+        - channel
+        - priceTotal
+        - participants
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Identificador único de la reserva (UUID)
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        reservationDate:
+          type: string
+          format: date
+          description: Fecha de la reserva
+          example: "2025-06-15"
+        startTime:
+          type: string
+          description: Hora de inicio (HH:mm)
+          example: "09:00"
+        endTime:
+          type: string
+          description: Hora de fin calculada (HH:mm)
+          example: "10:00"
+        durationMinutes:
+          type: integer
+          description: Duración en minutos
+          example: 60
+        status:
+          $ref: '#/components/schemas/ReservationStatus'
+        channel:
+          $ref: '#/components/schemas/ReservationChannel'
+        ownerId:
+          type: integer
+          format: int64
+          description: ID del titular de la reserva
+          example: 5
+        ownerName:
+          type: string
+          description: Nombre completo del titular
+          example: "John Doe"
+        priceTotal:
+          type: number
+          format: double
+          description: Importe total congelado en el momento de crear la reserva
+          example: 15.00
+        notes:
+          type: string
+          description: Observaciones libres del titular
+          nullable: true
+          example: "Reserva para partido de entrenamiento"
+        participants:
+          type: array
+          description: Lista de participantes (incluye el titular como slot 1)
+          items:
+            $ref: '#/components/schemas/ParticipanteResponse'
+        telegramMessageId:
+          type: string
+          description: ID del mensaje publicado en el grupo de Telegram (null si no aplica)
+          nullable: true
+          example: "12345"
+        createdAt:
+          type: string
+          format: date-time
+          description: Instante de creación de la reserva
+          example: "2025-06-14T18:00:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Última modificación de la reserva
+          example: "2025-06-14T18:00:00Z"
+
+    ReservaEstadoRequest:
+      type: object
+      description: Nuevo estado para una reserva (solo ADMIN)
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          description: Estado destino de la transición
+          enum:
+            - CONFIRMED
+            - CANCELLED
+            - COMPLETED
+          example: CONFIRMED
+
+    ReservaEstadoResponse:
+      type: object
+      description: Confirmación del cambio de estado de una reserva
+      required:
+        - id
+        - status
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        status:
+          $ref: '#/components/schemas/ReservationStatus'
+
+    DisponibilidadResponse:
+      type: object
+      description: Tramos horarios disponibles para una fecha concreta
+      required:
+        - fecha
+        - tramosDisponibles
+      properties:
+        fecha:
+          type: string
+          format: date
+          description: Fecha consultada
+          example: "2025-06-15"
+        tramosDisponibles:
+          type: array
+          description: Lista de tramos con plazas libres
+          items:
+            $ref: '#/components/schemas/TramoDisponible'
+
+    TramoDisponible:
+      type: object
+      description: Un tramo horario disponible con sus plazas libres
+      required:
+        - horaInicio
+        - duracionMinutos
+        - plazasLibres
+      properties:
+        horaInicio:
+          type: string
+          description: Hora de inicio del tramo (HH:mm)
+          example: "09:00"
+        duracionMinutos:
+          type: integer
+          description: Duración del tramo en minutos
+          example: 60
+        plazasLibres:
+          type: integer
+          description: Número de plazas disponibles en este tramo
+          minimum: 1
+          maximum: 4
+          example: 3
+
+    UnirseResponse:
+      type: object
+      description: Confirmación de incorporación a una reserva
+      required:
+        - participanteId
+        - reservaId
+        - userId
+        - nombre
+        - statusPago
+      properties:
+        participanteId:
+          type: integer
+          format: int64
+          description: ID del registro de participante creado
+          example: 8
+        reservaId:
+          type: string
+          format: uuid
+          description: UUID de la reserva a la que se ha unido
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        userId:
+          type: integer
+          format: int64
+          description: ID del usuario que se ha unido
+          example: 3
+        nombre:
+          type: string
+          description: Nombre del usuario incorporado
+          example: "Jane Smith"
+        statusPago:
+          $ref: '#/components/schemas/PaymentStatus'
+
+    PaginatedReservasResponse:
+      allOf:
+        - $ref: '#/components/schemas/PaginatedResponseMeta'
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              type: array
+              description: Lista de reservas de la página actual
+              items:
+                $ref: '#/components/schemas/ReservaResponse'
+
+    # --- Pagos ---------------------------------------------------------------
+
+    PagoResponse:
+      type: object
+      description: Datos de un pago asociado a una reserva
+      required:
+        - id
+        - reservaId
+        - amount
+        - status
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Identificador único del pago (UUID)
+          example: "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+        reservaId:
+          type: string
+          format: uuid
+          description: UUID de la reserva asociada
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        amount:
+          type: number
+          format: double
+          description: Importe del pago en EUR
+          example: 15.00
+        method:
+          $ref: '#/components/schemas/PaymentMethod'
+        status:
+          $ref: '#/components/schemas/PaymentStatus'
+        redsysOrderId:
+          type: string
+          description: Referencia de orden Redsys (Ds_Merchant_Order)
+          nullable: true
+          example: "ORDER-20250615-001"
+        paymentUrl:
+          type: string
+          format: uri
+          description: URL del TPV virtual Redsys (solo disponible mientras el pago está en curso)
+          nullable: true
+          example: "https://sis-t.redsys.es:25443/sis/realizarPago"
+        gateway:
+          type: string
+          description: Pasarela de pago utilizada
+          nullable: true
+          enum:
+            - REDSYS
+            - STRIPE
+            - PAYPAL
+          example: REDSYS
+        transactionId:
+          type: string
+          description: Código de autorización del banco (Ds_AuthorisationCode)
+          nullable: true
+          example: "123456"
+        paidAt:
+          type: string
+          format: date-time
+          description: Instante de confirmación del pago
+          nullable: true
+          example: "2025-06-14T10:30:00Z"
+        createdAt:
+          type: string
+          format: date-time
+          description: Instante de creación del registro de pago
+          example: "2025-06-14T09:00:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Última modificación del pago
+          example: "2025-06-14T10:30:00Z"
+
+    IniciarPagoRequest:
+      type: object
+      description: Datos para iniciar un pago online vía Redsys
+      required:
+        - reservaId
+        - participanteId
+      properties:
+        reservaId:
+          type: string
+          format: uuid
+          description: UUID de la reserva a pagar
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        participanteId:
+          type: integer
+          format: int64
+          description: ID del participante que realiza el pago (debe corresponder al usuario autenticado)
+          example: 3
+
+    IniciarPagoResponse:
+      type: object
+      description: Datos para redirigir al usuario al TPV virtual de Redsys
+      required:
+        - pagoId
+        - redsysOrderId
+        - redsysUrl
+        - amount
+        - status
+      properties:
+        pagoId:
+          type: string
+          format: uuid
+          description: UUID del registro de pago creado
+          example: "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+        redsysOrderId:
+          type: string
+          description: Referencia de orden generada para Redsys
+          example: "ORDER-20250615-001"
+        redsysUrl:
+          type: string
+          format: uri
+          description: URL del TPV virtual Redsys al que redirigir al usuario
+          example: "https://sis-t.redsys.es:25443/sis/realizarPago"
+        amount:
+          type: number
+          format: double
+          description: Importe del pago en EUR
+          example: 15.00
+        status:
+          type: string
+          enum:
+            - IN_PROGRESS
+          description: Estado inicial del pago tras iniciar el proceso
+          example: IN_PROGRESS
+
+    EfectivoPagoResponse:
+      type: object
+      description: Confirmación del registro de pago en efectivo
+      required:
+        - reservaId
+        - pagosActualizados
+        - totalCobrado
+      properties:
+        reservaId:
+          type: string
+          format: uuid
+          description: UUID de la reserva
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        pagosActualizados:
+          type: integer
+          description: Número de registros de pago actualizados
+          example: 1
+        totalCobrado:
+          type: number
+          format: double
+          description: Importe total cobrado en efectivo
+          example: 15.00
+
+    PaginatedPagosResponse:
+      allOf:
+        - $ref: '#/components/schemas/PaginatedResponseMeta'
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              type: array
+              description: Lista de pagos de la página actual
+              items:
+                $ref: '#/components/schemas/PagoResponse'
+      examples:
+        historialPagos:
+          summary: Página de pagos de un usuario
+          value:
+            total: 8
+            page: 0
+            pageSize: 20
+            data:
+              - id: "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+                reservaId: "550e8400-e29b-41d4-a716-446655440000"
+                amount: 15.00
+                method: REDSYS
+                status: PAID
+                redsysOrderId: "ORDER-20250615-001"
+                paymentUrl: null
+                gateway: REDSYS
+                transactionId: "123456"
+                paidAt: "2025-06-14T10:30:00Z"
+                createdAt: "2025-06-14T09:00:00Z"
+                updatedAt: "2025-06-14T10:30:00Z"
+
+    # --- OTP -----------------------------------------------------------------
+
+    OtpVerificarRequest:
+      type: object
+      description: Código OTP y tipo de operación a verificar
+      required:
+        - codigo
+        - tipo
+      properties:
+        codigo:
+          type: string
+          description: Código OTP de 6 dígitos recibido por Telegram
+          pattern: '^\d{6}$'
+          example: "482910"
+        tipo:
+          $ref: '#/components/schemas/OtpType'
+
+    OtpVerificarResponse:
+      type: object
+      description: Resultado de la verificación del OTP
+      required:
+        - verificado
+        - tipo
+        - message
+      properties:
+        verificado:
+          type: boolean
+          description: Indica si el OTP fue verificado con éxito
+          example: true
+        tipo:
+          $ref: '#/components/schemas/OtpType'
+        message:
+          type: string
+          description: Mensaje informativo sobre el resultado
+          example: "Código OTP verificado correctamente."
+
+    # --- Sistema -------------------------------------------------------------
+
+    SystemConfigResponse:
+      type: object
+      description: |
+        Configuración global del club (singleton). Los campos sensibles (redsys_secret_key,
+        telegram_bot_token, smtp_password) no se devuelven en claro por seguridad.
+      required:
+        - pricePerHour
+        - cancellationDeadlineHours
+        - maxParticipants
+        - paymentGateway
+        - updatedAt
+      properties:
+        pricePerHour:
+          type: number
+          format: double
+          description: Precio por hora en EUR
+          example: 15.00
+        cancellationDeadlineHours:
+          type: integer
+          description: Horas mínimas de antelación para cancelar sin penalización
+          example: 2
+        maxParticipants:
+          type: integer
+          description: Número máximo de participantes por reserva
+          minimum: 1
+          maximum: 4
+          example: 4
+        paymentGateway:
+          type: string
+          description: Pasarela de pago activa
+          enum:
+            - REDSYS
+            - STRIPE
+            - PAYPAL
+          example: REDSYS
+        redsysMerchantCode:
+          type: string
+          description: Código de comercio Redsys (null si no configurado)
+          nullable: true
+          example: "123456789"
+        redsysTerminal:
+          type: string
+          description: Número de terminal Redsys (null si no configurado)
+          nullable: true
+          example: "001"
+        redsysConfigured:
+          type: boolean
+          description: Indica si las credenciales Redsys están configuradas (sin revelar el secret)
+          example: true
+        telegramGroupId:
+          type: string
+          description: ID del grupo de Telegram de la comunidad (null si no configurado)
+          nullable: true
+          example: "-1001234567890"
+        telegramBotConfigured:
+          type: boolean
+          description: Indica si el bot de Telegram está configurado (sin revelar el token)
+          example: true
+        smtpHost:
+          type: string
+          description: Servidor SMTP (null si no configurado)
+          nullable: true
+          example: "smtp.gmail.com"
+        smtpPort:
+          type: integer
+          description: Puerto SMTP (null si no configurado)
+          nullable: true
+          example: 587
+        smtpUser:
+          type: string
+          description: Usuario SMTP (null si no configurado)
+          nullable: true
+          example: "noreply@padelpro.local"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Última actualización de la configuración
+          example: "2025-05-01T10:00:00Z"
+        updatedById:
+          type: integer
+          format: int64
+          description: ID del admin que realizó el último cambio
+          nullable: true
+          example: 1
+
+    SystemConfigUpdateRequest:
+      type: object
+      description: Campos actualizables de la configuración del sistema (semántica PATCH — todos opcionales)
+      properties:
+        pricePerHour:
+          type: number
+          format: double
+          description: Nuevo precio por hora en EUR
+          minimum: 0.01
+          example: 18.00
+        cancellationDeadlineHours:
+          type: integer
+          description: Nuevas horas mínimas de antelación para cancelar
+          minimum: 0
+          example: 4
+        maxParticipants:
+          type: integer
+          description: Nuevo máximo de participantes por reserva
+          minimum: 1
+          maximum: 4
+          example: 4
+        paymentGateway:
+          type: string
+          description: Pasarela de pago a activar
+          enum:
+            - REDSYS
+            - STRIPE
+            - PAYPAL
+          example: REDSYS
+        redsysMerchantCode:
+          type: string
+          description: Código de comercio Redsys
+          nullable: true
+          example: "123456789"
+        redsysTerminal:
+          type: string
+          description: Número de terminal Redsys
+          nullable: true
+          example: "001"
+        redsysSecretKey:
+          type: string
+          format: password
+          description: Clave HMAC SHA-256 Redsys (se cifra AES-256 antes de persistir)
+          nullable: true
+          example: "XXXXXXXXXXXXXXXXXX"
+        telegramBotToken:
+          type: string
+          format: password
+          description: Token del bot de Telegram (se cifra AES-256 antes de persistir)
+          nullable: true
+          example: "123456:ABCDEF..."
+        telegramGroupId:
+          type: string
+          description: ID del grupo de Telegram de la comunidad
+          nullable: true
+          example: "-1001234567890"
+        smtpHost:
+          type: string
+          description: Servidor SMTP
+          nullable: true
+          example: "smtp.gmail.com"
+        smtpPort:
+          type: integer
+          description: Puerto SMTP
+          nullable: true
+          minimum: 1
+          maximum: 65535
+          example: 587
+        smtpUser:
+          type: string
+          description: Usuario SMTP
+          nullable: true
+          example: "noreply@padelpro.local"
+        smtpPassword:
+          type: string
+          format: password
+          description: Contraseña SMTP (se cifra AES-256 antes de persistir)
+          nullable: true
+          example: "smtp_secret_password"
+
+    # --- Webhooks ------------------------------------------------------------
+
+    RedsysWebhookPayload:
+      type: object
+      description: Payload de notificación de pago enviado por Redsys al webhook del backend
+      required:
+        - Ds_SignatureVersion
+        - Ds_MerchantParameters
+        - Ds_Signature
+      properties:
+        Ds_SignatureVersion:
+          type: string
+          description: Versión del algoritmo de firma
+          example: "HMAC_SHA256_V1"
+        Ds_MerchantParameters:
+          type: string
+          description: Parámetros de la transacción en Base64
+          example: "eyJEU19NRVJDSEF..."
+        Ds_Signature:
+          type: string
+          description: Firma HMAC SHA-256 del payload
+          example: "WJExynZ+..."

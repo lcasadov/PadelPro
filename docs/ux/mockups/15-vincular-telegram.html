@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PadelPro · 15 · Vincular Telegram</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./_shared/styles.css">
+</head>
+<body>
+<div class="chrome">
+  <div class="chrome-brand"><span class="dot"></span> PadelPro · Mockups</div>
+  <div style="font-family:'Geist Mono',monospace;font-size:11px;color:var(--muted-light)">15 · Vincular Telegram → <a href="./index.html" style="color:var(--lime)">índice</a></div>
+</div>
+
+<div class="stage active" style="display:flex;">
+  <div class="stage-header">
+    <div class="stage-title">
+      <span class="num">15 · TELEGRAM · MOBILE</span>
+      Vincular Telegram
+    </div>
+    <div class="stage-meta">
+      Capability: <span>auth-otp-telegram</span><br>
+      Endpoint: <span>POST /api/v1/telegram/link/initiate</span><br>
+      Permisos: <span>JUGADOR autenticado</span>
+    </div>
+  </div>
+  <div class="stage-body">
+    <div class="phone">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <div class="phone-status"><span>9:41</span><span>● ● ●</span></div>
+        <div class="phone-content">
+          <div class="tg">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+              <div class="p-back">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+              </div>
+            </div>
+            <div class="tg-hero">
+              <div class="tg-icon">
+                <svg viewBox="0 0 24 24" fill="white"><path d="M21.5 4.5l-3 15s-.5 1-1.5 1c-.5 0-2-1-2-1l-7-5-3-1s-1-.5-1-1.5 1-1.5 1-1.5l16-5s.5-.5 1-.5c.5 0 .5.5.5.5z"/></svg>
+              </div>
+              <h1>Activa <em>Telegram</em> en tu cuenta</h1>
+              <p>Recibe avisos de tu próxima reserva y usa el bot como segundo factor de autenticación.</p>
+            </div>
+
+            <div class="tg-steps">
+              <div class="tg-step">
+                <div class="num">1</div>
+                <div class="text">
+                  <div class="title">Abre el bot en Telegram</div>
+                  <div class="desc">Pulsa el botón de abajo o búscalo en Telegram.</div>
+                  <span class="botname">@PadelPro_bot</span>
+                </div>
+              </div>
+              <div class="tg-step">
+                <div class="num">2</div>
+                <div class="text">
+                  <div class="title">Envía /vincular en el chat</div>
+                  <div class="desc">El bot te pedirá un código que verás en la siguiente pantalla.</div>
+                </div>
+              </div>
+              <div class="tg-step">
+                <div class="num">3</div>
+                <div class="text">
+                  <div class="title">Introduce el código de 6 dígitos</div>
+                  <div class="desc">Solo válido durante 5 minutos. Si caduca, vuelve a empezar.</div>
+                </div>
+              </div>
+            </div>
+
+            <button class="p-btn lime" style="margin-top: auto;">
+              Abrir Telegram <span class="arrow">→</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <aside class="stage-notes">
+      <h3>Notas de diseño</h3>
+      <ul>
+        <li><b>Color azul Telegram</b> respetado en el icono e ilustración: confianza inmediata con la marca.</li>
+        <li><b>3 pasos numerados</b>: el flujo cross-app es confuso, lo desglosamos para evitar abandono.</li>
+        <li><b>Username del bot en mono</b>: el usuario sabe que es un identificador técnico exacto.</li>
+        <li><b>Mención de 5 minutos</b>: gestiona expectativas sobre <span class="rn">RN-otp-01</span> caducidad.</li>
+        <li>Cubre <span class="cap">auth-otp-telegram</span> Req "iniciar vinculación".</li>
+      </ul>
+    </aside>
+  </div>
+</div>
+</body>
+</html>
