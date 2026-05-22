@@ -306,3 +306,26 @@ Las siguientes diferencias se encontraron entre la tabla de tareas proporcionada
 | Admin sidebar (pantallas 17–19) | Nav items | Variable | Pantalla 17 incluye item "Política" en sidebar; pantallas 18–19 no lo incluyen |
 
 Ninguna discrepancia afecta a capability, endpoint principal o permisos de forma material.
+
+---
+
+## Cruce con OpenSpec
+
+Tabla inversa: cada capability de `openspec/specs/` con sus pantallas UX asociadas. Mantenida sincronizada con las secciones `## Mockups asociados` de cada spec.
+
+| Capability | Spec | Pantallas |
+|---|---|---|
+| `auth-local` | [`openspec/specs/auth-local/spec.md`](../openspec/specs/auth-local/spec.md) | 01, 02, 03, 04, 05 |
+| `usuarios` | [`openspec/specs/usuarios/spec.md`](../openspec/specs/usuarios/spec.md) | 03, 13 |
+| `auth-otp-telegram` | [`openspec/specs/auth-otp-telegram/spec.md`](../openspec/specs/auth-otp-telegram/spec.md) | 13, 14, 15 |
+| `reservas` | [`openspec/specs/reservas/spec.md`](../openspec/specs/reservas/spec.md) | 06, 08, 10, 11, 12, 22, 23 |
+| `disponibilidad-pistas` | [`openspec/specs/disponibilidad-pistas/spec.md`](../openspec/specs/disponibilidad-pistas/spec.md) | 06, 07, 22 |
+| `pagos-redsys` | [`openspec/specs/pagos-redsys/spec.md`](../openspec/specs/pagos-redsys/spec.md) | 08, 09, 10, 18, 23 |
+| `notificaciones` | [`openspec/specs/notificaciones/spec.md`](../openspec/specs/notificaciones/spec.md) | 10 |
+| `partidas` | [`openspec/specs/partidas/spec.md`](../openspec/specs/partidas/spec.md) | 16, 17, 18 |
+| `exportaciones-rgpd` | [`openspec/specs/exportaciones-rgpd/spec.md`](../openspec/specs/exportaciones-rgpd/spec.md) | 19, 20 |
+| `auditoria` | [`openspec/specs/auditoria/spec.md`](../openspec/specs/auditoria/spec.md) | 20 |
+| `administracion-club` | [`openspec/specs/administracion-club/spec.md`](../openspec/specs/administracion-club/spec.md) | 21 |
+| `pistas` | [`openspec/specs/pistas/spec.md`](../openspec/specs/pistas/spec.md) | 24 |
+| `roles-permisos` | [`openspec/specs/roles-permisos/spec.md`](../openspec/specs/roles-permisos/spec.md) | — (transversal) |
+| `configuracion-club` | [`openspec/specs/configuracion-club/spec.md`](../openspec/specs/configuracion-club/spec.md) | — (backend) |
