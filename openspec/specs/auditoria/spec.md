@@ -123,3 +123,19 @@ Sin endpoint REST directo en v1.0 — las entradas se generan internamente.
 - **`exportaciones-rgpd`**: genera eventos USER_ANONYMIZED.
 - **`notificaciones`**: el fallo de webhook Telegram (secret inválido) genera TELEGRAM_WEBHOOK_INVALID_SECRET a través del adaptador de entrada del bot.
 - **`administracion-club`** (Fase 2): leerá `audit_log` para mostrar historial de actividad administrativa.
+
+## Mockups asociados
+
+Los siguientes mockups en alta fidelidad ilustran la experiencia de usuario para esta capability. La fuente única de verdad UX es [`docs/ux/README.md`](../../../docs/ux/README.md).
+
+### Pantallas
+
+| # | Pantalla | Dispositivo | Permisos | Mockup |
+|---|----------|-------------|----------|--------|
+| 20 | Confirmar eliminación | Mobile | USER | [`24-eliminar-cuenta.html`](../../../docs/ux/mockups/24-eliminar-cuenta.html) |
+
+### Flujos relacionados
+
+Esta capability participa en los siguientes flujos (ver [`docs/ux/flujos.md`](../../../docs/ux/flujos.md)):
+
+- **Flujo RGPD — derecho al olvido** — la anonimización de cuenta (pantalla 20) genera la entrada `USER_ANONYMIZED` en `audit_log`; esta entrada es el rastro inmutable que acredita el cumplimiento del Art. 17 RGPD.

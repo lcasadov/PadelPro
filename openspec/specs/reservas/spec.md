@@ -170,3 +170,32 @@ Gestión del ciclo de vida completo de una reserva de pista: creación, consulta
 - **disponibilidad-pistas**: La disponibilidad se calcula a partir de las reservas activas en `reservations`.
 - **partidas**: Las reservas con plazas libres y status `CONFIRMED` o `PENDING_CONFIRMATION` son joinables desde la capability `partidas`.
 - **pagos-redsys**: Cada reserva crea atómicamente un registro de pago; el flujo de pago Redsys referencia el `payments.id` y el `reservations.id`.
+
+## Mockups asociados
+
+Los siguientes mockups en alta fidelidad ilustran la experiencia de usuario para esta capability. La fuente única de verdad UX es [`docs/ux/README.md`](../../../docs/ux/README.md).
+
+### Pantallas
+
+| # | Pantalla | Dispositivo | Permisos | Mockup |
+|---|----------|-------------|----------|--------|
+| 06 | Home jugador | Mobile | USER | [`02-home-jugador.html`](../../../docs/ux/mockups/02-home-jugador.html) |
+| 08 | Confirmar reserva | Mobile | USER | [`04-confirmar-reserva.html`](../../../docs/ux/mockups/04-confirmar-reserva.html) |
+| 10 | Pago confirmado | Mobile | USER | [`12-pago-confirmado.html`](../../../docs/ux/mockups/12-pago-confirmado.html) |
+| 11 | Mis reservas | Mobile | USER | [`05-mis-reservas.html`](../../../docs/ux/mockups/05-mis-reservas.html) |
+| 12 | Detalle de reserva | Mobile | USER | [`13-detalle-reserva.html`](../../../docs/ux/mockups/13-detalle-reserva.html) |
+| 22 | Calendario semanal | Desktop | ADMIN | [`18-calendario-semanal.html`](../../../docs/ux/mockups/18-calendario-semanal.html) |
+| 23 | Reservas del club | Desktop | ADMIN | [`19-reservas-club.html`](../../../docs/ux/mockups/19-reservas-club.html) |
+
+### Flujos relacionados
+
+Esta capability participa en los siguientes flujos (ver [`docs/ux/flujos.md`](../../../docs/ux/flujos.md)):
+
+- **Flujo de reserva de pista con pago Redsys** — es la capability central del flujo: cubre la confirmación de la reserva (pantalla 08), la pantalla de pago confirmado (pantalla 10) y el detalle posterior de la reserva (pantalla 12).
+- **Flujo admin — gestión del club** — el calendario semanal (pantalla 22) y la tabla de reservas del club (pantalla 23) permiten al ADMIN supervisar y gestionar el estado de todas las reservas.
+
+### Notas de UX
+
+> - El importe mostrado en la pantalla de confirmar reserva (pantalla 08) proviene siempre del backend; el cliente no puede modificarlo (RN-RES-03).
+> - Un USER solo ve en Mis reservas (pantalla 11) las reservas de las que es owner o participante (RN-AUTH-01).
+> - La pantalla de detalle de reserva (pantalla 12) debe mostrar el botón de cancelación solo si el usuario es el owner y la reserva está en un estado cancelable; fuera del plazo de cancelación debe indicar visualmente que no aplica reembolso (RN-RES-04).

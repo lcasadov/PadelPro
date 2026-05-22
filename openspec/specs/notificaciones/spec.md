@@ -111,3 +111,24 @@ a través del puerto de salida `MensajeriaPort`. El job de recordatorios usa `@S
 - **`pagos-redsys`**: el evento `PAYMENT_CONFIRMED` dispara el recibo de pago.
 - **`autenticacion`**: el flujo de reset de contraseña usa `MensajeriaPort` para enviar el OTP por Telegram.
 - **`auditoria`**: los fallos de envío Telegram con secret inválido generan entradas en `audit_log` con `action=TELEGRAM_WEBHOOK_INVALID_SECRET`.
+
+## Mockups asociados
+
+Los siguientes mockups en alta fidelidad ilustran la experiencia de usuario para esta capability. La fuente única de verdad UX es [`docs/ux/README.md`](../../../docs/ux/README.md).
+
+### Pantallas
+
+| # | Pantalla | Dispositivo | Permisos | Mockup |
+|---|----------|-------------|----------|--------|
+| 10 | Pago confirmado | Mobile | USER | [`12-pago-confirmado.html`](../../../docs/ux/mockups/12-pago-confirmado.html) |
+
+### Flujos relacionados
+
+Esta capability participa en los siguientes flujos (ver [`docs/ux/flujos.md`](../../../docs/ux/flujos.md)):
+
+- **Flujo de reserva de pista con pago Redsys** — la pantalla de pago confirmado (pantalla 10) incluye el aviso de que el usuario recibirá una notificación por Telegram si tiene la cuenta vinculada.
+
+### Notas de UX
+
+> - La pantalla de pago confirmado (pantalla 10) debe indicar que se ha enviado una notificación por Telegram solo si el usuario tiene `telegram_chat_id` vinculado (RN-TEL-03); si no está vinculado, omitir el aviso.
+> - Un fallo en el envío de notificación no debe impedir que la pantalla de confirmación se muestre al usuario; el flujo principal no se bloquea (RN-NOT-01).

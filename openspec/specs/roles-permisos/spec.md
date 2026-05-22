@@ -182,3 +182,13 @@ Los endpoints de esta capability no tienen rutas propias; la protección se apli
 - **`auth-local`**: proporciona el JWT que contiene los claims `userId` y `role` usados por la verificación de acceso.
 - **`usuarios`**: la asignación de rol se implementa en la capability `usuarios` (endpoint `PATCH /api/admin/usuarios/{id}`).
 - **`auditoria`**: los accesos denegados (403) se registran en `audit_log`.
+
+## Mockups asociados
+
+Esta capability es **transversal o puramente backend**. No tiene pantallas de usuario directas en el sistema actual.
+
+Está implícita en los siguientes mockups donde el concepto aparece de forma indirecta:
+
+- **`roles-permisos`**: implícita en todas las pantallas protegidas (roles ADMIN/USER controlan la navegación). El pill de rol del usuario aparece en `13 · Mi perfil` → [`14-mi-perfil.html`](../../../docs/ux/mockups/14-mi-perfil.html). La redirección por rol no autorizado (403) se manifiesta en todas las pantallas de admin cuando un USER intenta acceder. Las pantallas admin (`21 · Dashboard club`, `22 · Calendario semanal`, `23 · Reservas del club`, `24 · Gestión de pistas`) solo son accesibles para usuarios con rol ADMIN.
+
+Si se evoluciona esta capability hacia una UI dedicada (ej. panel de gestión de roles en Fase 2), añadir el flujo correspondiente en [`docs/ux/flujos.md`](../../../docs/ux/flujos.md) antes de generar mockups.
