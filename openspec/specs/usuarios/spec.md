@@ -161,7 +161,7 @@ Los siguientes mockups en alta fidelidad ilustran la experiencia de usuario para
 
 | # | Pantalla | Dispositivo | Permisos | Mockup |
 |---|----------|-------------|----------|--------|
-| 03 | Crear cuenta | Mobile | público | [`08-crear-cuenta.html`](../../../docs/ux/mockups/08-crear-cuenta.html) |
+| 03 | Crear cuenta | Mobile | No autenticado | [`08-crear-cuenta.html`](../../../docs/ux/mockups/08-crear-cuenta.html) |
 | 13 | Mi perfil | Mobile | USER | [`14-mi-perfil.html`](../../../docs/ux/mockups/14-mi-perfil.html) |
 
 ### Flujos relacionados

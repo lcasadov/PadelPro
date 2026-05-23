@@ -39,7 +39,7 @@ Agente responsable: **`backend-architect`**. Lee `docs/openapi.yaml`, `docs/data
 
 ### Servicios de aplicación
 
-- [ ] **T-012** — Implementar `RegistrationService.register(RegisterCommand cmd)`: validar política de contraseñas (RN-AUTH-08), verificar unicidad de email (409 si ya existe), hash BCrypt cost 12, persistir `User` con `status=ACTIVE`, publicar evento `UserRegistered`. Módulo: `application/`.
+- [ ] **T-012** — Implementar `RegistrationService.register(RegisterCommand cmd)`: validar política de contraseñas (RN-AUTH-08), verificar unicidad de email (409 si ya existe), hash BCrypt cost 12, persistir `User` con `status=PENDING` (el ADMIN activa con `PATCH /api/admin/usuarios/{id}/aprobar`), publicar evento `UserRegistered`. Módulo: `application/`.
 - [ ] **T-013** — Implementar `AuthService.login(LoginCommand cmd)`: cargar usuario por email, verificar `BCryptPasswordEncoder.matches()`, generar access token JWT HS256 (claims: `sub`, `role`, `iat`, `exp`), generar refresh token (UUID v4), persistir hash SHA-256 del refresh token en `refresh_tokens`, actualizar `last_login_at`. Módulo: `application/`.
 - [ ] **T-014** — Implementar `JwtService.generateAccessToken(User user)` y `JwtService.validateToken(String token)`. Algoritmo HS256, duración 15 min (RN-AUTH-09). Módulo: `application/` o `infrastructure/`.
 

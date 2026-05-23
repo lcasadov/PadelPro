@@ -66,7 +66,7 @@ GIVEN un usuario no autenticado
 WHEN el usuario envía POST /api/auth/register con esos campos
 THEN el sistema responde 201 Created
   AND el body contiene {id, email, role: "USER"}
-  AND el usuario queda persistido en la tabla users con status=ACTIVE
+  AND el usuario queda persistido en la tabla users con status=PENDING
   AND se genera una entrada en audit_log con action=USER_REGISTERED
 ```
 
@@ -81,15 +81,36 @@ THEN el sistema responde 409 Conflict
   AND la respuesta no indica si la cuenta existente está activa o inactiva
 ```
 
-**Scenario R-1.3 — Contraseña no cumple política mínima**
+**Scenario R-1.3a — Contraseña demasiado corta**
 ```
 GIVEN un usuario no autenticado
   AND la contraseña tiene menos de 8 caracteres
-    OR no contiene al menos una mayúscula
-    OR no contiene al menos un número
 WHEN el usuario envía POST /api/auth/register
 THEN el sistema responde 400 Bad Request
-  AND el body contiene {error: "INVALID_PASSWORD", details: ["<criterio_fallido>"]}
+  AND el body contiene {error: "INVALID_PASSWORD", details: ["MIN_LENGTH_8"]}
+  AND no se crea ningún registro en users
+```
+
+**Scenario R-1.3b — Contraseña sin mayúscula**
+```
+GIVEN un usuario no autenticado
+  AND la contraseña tiene 8 o más caracteres
+  AND la contraseña no contiene ninguna letra mayúscula
+WHEN el usuario envía POST /api/auth/register
+THEN el sistema responde 400 Bad Request
+  AND el body contiene {error: "INVALID_PASSWORD", details: ["REQUIRES_UPPERCASE"]}
+  AND no se crea ningún registro en users
+```
+
+**Scenario R-1.3c — Contraseña sin número**
+```
+GIVEN un usuario no autenticado
+  AND la contraseña tiene 8 o más caracteres
+  AND la contraseña contiene al menos una letra mayúscula
+  AND la contraseña no contiene ningún dígito numérico
+WHEN el usuario envía POST /api/auth/register
+THEN el sistema responde 400 Bad Request
+  AND el body contiene {error: "INVALID_PASSWORD", details: ["REQUIRES_NUMBER"]}
   AND no se crea ningún registro en users
 ```
 
@@ -107,7 +128,7 @@ THEN el sistema responde 400 Bad Request
 
 ### R-2 — Login con credenciales válidas `[AÑADIDO]`
 
-Un usuario registrado puede autenticarse con su email y contraseña. Si las credenciales son correctas, el sistema emite un access token JWT (en el body de la respuesta) y un refresh token (en cookie httpOnly). Si las credenciales son incorrectas o el email no existe, el sistema responde con el mismo error genérico para evitar enumeración de usuarios (RN-RGPD-03).
+Un usuario registrado puede autenticarse con su email y contraseña. Si las credenciales son correctas y la cuenta está `ACTIVE`, el sistema emite un access token JWT y un refresh token (cookie httpOnly). Si las credenciales son incorrectas o el email no existe, el sistema responde 401 con el mismo mensaje genérico (anti-enumeración, RN-RGPD-03). Si las credenciales son correctas pero la cuenta está en estado `PENDING` o `INACTIVE`, el sistema responde 403.
 
 #### Scenarios
 
@@ -140,6 +161,18 @@ WHEN el usuario envía POST /api/auth/login con {email, password}
 THEN el sistema responde 401 Unauthorized
   AND el body contiene {error: "AUTH_INVALID_CREDENTIALS", message: "Credenciales inválidas"}
   AND el tiempo de respuesta no revela si el email existe (se ejecuta el hash BCrypt igualmente)
+  AND se genera una entrada en audit_log con action=LOGIN_FAILURE, user_id=<id del usuario>, ip_address=<IP>
+```
+
+**Scenario R-2.4 — Cuenta en estado PENDING o INACTIVE `[AÑADIDO]`**
+```
+GIVEN un usuario con email=user@example.com existe en el sistema
+  AND la contraseña proporcionada es correcta
+  AND el status del usuario es PENDING o INACTIVE
+WHEN el usuario envía POST /api/auth/login con {email, password}
+THEN el sistema responde 403 Forbidden
+  AND el body contiene {error: "ACCOUNT_NOT_ACTIVE", message: "Tu cuenta aún no está activada. Contacta con el administrador."}
+  AND no se emite ningún token JWT
   AND se genera una entrada en audit_log con action=LOGIN_FAILURE, user_id=<id del usuario>, ip_address=<IP>
 ```
 
@@ -275,7 +308,7 @@ Los siguientes mockups ilustran la experiencia de usuario para este change. Todo
 El flujo muestra:
 ```
 07-splash → ¿Tiene cuenta? → Sí → 01-login → OK → 02-home-jugador
-                            → No → 08-crear-cuenta → POST /auth/register 201 → 02-home-jugador
+                            → No → 08-crear-cuenta → POST /api/auth/register 201 → pantalla de confirmación (cuenta pendiente de aprobación)
 ```
 
 Índice completo de pantallas: [`docs/ux/README.md`](../../../../../docs/ux/README.md)

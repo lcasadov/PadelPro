@@ -133,4 +133,4 @@ Esta capability participa en los siguientes flujos (ver [`docs/ux/flujos.md`](..
 
 > - La pantalla de partidas abiertas (pantalla 16) solo muestra reservas con plazas libres (`participants_count < max_participants`); las partidas completas no aparecen.
 > - Si el usuario ya es participante de una reserva e intenta unirse de nuevo, el sistema responde 409; la pantalla debe mostrar un mensaje claro sin redirigir al checkout (RN-AUTH-03).
-> - La pantalla de confirmar unión (pantalla 18) debe mostrar la política de cancelación automática y el importe que corresponde al usuario antes de confirmar.
+> - La pantalla de confirmar unión (pantalla 18) debe mostrar la política de cancelación automática y el importe que corresponde al usuario antes de confirmar (RN-RES-04, RN-RES-02).

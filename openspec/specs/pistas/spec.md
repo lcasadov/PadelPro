@@ -123,7 +123,7 @@ Los siguientes mockups en alta fidelidad ilustran la experiencia de usuario para
 
 Esta capability participa en los siguientes flujos (ver [`docs/ux/flujos.md`](../../../docs/ux/flujos.md)):
 
-- **Flujo admin — gestión del club** — la pantalla de gestión de pistas (pantalla 24) permite al ADMIN ver el estado operativo (Activa / Mantenimiento) y las métricas de ocupación y tarifa de cada pista; desde aquí se controla si la pista acepta nuevas reservas.
+- **Flujo admin — gestión del club** — la pantalla de gestión de pistas (pantalla 24) permite al ADMIN ver el estado operativo (Activa / Mantenimiento) y las métricas de ocupación y tarifa de la pista; desde aquí se controla si la pista acepta nuevas reservas.
 
 ### Notas de UX
 

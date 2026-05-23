@@ -209,4 +209,4 @@ Esta capability participa en los siguientes flujos (ver [`docs/ux/flujos.md`](..
 
 > - El OTP caduca a los 10 minutos; la pantalla de introducción de OTP (pantalla 15) debe mostrar un contador de tiempo restante en monospace (RN-AUTH-07).
 > - Tras 3 intentos fallidos el OTP se invalida automáticamente; la pantalla debe indicar que el código ha sido invalidado y ofrecer la opción de solicitar uno nuevo (RN-AUTH-07).
-> - El OTP nunca aparece en claro en la pantalla de vinculación; el usuario lo recibe directamente en Telegram y lo introduce manualmente.
+> - El OTP nunca aparece en claro en la pantalla de vinculación; el usuario lo recibe directamente en Telegram y lo introduce manualmente (RN-AUTH-07).

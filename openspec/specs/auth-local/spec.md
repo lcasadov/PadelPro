@@ -227,7 +227,7 @@ Esta capability participa en los siguientes flujos (ver [`docs/ux/flujos.md`](..
 
 ### Notas de UX
 
-> - El mensaje de error de login no debe revelar si el email o login existe en el sistema (anti-enumeración, derivado de RN-AUTH-06 y del scenario "Login fallido con contraseña incorrecta").
+> - El mensaje de error de login no debe revelar si el email o login existe en el sistema (anti-enumeración, RN-RGPD-03 y del scenario "Login fallido con contraseña incorrecta").
 > - Tras 10 intentos fallidos la cuenta se bloquea 15 minutos; la pantalla de login debe mostrar el tiempo de espera restante.
 > - La contraseña debe tener mínimo 8 caracteres, 1 mayúscula y 1 número; la pantalla de nueva contraseña incluye barra de fortaleza y lista de requisitos visuales (RN-AUTH-08).
 > - El OTP de reset de contraseña caduca a los 10 minutos; si el usuario intenta confirmar con un código expirado debe recibir un mensaje claro sin información adicional (RN-AUTH-07).

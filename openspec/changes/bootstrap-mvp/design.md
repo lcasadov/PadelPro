@@ -60,10 +60,11 @@
 }
 ```
 
-**Regla:** Los endpoints `POST /api/auth/login` y `POST /api/auth/register` **nunca** revelan si el email ya existe en el sistema. El mensaje de error es idéntico para:
+**Regla:** Los endpoints `POST /api/auth/login` y `POST /api/auth/register` aplican anti-enumeración para credenciales incorrectas. La respuesta es idéntica para:
 - Email no registrado + contraseña cualquiera → 401
 - Email registrado + contraseña incorrecta → 401
-- Cuenta desactivada → 401 (mismo mensaje; no revelar estado de cuenta)
+
+**Excepción de estado de cuenta:** Las cuentas en estado `PENDING` o `INACTIVE` devuelven **403 Forbidden** (no 401). Esto es coherente con el contrato `docs/openapi.yaml` y permite al usuario saber que su cuenta existe pero no está activa — el ADMIN debe aprobarla con `PATCH /api/admin/usuarios/{id}/aprobar`. No viola la anti-enumeración porque el 403 ocurre solo cuando las credenciales son correctas.
 
 **Excepción justificada:** El registro (`POST /api/auth/register`) devuelve 409 Conflict si el email ya existe, porque el usuario *debe* saber que ya tiene cuenta para no crear un duplicado. Sin embargo, el cuerpo del 409 solo dice `"error": "EMAIL_ALREADY_REGISTERED"` sin confirmar si la cuenta está activa o desactivada.
 
@@ -102,12 +103,12 @@ Este diseño cumple con RN-RGPD-03 (las respuestas no exponen datos de otros usu
 | `last_name` | `VARCHAR(100)` | NOT NULL | Requerido en registro. |
 | `email` | `VARCHAR(255)` | UNIQUE NOT NULL | Igual que `login` en v1.0; separado para facilitar migración futura. |
 | `role` | `ENUM('ADMIN','USER')` | NOT NULL DEFAULT 'USER' | Solo dos roles en v1.0. |
-| `status` | `ENUM('PENDING','ACTIVE','INACTIVE')` | NOT NULL DEFAULT 'ACTIVE' | `PENDING` si se requiere verificación (change futuro). |
+| `status` | `ENUM('PENDING','ACTIVE','INACTIVE')` | NOT NULL DEFAULT 'PENDING' | Cambia a `ACTIVE` cuando ADMIN aprueba con `PATCH /api/admin/usuarios/{id}/aprobar`. |
 | `registered_at` | `TIMESTAMPTZ` | NOT NULL DEFAULT NOW() | Inmutable. |
 | `updated_at` | `TIMESTAMPTZ` | NOT NULL DEFAULT NOW() | Actualizado por trigger. |
 | `last_login_at` | `TIMESTAMPTZ` | NULLABLE | Actualizado en cada login exitoso. |
 
-**Nota de diseño:** `status = 'PENDING'` existe en el schema para el change de verificación de email, pero en `bootstrap-mvp` todos los registros nacen como `ACTIVE`. El campo se incluye ahora para evitar migraciones rupturistas más adelante.
+**Nota de diseño:** En `bootstrap-mvp` los registros nacen como `PENDING` (contrato `docs/openapi.yaml`). El campo cambia a `ACTIVE` cuando el ADMIN aprueba al usuario. El campo `INACTIVE` se usa para desactivar cuentas existentes (change `usuarios`).
 
 **Tabla `refresh_tokens`** (Flyway V2 — ver `docs/data-model.md`):
 
