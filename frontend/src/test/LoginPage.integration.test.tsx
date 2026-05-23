@@ -25,13 +25,11 @@ import { server } from './mocks/server';
 /**
  * Captures the AuthContext value so tests can assert on it after interaction.
  */
-let capturedSetAccessToken: ((t: string | null) => void) | null = null;
 let capturedAccessToken: string | null = null;
 
 function TokenSpy() {
-  const { accessToken, setAccessToken } = useAuth();
+  const { accessToken } = useAuth();
   capturedAccessToken = accessToken;
-  capturedSetAccessToken = setAccessToken;
   return null;
 }
 
@@ -46,7 +44,6 @@ vi.mock('react-router-dom', async () => {
 
 function renderLoginWithAuth() {
   capturedAccessToken = null;
-  capturedSetAccessToken = null;
   return render(
     <AuthProvider>
       <MemoryRouter>
