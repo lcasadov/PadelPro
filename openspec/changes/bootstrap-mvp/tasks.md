@@ -21,7 +21,7 @@ Ejecutar antes que BACKEND y FRONTEND. Valida que el andamiaje OpenSpec está co
 - [x] **T-005** — Crear `openspec/changes/bootstrap-mvp/tasks.md` (este fichero).
 - [x] **T-006** — Crear `openspec/changes/bootstrap-mvp/specs/auth-local/spec.md` con requirements R-1 a R-5, todos marcados `[AÑADIDO]`, con scenarios Given/When/Then y sección `## Mockups asociados`.
 - [x] **T-007** — Validar que los 3 enlaces relativos en el spec hacia `docs/ux/mockups/` resuelven a ficheros existentes: `01-login.html`, `07-splash.html`, `08-crear-cuenta.html`.
-- [ ] **T-008** — Crear el Issue GitHub #76 (ya creado) y añadirlo al Project v2 (`lcasadov/projects/1`) con status `In Review`.
+- [x] **T-008** — Crear el Issue GitHub #76 (ya creado) y añadirlo al Project v2 (`lcasadov/projects/1`) con status `In Review`.
 
 ---
 
@@ -52,8 +52,9 @@ Agente responsable: **`backend-architect`**. Lee `docs/openapi.yaml`, `docs/data
 
 ### Persistencia y migraciones
 
-- [ ] **T-017** — Crear migración Flyway `V1__create_users_table.sql` con DDL de la tabla `users` (ver `docs/data-model.md` y `design.md §Decisión 5`). Incluir `CREATE EXTENSION IF NOT EXISTS btree_gist` si no está ya en V1.
-- [ ] **T-018** — Crear migración Flyway `V2__create_refresh_tokens_table.sql` con DDL de `refresh_tokens` (FK, índices).
+- [x] **T-017** — Crear migración Flyway `V1__create_users_table.sql` con DDL de la tabla `users` (ver `docs/data-model.md` y `design.md §Decisión 5`). Incluir `CREATE EXTENSION IF NOT EXISTS btree_gist` si no está ya en V1.
+- [x] **T-018** — Crear migración Flyway `V2__create_refresh_tokens_table.sql` con DDL de `refresh_tokens` (FK, índices).
+- [x] **T-018b** — Crear migración Flyway `V3__create_audit_log_table.sql` con DDL de `audit_log` (user_id nullable, ON DELETE SET NULL, índices de auditoría). Ejecutado por `database-optimizer`.
 
 ### Rate limiting
 
