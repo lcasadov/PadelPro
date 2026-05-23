@@ -383,29 +383,15 @@ Read the OpenSpec root path from `docs/PROJECT.md` (`OPENSPEC_PATH`, default `op
 
 1. **Identify the change scope**: does the prompt fit an existing change folder or is it a new one?
    - Search `<OPENSPEC_PATH>/changes/` for a matching `proposal.md`.
-   - If it fits, update that folder. If not, create a new `<slug>/` folder.
+   - If it fits, the artifacts already exist — read them and proceed.
+   - If not, generate them with the `/opsx:` commands (see below).
 
-2. **Write / update `proposal.md`** (max 400 words):
-   - `## Why` — motivation
-   - `## What Changes` — bullet list
-   - `## Capabilities` → `### New` and `### Modified`
-   - `## Impact` — affected modules
-   - `## Out of scope` — explicit exclusions
+2. **Generate the four artifacts** using the OpenSpec commands:
+   - If the idea is still vague or needs exploration: run `/opsx:explore <topic>` first to think through the problem, investigate the codebase, and clarify requirements. When insights crystallize, offer to capture them.
+   - Once the scope is clear: run `/opsx:propose <slug>` to generate `proposal.md`, `design.md`, `specs/`, and `tasks.md` in one step.
+   - **Never write these four files manually** — `/opsx:propose` is the authoritative generator.
 
-3. **Write / update `design.md`**:
-   - `## Context` · `## Goals / Non-Goals` · `## Decisions` · `## Risks` · `## Migration Plan` · `## Open Questions`
-
-4. **Write / update `specs/<capability>/spec.md`** for every new or modified capability:
-   - `## ADDED Requirements` / `## MODIFIED Requirements` / `## REMOVED Requirements`
-   - Each requirement: SHALL statement + BDD Scenarios (GIVEN/WHEN/THEN)
-
-5. **Write / update `tasks.md`**:
-   - Grouped by layer: `## Backend` / `## Frontend` / `## Testing`
-   - Each task: `- [ ] X.Y Description` with acceptance criteria
-   - Mark `[x]` when the corresponding agent reports the task complete
-   - Task IDs should match GitHub Issue numbers where possible (e.g. `- [ ] 1.1 (#43) Implementar endpoint POST /patients`)
-
-6. **Update `config.yaml`** if the change introduces new entities, roles, or architectural decisions.
+3. **Update `config.yaml`** if the change introduces new entities, roles, or architectural decisions.
 
 ### API spec location
 
@@ -420,6 +406,11 @@ When `backend-architect` generates or updates an OpenAPI spec, the output path i
 **NUNCA empieces a ejecutar sin haber presentado un plan y recibido aprobación explícita.**
 
 Al recibir cualquier prompt:
+
+0. **Pre-paso — OpenSpec**: Verifica si ya existe un change activo en `openspec/changes/` para esta feature.
+   - Si **no existe**: usa `/opsx:explore` para pensar el problema e investigar el codebase; luego `/opsx:propose <slug>` para generar los 4 artefactos (`proposal.md`, `design.md`, `specs/`, `tasks.md`).
+   - Si **ya existe**: lee su `tasks.md` — ese checklist es la base del plan de ejecución.
+   - El plan de la Phase 0 se elabora **después** de tener los artefactos. Nunca planifiques sobre suposiciones.
 
 1. **Analiza el objetivo** — identifica qué hay que hacer, qué no, y qué información falta.
 2. **Lee `docs/PROJECT.md`** para extraer stack, agentes disponibles, entornos y variables clave.
@@ -502,6 +493,8 @@ PR: <URL si aplica>
 El agente que recibe la delegación también puede actualizar estos campos directamente si tiene acceso al repo, pero el Orquestador es el responsable final. **No avanzar al siguiente paso sin haber actualizado el estado.**
 
 #### ⚡ REGLA OBLIGATORIA — Sincronización de docs/plan/plan.md y OpenSpec
+
+> **`/opsx:apply` vs agentes especializados**: Para features **simples** (un solo área, <5 tareas, sin dependencias entre layers) puedes usar `/opsx:apply <slug>` directamente — ejecuta el `tasks.md` del change sin necesidad de delegar a agentes especializados. Para features **complejas** (multi-agente, backend + frontend + tests, dependencias entre layers) usa el flujo completo del catálogo de agentes. El criterio es el `tasks.md` del change: si todas las tareas son de un solo dominio, `/opsx:apply` es suficiente.
 
 **Al delegar una tarea**, el Orquestador DEBE además:
 - Marcar el ítem correspondiente en `docs/plan/plan.md` como `🔄` (en progreso).
@@ -663,6 +656,7 @@ gh issue close <ID> --repo "$ORG/$REPO" \
 - Mark all items in `docs/plan/plan.md` as `[x]` and close the OpenSpec change.
 - Final consistency check: "Have all acceptance criteria been met?"
 - Present results: branch · PR URL · GitHub Issue/Project status (`Done`) · OpenSpec change updated · coverage achieved.
+- **Una vez mergeada la PR**: ejecuta `/opsx:archive <slug>` para sincronizar los delta specs con los specs principales y mover el change a `openspec/changes/archive/`. Este es el paso final que cierra el ciclo completo.
 
 ---
 
