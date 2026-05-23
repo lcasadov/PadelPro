@@ -1,0 +1,70 @@
+/* ============================================================
+   PadelPro — Design tokens & base styles
+   Fuente de verdad visual: docs/ux/mockups/_shared/styles.css
+   ============================================================ */
+
+:root {
+  /* Palette */
+  --lime: #c6f135;
+  --lime-dark: #a8d020;
+  --ink: #0d0d0d;
+  --cream: #f5f0e8;
+  --warm: #ede8df;
+  --olive: #6b7c3a;
+  --muted: #6b6b5e;
+  --muted-light: #9b9b8e;
+  --error: #d44;
+  --white: #ffffff;
+
+  /* Typography */
+  --font-display: 'Bricolage Grotesque', sans-serif;
+  --font-body: 'Geist', sans-serif;
+  --font-mono: 'Geist Mono', monospace;
+
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--ink);
+  background-color: var(--cream);
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  min-height: 100dvh;
+  background: var(--cream);
+}
+
+#root {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  background: none;
+  font-family: inherit;
+}
+
+input {
+  font-family: inherit;
+  font-size: inherit;
+}
