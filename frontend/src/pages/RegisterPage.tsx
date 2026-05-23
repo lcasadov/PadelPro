@@ -1,10 +1,19 @@
-// T-028 — RegisterPage (sin lógica de API — stub en Oleada 3)
+// T-028 — RegisterPage — Oleada 3: conectada a registerApi
 // Ref visual: docs/ux/mockups/08-crear-cuenta.html
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { registerApi } from '../services/authApi';
+import type { ApiError } from '../services/authApi';
+import axios from 'axios';
 import { PasswordStrengthIndicator } from '../components/PasswordStrengthIndicator';
 import './pages.css';
 import styles from './RegisterPage.module.css';
+
+const PASSWORD_ERROR_MESSAGES: Record<string, string> = {
+  MIN_LENGTH_8: 'La contraseña debe tener al menos 8 caracteres',
+  REQUIRES_UPPERCASE: 'La contraseña debe contener al menos una mayúscula',
+  REQUIRES_NUMBER: 'La contraseña debe contener al menos un número',
+};
 
 export function RegisterPage() {
   const navigate = useNavigate();
@@ -14,12 +23,60 @@ export function RegisterPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [registered, setRegistered] = useState(false);
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setErrorMessage(null);
-    // Stub — implementación real en Oleada 3
-    console.log('register stub', { firstName, lastName, email, password });
+
+    // Manual required-field guard (form has noValidate)
+    if (!firstName || !lastName || !email || !password) {
+      return;
+    }
+
+    try {
+      await registerApi({ firstName, lastName, email, password });
+      setRegistered(true);
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        const status = err.response?.status;
+        const body = err.response?.data as ApiError | undefined;
+        if (status === 409) {
+          setErrorMessage('Este email ya está registrado. ¿Ya tienes cuenta?');
+        } else if (status === 400 && body?.error === 'INVALID_PASSWORD') {
+          const detail = body.details?.[0];
+          const msg = detail
+            ? (PASSWORD_ERROR_MESSAGES[detail] ?? 'Contraseña no válida')
+            : 'Contraseña no válida';
+          setErrorMessage(msg);
+        } else if (status === 429) {
+          setErrorMessage('Demasiados intentos. Inténtalo más tarde.');
+        } else {
+          setErrorMessage('Error inesperado. Inténtalo de nuevo.');
+        }
+      } else {
+        setErrorMessage('Error inesperado. Inténtalo de nuevo.');
+      }
+    }
+  }
+
+  // Pantalla de confirmación tras registro exitoso (R-1.1)
+  if (registered) {
+    return (
+      <div className={styles.registerPage}>
+        <div className={styles.hero}>
+          <h1 className={styles.headline}>
+            ¡Cuenta creada!
+          </h1>
+          <p className={styles.step}>
+            Espera la aprobación del administrador para acceder.
+          </p>
+          <Link to="/login" className="p-link">
+            Volver al inicio de sesión
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   return (
