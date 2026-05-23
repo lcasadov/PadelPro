@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e \"const yaml=require\\('js-yaml'\\); const fs=require\\('fs'\\); try{yaml.load\\(fs.readFileSync\\('c:/proyectos/PadelPro/docs/openapi.yaml','utf8'\\)\\); console.log\\('YAML parse: OK'\\)}catch\\(e\\){console.error\\('PARSE ERROR:',e.message\\)}\")",
+      "Bash(grep -v \"^$\")",
+      "Bash(git commit -m ' *)",
+      "Bash(git -C \"c:/proyectos/PadelPro\" log --oneline feat/docs-ux-system)"
+    ]
+  }
+}
