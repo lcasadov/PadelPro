@@ -1,7 +1,10 @@
-// T-027 — LoginPage (sin lógica de API — stub en Oleada 3)
+// T-027 — LoginPage — Oleada 3: conectada a authApi
 // Ref visual: docs/ux/mockups/01-login.html
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { loginApi } from '../services/authApi';
+import { useAuth } from '../context/AuthContext';
+import axios from 'axios';
 import './pages.css';
 import styles from './LoginPage.module.css';
 
@@ -9,12 +12,32 @@ export function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const { setAccessToken } = useAuth();
+  const navigate = useNavigate();
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setErrorMessage(null);
-    // Stub — implementación real en Oleada 3
-    console.log('login stub', { email, password });
+    try {
+      const response = await loginApi({ email, password });
+      setAccessToken(response.access_token);
+      navigate('/home');
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        const status = err.response?.status;
+        if (status === 401) {
+          setErrorMessage('Credenciales inválidas');
+        } else if (status === 403) {
+          setErrorMessage('Tu cuenta aún no está activada. Contacta con el administrador.');
+        } else if (status === 429) {
+          setErrorMessage('Demasiados intentos. Inténtalo más tarde.');
+        } else {
+          setErrorMessage('Error inesperado. Inténtalo de nuevo.');
+        }
+      } else {
+        setErrorMessage('Error inesperado. Inténtalo de nuevo.');
+      }
+    }
   }
 
   return (
