@@ -53,6 +53,20 @@ public class JwtService {
     // -------------------------------------------------------------------------
 
     /**
+     * Returns the access-token lifetime in seconds, derived from the configured
+     * {@code app.jwt.access-token-expiry-minutes} property.
+     *
+     * <p>Used by {@link AuthService} to populate the {@code expires_in} field of
+     * {@link com.padelpro.auth.application.dto.TokenPair} so that the response
+     * value always matches the actual JWT expiry.
+     *
+     * @return expiry duration in seconds
+     */
+    public int getExpirySeconds() {
+        return expiryMinutes * 60;
+    }
+
+    /**
      * Generate a signed JWT access token for the given user.
      *
      * @param user the authenticated user
