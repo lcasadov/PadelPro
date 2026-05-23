@@ -1,5 +1,8 @@
-// Stub — implementación real en Oleada 3
-// Los tipos coinciden con docs/openapi.yaml (POST /api/v1/auth/login y /register)
+// Oleada 3 — implementación real con axios
+// Tipos coinciden con docs/openapi.yaml (POST /api/auth/login y /api/auth/register)
+import axios from 'axios';
+
+const api = axios.create({ baseURL: '/api', withCredentials: true });
 
 export interface RegisterRequest {
   firstName: string;
@@ -25,11 +28,23 @@ export interface RegisterResponse {
   role: string;
 }
 
-// Stubs — lanzan error hasta Oleada 3
-export async function loginApi(_req: LoginRequest): Promise<LoginResponse> {
-  throw new Error('Not implemented yet');
+export interface ApiError {
+  error: string;
+  message?: string;
+  details?: string[];
 }
 
-export async function registerApi(_req: RegisterRequest): Promise<RegisterResponse> {
-  throw new Error('Not implemented yet');
+export async function loginApi(req: LoginRequest): Promise<LoginResponse> {
+  const { data } = await api.post<LoginResponse>('/auth/login', req);
+  return data;
+}
+
+export async function registerApi(req: RegisterRequest): Promise<RegisterResponse> {
+  const { data } = await api.post<RegisterResponse>('/auth/register', {
+    first_name: req.firstName,
+    last_name: req.lastName,
+    email: req.email,
+    password: req.password,
+  });
+  return data;
 }
