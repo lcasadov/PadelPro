@@ -1,0 +1,3200 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PadelPro · Mockups Tanda 2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-cream: #FAFAF5;
+    --bg-warm: #F4F2EA;
+    --ink: #0A0A0A;
+    --ink-soft: #2A2A28;
+    --muted: #6B6B66;
+    --muted-light: #A8A8A0;
+    --line: #E5E3D8;
+    --line-soft: #EFEDE3;
+    --olive: #3F4A2E;
+    --olive-dark: #2A3220;
+    --lime: #C8FF3D;
+    --lime-soft: #E8FFA0;
+    --danger: #C7472D;
+    --warn: #E8A33C;
+    --info: #4A6FA5;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--bg-warm);
+    font-family: 'Geist', system-ui, sans-serif;
+    color: var(--ink);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ───── Chrome ───── */
+  .chrome {
+    position: fixed; top: 0; left: 0; right: 0;
+    background: var(--ink); color: var(--bg-cream);
+    padding: 14px 24px; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid #1a1a18;
+  }
+  .chrome-brand {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-weight: 700; font-size: 18px; letter-spacing: -0.02em;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .chrome-brand .dot { width: 8px; height: 8px; background: var(--lime); border-radius: 50%; }
+  .chrome-nav {
+    display: flex; gap: 4px; flex-wrap: wrap;
+    font-family: 'Geist Mono', monospace; font-size: 10px;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    max-width: 70%;
+  }
+  .chrome-nav button {
+    background: transparent; color: var(--muted-light);
+    border: 1px solid #2a2a28; padding: 5px 9px; cursor: pointer;
+    font-family: inherit; font-size: inherit; letter-spacing: inherit;
+    transition: all 0.15s;
+  }
+  .chrome-nav button:hover { color: var(--bg-cream); border-color: var(--muted); }
+  .chrome-nav button.active { background: var(--lime); color: var(--ink); border-color: var(--lime); }
+  .chrome-counter {
+    font-family: 'Geist Mono', monospace; font-size: 11px;
+    color: var(--muted-light); letter-spacing: 0.08em;
+    white-space: nowrap;
+  }
+  .chrome-group-label {
+    color: var(--muted); font-size: 9px;
+    padding: 0 4px; align-self: center;
+    text-transform: uppercase; letter-spacing: 0.12em;
+  }
+
+  /* ───── Stage ───── */
+  .stage {
+    padding-top: 88px; min-height: 100vh;
+    display: none; flex-direction: column; align-items: center;
+  }
+  .stage.active { display: flex; }
+  .stage-header {
+    width: 100%; max-width: 1320px;
+    padding: 32px 40px 24px;
+    display: flex; justify-content: space-between; align-items: end;
+    border-bottom: 1px solid var(--line);
+  }
+  .stage-title {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-weight: 700; font-size: 42px; line-height: 1; letter-spacing: -0.03em;
+  }
+  .stage-title .num {
+    font-family: 'Geist Mono', monospace; font-size: 13px;
+    color: var(--muted); display: block; margin-bottom: 8px;
+    letter-spacing: 0.1em; font-weight: 400;
+  }
+  .stage-meta {
+    font-family: 'Geist Mono', monospace; font-size: 11px;
+    color: var(--muted); text-transform: uppercase;
+    letter-spacing: 0.08em; text-align: right; line-height: 1.7;
+  }
+  .stage-meta span { color: var(--ink); }
+
+  .stage-body {
+    width: 100%; max-width: 1320px;
+    padding: 48px 40px 80px;
+    display: flex; justify-content: center; align-items: flex-start; gap: 80px;
+  }
+
+  /* ───── Device frames ───── */
+  .phone {
+    width: 390px; height: 844px;
+    background: var(--ink);
+    border-radius: 48px; padding: 12px;
+    box-shadow: 0 30px 80px -20px rgba(10,10,10,0.35), 0 1px 0 rgba(255,255,255,0.04) inset;
+    flex-shrink: 0; position: relative;
+  }
+  .phone-screen {
+    width: 100%; height: 100%;
+    background: var(--bg-cream);
+    border-radius: 38px; overflow: hidden; position: relative;
+  }
+  .phone-notch {
+    position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+    width: 120px; height: 32px; background: var(--ink);
+    border-radius: 20px; z-index: 20;
+  }
+  .phone-status {
+    position: absolute; top: 0; left: 0; right: 0;
+    padding: 16px 32px 0;
+    display: flex; justify-content: space-between;
+    font-family: 'Geist', sans-serif; font-size: 14px; font-weight: 600;
+    color: var(--ink); z-index: 15;
+  }
+  .phone-status.dark { color: white; }
+  .phone-content {
+    position: absolute; top: 56px; left: 0; right: 0; bottom: 0;
+    overflow: hidden;
+  }
+
+  .desktop {
+    width: 1100px; background: var(--bg-cream);
+    border-radius: 16px; border: 1px solid var(--line);
+    box-shadow: 0 30px 80px -20px rgba(10,10,10,0.25); overflow: hidden;
+  }
+  .desktop-bar {
+    background: var(--bg-warm); padding: 12px 18px;
+    border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .desktop-bar .traffic { display: flex; gap: 6px; }
+  .desktop-bar .traffic span {
+    width: 11px; height: 11px; border-radius: 50%; background: var(--muted-light);
+  }
+  .desktop-bar .url {
+    flex: 1; background: var(--bg-cream);
+    border: 1px solid var(--line); padding: 5px 12px;
+    border-radius: 6px; font-family: 'Geist Mono', monospace;
+    font-size: 11px; color: var(--muted); margin-left: 12px;
+  }
+  .desktop-content { min-height: 720px; }
+
+  .stage-notes {
+    width: 320px; flex-shrink: 0; padding-top: 8px;
+  }
+  .stage-notes h3 {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 13px; text-transform: uppercase;
+    letter-spacing: 0.1em; color: var(--muted);
+    margin-bottom: 16px; padding-bottom: 12px;
+    border-bottom: 1px solid var(--line);
+  }
+  .stage-notes ul {
+    list-style: none; font-size: 13px;
+    line-height: 1.6; color: var(--ink-soft);
+  }
+  .stage-notes li {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--line-soft);
+    display: flex; gap: 10px;
+  }
+  .stage-notes li::before {
+    content: "→"; color: var(--olive);
+    flex-shrink: 0; font-weight: 600;
+  }
+  .stage-notes li b { color: var(--ink); font-weight: 600; }
+  .stage-notes .cap {
+    font-family: 'Geist Mono', monospace; font-size: 10px;
+    background: var(--ink); color: var(--lime);
+    padding: 2px 6px; border-radius: 3px;
+    text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .stage-notes .rn {
+    font-family: 'Geist Mono', monospace; font-size: 10px;
+    background: var(--lime); color: var(--ink);
+    padding: 2px 6px; border-radius: 3px;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    font-weight: 600;
+  }
+
+  /* ═══════════ COMPONENTES COMUNES PHONE ═══════════ */
+  .p-screen { width: 100%; height: 100%; padding: 24px 22px; overflow-y: auto; }
+  .p-screen::-webkit-scrollbar { display: none; }
+
+  .p-logo {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-weight: 800; font-size: 22px; letter-spacing: -0.04em;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .p-logo .dot { width: 7px; height: 7px; background: var(--lime); border-radius: 50%; }
+
+  .p-h1 {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-weight: 700; font-size: 36px; line-height: 0.95; letter-spacing: -0.04em;
+  }
+  .p-h2 {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-weight: 700; font-size: 22px; letter-spacing: -0.03em; line-height: 1.1;
+  }
+  .p-eyebrow {
+    font-family: 'Geist Mono', monospace; font-size: 10px;
+    text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted);
+  }
+  .p-body { font-size: 14px; color: var(--ink-soft); line-height: 1.5; }
+
+  .p-input {
+    width: 100%; background: transparent; border: none;
+    border-bottom: 1px solid var(--line); padding: 14px 0;
+    font-family: 'Geist', sans-serif; font-size: 16px;
+    color: var(--ink); outline: none;
+  }
+  .p-input-label {
+    font-family: 'Geist Mono', monospace; font-size: 10px;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--muted); display: block; margin-bottom: 4px;
+  }
+
+  .p-btn {
+    width: 100%; background: var(--ink); color: var(--bg-cream);
+    border: none; padding: 18px;
+    font-family: 'Geist', sans-serif; font-weight: 600; font-size: 15px;
+    border-radius: 100px; cursor: pointer;
+    display: flex; justify-content: center; align-items: center; gap: 8px;
+  }
+  .p-btn.lime { background: var(--lime); color: var(--ink); }
+  .p-btn.outline { background: transparent; color: var(--ink); border: 1px solid var(--ink); }
+  .p-btn.danger { background: var(--danger); color: white; }
+  .p-btn .arrow { font-size: 18px; }
+
+  .p-back {
+    width: 40px; height: 40px;
+    border: 1px solid var(--line); border-radius: 50%;
+    background: white;
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+  }
+  .p-back svg { width: 16px; height: 16px; }
+
+  .p-top {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 28px;
+  }
+  .p-top h1 {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 22px; font-weight: 700; letter-spacing: -0.02em;
+  }
+
+  .p-tabbar {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: var(--ink); padding: 18px 22px 32px;
+    border-radius: 24px 24px 38px 38px;
+    display: flex; justify-content: space-around; align-items: center;
+  }
+  .p-tab {
+    color: var(--muted-light);
+    font-family: 'Geist Mono', monospace; font-size: 10px;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    cursor: pointer;
+  }
+  .p-tab.active { color: var(--lime); }
+  .p-tab svg { width: 22px; height: 22px; }
+
+  /* ─────── splash ─────── */
+  .splash {
+    height: 100%; background: var(--ink);
+    color: var(--bg-cream); padding: 40px 28px;
+    display: flex; flex-direction: column;
+    position: relative; overflow: hidden;
+  }
+  .splash::before {
+    content: ''; position: absolute;
+    bottom: -120px; right: -80px;
+    width: 380px; height: 380px;
+    background: var(--lime); border-radius: 50%; opacity: 0.95;
+  }
+  .splash::after {
+    content: ''; position: absolute;
+    top: 30%; left: -100px;
+    width: 200px; height: 200px;
+    background: var(--olive); border-radius: 50%; opacity: 0.4;
+  }
+  .splash .logo {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-weight: 800; font-size: 24px;
+    letter-spacing: -0.04em; display: flex; align-items: center; gap: 8px;
+    position: relative; z-index: 2;
+  }
+  .splash .logo .dot { width: 8px; height: 8px; background: var(--lime); border-radius: 50%; }
+  .splash .glyph {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 260px; font-weight: 800;
+    line-height: 0.8; letter-spacing: -0.1em;
+    margin: auto 0; color: var(--bg-cream);
+    position: relative; z-index: 2;
+    transform: rotate(-3deg);
+  }
+  .splash .footer {
+    position: relative; z-index: 2;
+    display: flex; flex-direction: column; gap: 18px;
+  }
+  .splash .tagline {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 28px; font-weight: 600; line-height: 1.05;
+    letter-spacing: -0.03em;
+  }
+  .splash .tagline em { font-style: italic; color: var(--lime); font-weight: 500; }
+  .splash .actions { display: flex; flex-direction: column; gap: 12px; }
+  .splash .p-btn { background: var(--bg-cream); color: var(--ink); }
+  .splash .p-btn.outline { background: transparent; color: var(--bg-cream); border-color: var(--bg-cream); }
+
+  /* ─────── registro ─────── */
+  .reg { padding: 36px 28px; height: 100%; display: flex; flex-direction: column; }
+  .reg-hero { margin-bottom: 32px; }
+  .reg-hero .step {
+    font-family: 'Geist Mono', monospace; font-size: 10px;
+    text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted);
+    margin-bottom: 14px;
+  }
+  .reg-hero h1 {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 38px; font-weight: 700; line-height: 0.95; letter-spacing: -0.04em;
+  }
+  .reg-hero h1 em { font-style: italic; font-weight: 500; color: var(--olive); }
+  .reg-form { display: flex; flex-direction: column; gap: 18px; flex: 1; }
+  .reg-form .row { display: flex; flex-direction: column; gap: 4px; }
+  .reg-form .check {
+    margin-top: 8px; display: flex; gap: 12px; align-items: flex-start;
+    font-size: 12px; color: var(--ink-soft); line-height: 1.5;
+  }
+  .reg-form .check input {
+    width: 18px; height: 18px; margin-top: 2px; accent-color: var(--olive);
+  }
+  .reg-form .check a {
+    color: var(--ink); border-bottom: 1px solid var(--ink); text-decoration: none;
+  }
+
+  /* ─────── forgot / reset ─────── */
+  .forgot { padding: 36px 28px; height: 100%; display: flex; flex-direction: column; }
+  .forgot-hero { margin-bottom: 36px; }
+  .forgot-hero h1 {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 36px; font-weight: 700; line-height: 0.95;
+    letter-spacing: -0.04em; margin-bottom: 14px;
+  }
+  .forgot-hero p { color: var(--muted); font-size: 14px; line-height: 1.5; max-width: 290px; }
+  .reset-strength {
+    margin-top: 12px;
+    display: flex; gap: 4px; margin-bottom: 6px;
+  }
+  .reset-strength span {
+    flex: 1; height: 4px; background: var(--line); border-radius: 2px;
+  }
+  .reset-strength span.fill1 { background: var(--danger); }
+  .reset-strength span.fill2 { background: var(--warn); }
+  .reset-strength span.fill3 { background: var(--olive); }
+  .reset-strength-label {
+    font-family: 'Geist Mono', monospace; font-size: 10px;
+    color: var(--olive); text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .reset-rules {
+    font-family: 'Geist Mono', monospace; font-size: 11px;
+    color: var(--muted); line-height: 1.8; margin-top: 12px;
+  }
+  .reset-rules .ok { color: var(--olive); }
+  .reset-rules .ok::before { content: "✓ "; }
+  .reset-rules .ko::before { content: "○ "; }
+
+  /* ─────── checkout Redsys ─────── */
+  .checkout { padding: 24px 24px 28px; height: 100%; display: flex; flex-direction: column; overflow-y: auto; }
+  .checkout::-webkit-scrollbar { display: none; }
+  .checkout-header { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+  .checkout-header h1 {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 24px; font-weight: 700; letter-spacing: -0.02em;
+  }
+  .checkout-merch {
+    background: var(--bg-warm); border-radius: 14px;
+    padding: 14px 16px; margin-bottom: 24px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .checkout-merch .logo {
+    width: 38px; height: 38px;
+    background: var(--ink); color: var(--lime);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-weight: 800; font-size: 13px;
+  }
+  .checkout-merch .info .name { font-size: 14px; font-weight: 600; }
+  .checkout-merch .info .url {
+    font-family: 'Geist Mono', monospace; font-size: 10px;
+    color: var(--muted); letter-spacing: 0.04em; margin-top: 2px;
+  }
+  .checkout-merch .secure {
+    margin-left: auto;
+    font-family: 'Geist Mono', monospace; font-size: 10px;
+    color: var(--olive); display: flex; align-items: center; gap: 4px;
+  }
+  .checkout-amount {
+    text-align: center; padding: 12px 0 24px;
+    border-bottom: 1px solid var(--line); margin-bottom: 24px;
+  }
+  .checkout-amount .lab {
+    font-family: 'Geist Mono', monospace; font-size: 10px;
+    color: var(--muted); text-transform: uppercase; letter-spacing: 0.12em;
+  }
+  .checkout-amount .price {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 56px; font-weight: 700; letter-spacing: -0.04em;
+    line-height: 1; margin-top: 6px;
+  }
+  .checkout-amount .desc { color: var(--muted); font-size: 13px; margin-top: 8px; }
+
+  .card-preview {
+    background: linear-gradient(135deg, var(--olive) 0%, var(--olive-dark) 100%);
+    color: var(--bg-cream); border-radius: 16px;
+    padding: 18px; margin-bottom: 22px; position: relative; overflow: hidden;
+  }
+  .card-preview::after {
+    content: ''; position: absolute;
+    top: -40px; right: -40px;
+    width: 120px; height: 120px;
+    background: var(--lime); border-radius: 50%; opacity: 0.16;
+  }
+  .card-preview .chip {
+    width: 32px; height: 24px; background: var(--lime); border-radius: 4px;
+    margin-bottom: 28px; opacity: 0.8;
+  }
+  .card-preview .num {
+    font-family: 'Geist Mono', monospace; font-size: 17px;
+    letter-spacing: 0.12em; margin-bottom: 14px;
+  }
+  .card-preview .row {
+    display: flex; justify-content: space-between;
+    font-family: 'Geist Mono', monospace; font-size: 11px;
+    color: var(--muted-light); text-transform: uppercase;
+  }
+  .card-preview .row b { color: white; display: block; font-size: 13px; margin-top: 2px; font-weight: 500; }
+
+  .form-row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 14px; }
+  .form-row .lab {
+    font-family: 'Geist Mono', monospace; font-size: 10px;
+    text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted);
+  }
+  .form-input {
+    background: var(--bg-warm); border: 1px solid transparent;
+    padding: 13px 14px; border-radius: 12px;
+    font-family: 'Geist Mono', monospace; font-size: 14px;
+    color: var(--ink); outline: none;
+    font-weight: 500;
+  }
+  .form-input:focus { border-color: var(--olive); }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px; }
+
+  /* ─────── confirmación pago ─────── */
+  .success {
+    height: 100%; background: var(--ink); color: var(--bg-cream);
+    display: flex; flex-direction: column; padding: 36px 28px 32px;
+    position: relative; overflow: hidden;
+  }
+  .success::before {
+    content: ''; position: absolute;
+    top: -30%; left: -30%;
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(200,255,61,0.18) 0%, transparent 60%);
+  }
+  .success-ico {
+    width: 120px; height: 120px;
+    background: var(--lime); border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin: 60px auto 28px;
+    position: relative; z-index: 2;
+  }
+  .success-ico svg { width: 56px; height: 56px; }
+  .success h1 {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 38px; font-weight: 700; letter-spacing: -0.03em;
+    text-align: center; line-height: 1.05; margin-bottom: 10px;
+    position: relative; z-index: 2;
+  }
+  .success h1 em { font-style: italic; color: var(--lime); font-weight: 500; }
+  .success .sub {
+    text-align: center; color: var(--muted-light); font-size: 14px;
+    margin-bottom: 36px; position: relative; z-index: 2;
+  }
+  .success-card {
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px; padding: 18px; margin-bottom: 18px;
+    position: relative; z-index: 2;
+  }
+  .success-card .row {
+    display: flex; justify-content: space-between; padding: 10px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .success-card .row:last-child { border-bottom: none; }
+  .success-card .row .lab {
+    font-family: 'Geist Mono', monospace; font-size: 10px;
+    color: var(--muted-light); text-transform: uppercase; letter-spacing: 0.1em;
+  }
+  .success-card .row .val { font-size: 13px; font-weight: 500; }
+  .success .actions { margin-top: auto; display: flex; flex-direction: column; gap: 10px; position: relative; z-index: 2; }
+  .success .actions .p-btn { background: var(--lime); color: var(--ink); }
+  .success .actions .p-btn.outline { background: transparent; border-color: rgba(255,255,255,0.3); color: var(--bg-cream); }
+
+  /* ─────── detalle reserva ─────── */
+  .resdet { height: 100%; display: flex; flex-direction: column; }
+  .resdet-hero {
+    background: var(--olive); color: var(--bg-cream);
+    padding: 24px 24px 32px;
+    position: relative; overflow: hidden;
+  }
+  .resdet-hero::before {
+    content: ''; position: absolute;
+    top: -40px; right: -50px;
+    width: 240px; height: 240px;
+    background: var(--lime); border-radius: 50%; opacity: 0.12;
+  }
+  .resdet-back {
+    width: 40px; height: 40px;
+    border: 1px solid rgba(255,255,255,0.2); border-radius: 50%;
+    background: transparent; color: var(--bg-cream);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; margin-bottom: 22px;
+  }
+  .resdet-status {
+    font-family: 'Geist Mono', monospace; font-size: 10px;
+    text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--lime); display: flex; align-items: center; gap: 6px;
+    margin-bottom: 14px;
+  }
+  .resdet-status .dot {
+    width: 6px; height: 6px; background: var(--lime); border-radius: 50%;
+    animation: pulse 1.6s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.7); }
+  }
+  .resdet-hero h1 {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 44px; font-weight: 700; letter-spacing: -0.04em;
+    line-height: 0.95; margin-bottom: 4px;
+  }
+  .resdet-hero .meta {
+    color: var(--muted-light); font-size: 14px; margin-bottom: 20px;
+  }
+  .resdet-hero .code {
+    font-family: 'Geist Mono', monospace; font-size: 11px;
+    color: var(--lime); letter-spacing: 0.08em;
+  }
+  .resdet-body {
+    flex: 1; padding: 22px 24px;
+    overflow-y: auto;
+  }
+  .resdet-body::-webkit-scrollbar { display: none; }
+  .resdet-section { margin-bottom: 22px; }
+  .resdet-section h3 {
+    font-family: 'Geist Mono', monospace; font-size: 10px;
+    text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--muted); margin-bottom: 14px;
+  }
+  .players-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .player-chip {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 12px 6px 6px;
+    background: var(--bg-warm); border-radius: 100px;
+    font-size: 13px; font-weight: 500;
+  }
+  .player-chip .av {
+    width: 26px; height: 26px;
+    background: var(--olive); color: var(--lime);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-weight: 700; font-size: 10px;
+  }
+  .player-chip.empty {
+    background: transparent;
+    border: 1px dashed var(--line);
+    color: var(--muted);
+  }
+  .player-chip.empty .av {
+    background: transparent; border: 1px dashed var(--muted-light); color: var(--muted);
+  }
+  .resdet-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .info-pill {
+    background: var(--bg-warm); border-radius: 14px; padding: 14px;
+  }
+  .info-pill .lab {
+    font-family: 'Geist Mono', monospace; font-size: 9px;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--muted); margin-bottom: 4px;
+  }
+  .info-pill .val {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 16px; font-weight: 600; letter-spacing: -0.02em;
+  }
+  .resdet-footer {
+    padding: 16px 24px 28px;
+    border-top: 1px solid var(--line);
+    background: var(--bg-cream);
+    display: flex; gap: 10px;
+  }
+  .resdet-footer .p-btn { padding: 14px; font-size: 14px; flex: 1; }
+
+  /* ─────── perfil ─────── */
+  .profile { padding-bottom: 110px; padding: 24px 22px 110px; overflow-y: auto; height: 100%; }
+  .profile::-webkit-scrollbar { display: none; }
+  .profile-head {
+    display: flex; align-items: center; gap: 16px;
+    margin-bottom: 28px;
+  }
+  .profile-avatar {
+    width: 64px; height: 64px;
+    background: var(--olive); color: var(--lime);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-weight: 700; font-size: 22px;
+  }
+  .profile-head .info h1 {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 24px; font-weight: 700;
+    letter-spacing: -0.02em; line-height: 1;
+  }
+  .profile-head .info .email {
+    font-family: 'Geist Mono', monospace; font-size: 11px;
+    color: var(--muted); margin-top: 6px; letter-spacing: 0.04em;
+  }
+  .profile-section { margin-bottom: 28px; }
+  .profile-section h2 {
+    font-family: 'Geist Mono', monospace; font-size: 10px;
+    text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--muted); margin-bottom: 12px;
+  }
+  .profile-row {
+    background: white; border: 1px solid var(--line);
+    border-radius: 16px; padding: 16px;
+    display: flex; align-items: center; gap: 14px;
+    margin-bottom: 8px; cursor: pointer;
+  }
+  .profile-row .ico {
+    width: 38px; height: 38px;
+    background: var(--bg-warm); border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; color: var(--olive);
+  }
+  .profile-row .text { flex: 1; min-width: 0; }
+  .profile-row .text .name {
+    font-size: 14px; font-weight: 600; color: var(--ink);
+  }
+  .profile-row .text .sub {
+    font-size: 12px; color: var(--muted); margin-top: 2px;
+  }
+  .profile-row .status {
+    font-family: 'Geist Mono', monospace; font-size: 9px;
+    padding: 4px 8px; border-radius: 100px;
+    text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600;
+  }
+  .profile-row .status.linked { background: var(--lime); color: var(--ink); }
+  .profile-row .status.unlinked { background: var(--bg-warm); color: var(--muted); border: 1px solid var(--line); }
+  .profile-row .chev { color: var(--muted-light); }
+
+  /* ─────── telegram vincular ─────── */
+  .tg { height: 100%; display: flex; flex-direction: column; padding: 24px 24px 28px; overflow-y: auto; }
+  .tg::-webkit-scrollbar { display: none; }
+  .tg-hero {
+    background: var(--ink); color: var(--bg-cream);
+    border-radius: 24px; padding: 28px 24px 24px;
+    margin-bottom: 24px;
+    position: relative; overflow: hidden; text-align: center;
+  }
+  .tg-hero::before {
+    content: ''; position: absolute;
+    bottom: -60px; left: 50%; transform: translateX(-50%);
+    width: 220px; height: 220px;
+    background: var(--info); border-radius: 50%; opacity: 0.2;
+  }
+  .tg-icon {
+    width: 80px; height: 80px;
+    background: var(--info); border-radius: 50%;
+    margin: 0 auto 20px;
+    display: flex; align-items: center; justify-content: center;
+    position: relative; z-index: 2;
+  }
+  .tg-icon svg { width: 38px; height: 38px; }
+  .tg-hero h1 {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 28px; font-weight: 700; letter-spacing: -0.03em;
+    line-height: 1.05; margin-bottom: 8px;
+    position: relative; z-index: 2;
+  }
+  .tg-hero h1 em { font-style: italic; color: var(--lime); font-weight: 500; }
+  .tg-hero p {
+    color: var(--muted-light); font-size: 13px; line-height: 1.5;
+    position: relative; z-index: 2; max-width: 280px; margin: 0 auto;
+  }
+  .tg-steps { display: flex; flex-direction: column; gap: 14px; margin-bottom: 22px; }
+  .tg-step {
+    background: white; border: 1px solid var(--line);
+    border-radius: 16px; padding: 16px;
+    display: flex; gap: 14px; align-items: flex-start;
+  }
+  .tg-step .num {
+    width: 32px; height: 32px; flex-shrink: 0;
+    background: var(--olive); color: var(--lime);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-weight: 700; font-size: 13px;
+  }
+  .tg-step .text { flex: 1; }
+  .tg-step .title {
+    font-size: 14px; font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .tg-step .desc {
+    font-size: 12px; color: var(--muted); line-height: 1.5;
+  }
+  .tg-step .botname {
+    font-family: 'Geist Mono', monospace; font-size: 12px;
+    background: var(--bg-warm); padding: 4px 8px;
+    border-radius: 6px; display: inline-block; margin-top: 6px;
+    color: var(--olive); font-weight: 500;
+  }
+
+  /* ─────── OTP ─────── */
+  .otp { padding: 36px 28px; height: 100%; display: flex; flex-direction: column; }
+  .otp-hero { margin-bottom: 28px; }
+  .otp-hero h1 {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 32px; font-weight: 700; letter-spacing: -0.03em;
+    line-height: 1; margin-bottom: 10px;
+  }
+  .otp-hero p { color: var(--muted); font-size: 14px; line-height: 1.5; }
+  .otp-hero p b { color: var(--ink); font-weight: 600; }
+  .otp-boxes {
+    display: grid; grid-template-columns: repeat(6, 1fr);
+    gap: 10px; margin-bottom: 24px;
+  }
+  .otp-box {
+    aspect-ratio: 1;
+    background: white; border: 1px solid var(--line); border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-weight: 700; font-size: 28px; letter-spacing: -0.02em;
+  }
+  .otp-box.filled { border-color: var(--ink); background: var(--bg-warm); }
+  .otp-box.active { border-color: var(--olive); background: white; box-shadow: 0 0 0 3px rgba(63, 74, 46, 0.12); }
+  .otp-box .cursor {
+    width: 2px; height: 28px; background: var(--olive);
+    animation: blink 1s infinite;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+  .otp-timer {
+    text-align: center; font-family: 'Geist Mono', monospace;
+    font-size: 12px; color: var(--muted);
+    margin-bottom: 24px; letter-spacing: 0.04em;
+  }
+  .otp-timer .num { color: var(--olive); font-weight: 600; }
+  .otp-resend {
+    text-align: center; margin-top: 14px;
+    font-size: 13px; color: var(--muted);
+  }
+  .otp-resend a {
+    color: var(--ink); border-bottom: 1px solid var(--ink); text-decoration: none; font-weight: 500;
+  }
+
+  /* ═══════════ COMPONENTES COMUNES DESKTOP ADMIN ═══════════ */
+  .admin {
+    display: flex; height: 720px; background: var(--bg-cream);
+  }
+  .admin-sidebar {
+    width: 240px; background: var(--ink); color: var(--bg-cream);
+    padding: 24px 18px; flex-shrink: 0;
+  }
+  .admin-brand {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-weight: 800; font-size: 22px; letter-spacing: -0.04em;
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 32px; padding-bottom: 24px;
+    border-bottom: 1px solid #2a2a28;
+  }
+  .admin-brand .dot { width: 8px; height: 8px; background: var(--lime); border-radius: 50%; }
+  .admin-club-pill {
+    background: #1a1a18; border: 1px solid #2a2a28;
+    border-radius: 12px; padding: 12px; margin-bottom: 26px;
+  }
+  .admin-club-pill .lab {
+    font-family: 'Geist Mono', monospace; font-size: 9px;
+    text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted-light);
+  }
+  .admin-club-pill .name {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-weight: 600; font-size: 14px; margin-top: 4px;
+  }
+  .admin-nav { display: flex; flex-direction: column; gap: 2px; }
+  .admin-nav-item {
+    padding: 11px 14px; border-radius: 10px;
+    display: flex; align-items: center; gap: 12px;
+    color: var(--muted-light); font-size: 13px; font-weight: 500;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .admin-nav-item:hover { background: #1a1a18; color: white; }
+  .admin-nav-item.active { background: var(--lime); color: var(--ink); }
+  .admin-nav-section {
+    font-family: 'Geist Mono', monospace; font-size: 9px;
+    text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--muted); padding: 18px 14px 8px; font-weight: 500;
+  }
+  .admin-main { flex: 1; overflow-y: auto; }
+  .admin-topbar {
+    padding: 22px 36px; border-bottom: 1px solid var(--line);
+    display: flex; justify-content: space-between; align-items: center;
+    background: var(--bg-cream);
+  }
+  .admin-topbar h1 {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 28px; font-weight: 700; letter-spacing: -0.03em; line-height: 1;
+  }
+  .admin-topbar .date {
+    font-family: 'Geist Mono', monospace; font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted);
+    margin-top: 4px;
+  }
+  .admin-topbar-actions { display: flex; gap: 10px; align-items: center; }
+  .admin-btn {
+    padding: 9px 16px; border: 1px solid var(--line);
+    background: white; border-radius: 100px;
+    font-family: 'Geist', sans-serif; font-size: 12px; font-weight: 500;
+    cursor: pointer; display: flex; align-items: center; gap: 6px;
+  }
+  .admin-btn.dark { background: var(--ink); color: var(--bg-cream); border-color: var(--ink); }
+  .admin-content { padding: 28px 36px; }
+
+  /* ═══════════ GESTION PISTAS ═══════════ */
+  .courts-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+  .court-card {
+    background: white; border: 1px solid var(--line);
+    border-radius: 18px; padding: 20px;
+    position: relative;
+  }
+  .court-card .ico-court {
+    width: 56px; height: 80px;
+    background: var(--olive); border-radius: 6px;
+    position: relative; margin-bottom: 16px;
+    overflow: hidden;
+  }
+  .court-card .ico-court::before {
+    content: ''; position: absolute;
+    left: 50%; top: 50%; transform: translate(-50%, -50%);
+    width: 80%; height: 1.5px; background: var(--lime); opacity: 0.7;
+  }
+  .court-card .ico-court::after {
+    content: ''; position: absolute;
+    left: 50%; top: 50%; transform: translate(-50%, -50%);
+    width: 1.5px; height: 90%; background: var(--lime); opacity: 0.4;
+  }
+  .court-card .name {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 20px; font-weight: 700; letter-spacing: -0.02em;
+  }
+  .court-card .meta {
+    font-family: 'Geist Mono', monospace; font-size: 10px;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--muted); margin-top: 4px; margin-bottom: 16px;
+  }
+  .court-card .stats {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 12px; padding-top: 14px; border-top: 1px solid var(--line);
+  }
+  .court-card .stat .lab {
+    font-family: 'Geist Mono', monospace; font-size: 9px;
+    text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted);
+  }
+  .court-card .stat .val {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 18px; font-weight: 700; letter-spacing: -0.02em; margin-top: 2px;
+  }
+  .court-card .badge {
+    position: absolute; top: 16px; right: 16px;
+    font-family: 'Geist Mono', monospace; font-size: 9px;
+    padding: 3px 8px; border-radius: 100px;
+    text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600;
+  }
+  .court-card .badge.active { background: var(--lime); color: var(--ink); }
+  .court-card .badge.maint { background: var(--warn); color: white; }
+  .court-card.add {
+    border: 2px dashed var(--line);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    cursor: pointer; min-height: 240px;
+    color: var(--muted);
+  }
+  .court-card.add:hover { border-color: var(--olive); color: var(--olive); }
+  .court-card.add .plus {
+    width: 48px; height: 48px;
+    border: 1.5px solid currentColor; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 14px; font-size: 22px;
+  }
+  .court-card.add .lab {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 14px; font-weight: 600;
+  }
+
+  /* ═══════════ CALENDARIO SEMANAL ═══════════ */
+  .cal-toolbar {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 18px;
+  }
+  .cal-toolbar .week {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 22px; font-weight: 700; letter-spacing: -0.02em;
+  }
+  .cal-toolbar .week .sub {
+    font-family: 'Geist Mono', monospace; font-size: 11px;
+    color: var(--muted); font-weight: 400; margin-left: 10px;
+    letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  .cal-nav { display: flex; gap: 6px; align-items: center; }
+  .cal-nav button {
+    width: 34px; height: 34px;
+    border: 1px solid var(--line); background: white;
+    border-radius: 50%; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .cal-nav .today {
+    width: auto; padding: 0 14px; border-radius: 100px;
+    font-family: 'Geist', sans-serif; font-size: 12px; font-weight: 500;
+  }
+  .cal-grid {
+    background: white; border: 1px solid var(--line);
+    border-radius: 16px; overflow: hidden;
+  }
+  .cal-head {
+    display: grid; grid-template-columns: 60px repeat(7, 1fr);
+    border-bottom: 1px solid var(--line);
+  }
+  .cal-head .h {
+    padding: 12px 8px; text-align: center;
+    border-right: 1px solid var(--line-soft);
+  }
+  .cal-head .h:last-child { border-right: none; }
+  .cal-head .h .dow {
+    font-family: 'Geist Mono', monospace; font-size: 10px;
+    text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted);
+  }
+  .cal-head .h .num {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 18px; font-weight: 700; letter-spacing: -0.02em; margin-top: 2px;
+  }
+  .cal-head .h.today .num { color: var(--lime); }
+  .cal-head .h.today { background: var(--ink); }
+  .cal-head .h.today .dow { color: var(--muted-light); }
+
+  .cal-body {
+    display: grid; grid-template-columns: 60px repeat(7, 1fr);
+    max-height: 480px; overflow-y: auto; position: relative;
+  }
+  .cal-body::-webkit-scrollbar { display: none; }
+  .cal-hours { background: var(--bg-warm); border-right: 1px solid var(--line); }
+  .cal-hour {
+    height: 56px; padding: 6px 8px; text-align: right;
+    font-family: 'Geist Mono', monospace; font-size: 10px;
+    color: var(--muted);
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .cal-col {
+    border-right: 1px solid var(--line-soft);
+    position: relative; min-height: 560px;
+  }
+  .cal-col:last-child { border-right: none; }
+  .cal-col .hline {
+    height: 56px; border-bottom: 1px solid var(--line-soft);
+  }
+  .cal-event {
+    position: absolute; left: 4px; right: 4px;
+    background: var(--olive); color: var(--bg-cream);
+    border-radius: 6px; padding: 6px 8px;
+    font-size: 11px; font-weight: 500;
+    overflow: hidden;
+  }
+  .cal-event.alt { background: var(--olive-dark); }
+  .cal-event.lime { background: var(--lime); color: var(--ink); }
+  .cal-event.maint { background: var(--danger); }
+  .cal-event .t {
+    font-family: 'Geist Mono', monospace; font-size: 9px;
+    opacity: 0.8; display: block; margin-bottom: 2px;
+  }
+
+  /* ═══════════ LISTADO RESERVAS ADMIN ═══════════ */
+  .table-head { display: grid; grid-template-columns: 100px 1fr 140px 120px 100px 80px 40px; gap: 16px; padding: 12px 22px; background: var(--bg-warm); }
+  .table-head .col {
+    font-family: 'Geist Mono', monospace; font-size: 10px;
+    text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted);
+  }
+  .table-row {
+    display: grid; grid-template-columns: 100px 1fr 140px 120px 100px 80px 40px;
+    gap: 16px; padding: 16px 22px;
+    align-items: center;
+    border-bottom: 1px solid var(--line-soft);
+    cursor: pointer;
+  }
+  .table-row:hover { background: var(--bg-cream); }
+  .table-row .code {
+    font-family: 'Geist Mono', monospace; font-size: 11px;
+    color: var(--muted); letter-spacing: 0.04em;
+  }
+  .table-row .player {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .table-row .player .av {
+    width: 30px; height: 30px;
+    background: var(--olive); color: var(--lime);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-weight: 700; font-size: 10px;
+    flex-shrink: 0;
+  }
+  .table-row .player .name {
+    font-size: 13px; font-weight: 500;
+  }
+  .table-row .player .email {
+    font-family: 'Geist Mono', monospace; font-size: 10px;
+    color: var(--muted); letter-spacing: 0.02em;
+  }
+  .table-row .when {
+    font-size: 13px;
+  }
+  .table-row .when .d {
+    font-weight: 500;
+  }
+  .table-row .when .h {
+    font-family: 'Geist Mono', monospace; font-size: 11px;
+    color: var(--muted);
+  }
+  .table-row .court-name { font-size: 13px; font-weight: 500; }
+  .table-row .court-name .sub {
+    font-family: 'Geist Mono', monospace; font-size: 10px;
+    color: var(--muted); display: block;
+  }
+  .table-row .amount {
+    font-family: 'Geist Mono', monospace; font-size: 13px;
+    font-weight: 600;
+  }
+  .table-row .pill {
+    font-family: 'Geist Mono', monospace; font-size: 9px;
+    padding: 4px 10px; border-radius: 100px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    text-align: center;
+  }
+  .table-row .pill.ok { background: var(--lime); color: var(--ink); }
+  .table-row .pill.warn { background: var(--warn); color: white; }
+  .table-row .pill.bad { background: var(--bg-warm); color: var(--muted); }
+
+  .filters-bar {
+    display: flex; gap: 10px; margin-bottom: 20px;
+    align-items: center;
+  }
+  .filter-chip {
+    padding: 9px 16px; background: white;
+    border: 1px solid var(--line); border-radius: 100px;
+    font-size: 12px; font-weight: 500;
+    display: flex; align-items: center; gap: 8px;
+    cursor: pointer;
+  }
+  .filter-chip.active { background: var(--ink); color: var(--bg-cream); border-color: var(--ink); }
+  .filter-chip .count {
+    background: var(--lime); color: var(--ink);
+    padding: 1px 7px; border-radius: 100px;
+    font-family: 'Geist Mono', monospace; font-size: 10px; font-weight: 700;
+  }
+  .filter-chip.active .count { background: var(--lime); color: var(--ink); }
+  .search-box {
+    flex: 1; max-width: 320px;
+    background: white; border: 1px solid var(--line);
+    border-radius: 100px; padding: 9px 16px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .search-box input {
+    border: none; outline: none; flex: 1;
+    background: transparent; font-family: 'Geist', sans-serif;
+    font-size: 13px; color: var(--ink);
+  }
+  .search-box svg { color: var(--muted); }
+
+  /* ═══════════ PARTIDAS ═══════════ */
+  .partidas { padding-bottom: 110px; }
+  .partidas-tabs {
+    display: flex; gap: 0; margin-bottom: 18px;
+    border-bottom: 1px solid var(--line);
+  }
+  .partidas-tab {
+    flex: 1; padding: 12px 0; text-align: center;
+    font-family: 'Geist Mono', monospace; font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--muted); cursor: pointer;
+    border-bottom: 2px solid transparent; margin-bottom: -1px;
+  }
+  .partidas-tab.active { color: var(--ink); border-bottom-color: var(--ink); font-weight: 600; }
+  .partida-card {
+    background: white; border: 1px solid var(--line);
+    border-radius: 20px; padding: 18px;
+    margin-bottom: 12px;
+  }
+  .partida-card .head {
+    display: flex; justify-content: space-between; align-items: start;
+    margin-bottom: 14px;
+  }
+  .partida-card .when-block {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 24px; font-weight: 700; letter-spacing: -0.03em;
+    line-height: 1;
+  }
+  .partida-card .when-block .d {
+    font-family: 'Geist Mono', monospace; font-size: 10px;
+    color: var(--muted); text-transform: uppercase;
+    letter-spacing: 0.1em; font-weight: 400;
+    margin-top: 6px;
+  }
+  .partida-card .level {
+    padding: 4px 10px;
+    background: var(--bg-warm); border-radius: 100px;
+    font-family: 'Geist Mono', monospace; font-size: 10px;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    font-weight: 600;
+  }
+  .partida-card .level.med { color: var(--info); }
+  .partida-card .level.adv { color: var(--danger); }
+  .partida-card .court-line {
+    font-size: 13px; color: var(--muted);
+    margin-bottom: 14px;
+  }
+  .partida-card .players {
+    display: flex; gap: -6px;
+    margin-bottom: 14px;
+    align-items: center;
+  }
+  .partida-card .players .av {
+    width: 36px; height: 36px;
+    background: var(--olive); color: var(--lime);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-weight: 700; font-size: 11px;
+    margin-right: -10px;
+    border: 2px solid var(--bg-cream);
+  }
+  .partida-card .players .av.empty {
+    background: transparent; border: 1.5px dashed var(--muted-light); color: var(--muted);
+  }
+  .partida-card .players .count {
+    margin-left: 20px;
+    font-size: 13px; color: var(--muted);
+  }
+  .partida-card .players .count b { color: var(--ink); font-weight: 600; }
+  .partida-card .footer {
+    display: flex; justify-content: space-between; align-items: center;
+    padding-top: 14px; border-top: 1px solid var(--line-soft);
+  }
+  .partida-card .price {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 18px; font-weight: 700; letter-spacing: -0.02em;
+  }
+  .partida-card .price small {
+    font-family: 'Geist Mono', monospace; font-size: 10px;
+    color: var(--muted); font-weight: 400;
+  }
+  .partida-card .join-btn {
+    padding: 9px 18px; background: var(--lime); color: var(--ink);
+    border: none; border-radius: 100px;
+    font-family: 'Geist', sans-serif; font-size: 13px; font-weight: 600;
+    cursor: pointer;
+  }
+  .partida-card .join-btn.full {
+    background: var(--bg-warm); color: var(--muted);
+  }
+
+  /* crear partida */
+  .crear-step {
+    margin-bottom: 22px;
+  }
+  .crear-step h3 {
+    font-family: 'Geist Mono', monospace; font-size: 10px;
+    text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--muted); margin-bottom: 12px;
+  }
+  .toggle-row {
+    background: white; border: 1px solid var(--line);
+    border-radius: 16px; padding: 16px;
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 8px;
+  }
+  .toggle-row .name { font-size: 14px; font-weight: 500; }
+  .toggle-row .sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .switch {
+    width: 44px; height: 26px;
+    background: var(--lime); border-radius: 100px;
+    position: relative; cursor: pointer;
+  }
+  .switch::after {
+    content: ''; position: absolute;
+    top: 3px; right: 3px;
+    width: 20px; height: 20px;
+    background: white; border-radius: 50%;
+  }
+  .switch.off { background: var(--line); }
+  .switch.off::after { right: auto; left: 3px; }
+  .level-pick { display: flex; gap: 8px; }
+  .level-pick .opt {
+    flex: 1; padding: 12px;
+    background: white; border: 1px solid var(--line);
+    border-radius: 12px; text-align: center;
+    font-size: 13px; cursor: pointer;
+  }
+  .level-pick .opt.active { background: var(--ink); color: var(--bg-cream); border-color: var(--ink); }
+  .level-pick .opt .num {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 18px; font-weight: 700; letter-spacing: -0.02em;
+    margin-bottom: 2px;
+  }
+  .level-pick .opt .lab {
+    font-family: 'Geist Mono', monospace; font-size: 9px;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--muted);
+  }
+  .level-pick .opt.active .lab { color: var(--muted-light); }
+
+  /* ═══════════ RGPD MIS DATOS ═══════════ */
+  .rgpd { padding-bottom: 110px; padding: 24px 22px 110px; }
+  .rgpd h1 {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 32px; font-weight: 700; letter-spacing: -0.04em;
+    line-height: 0.95; margin-bottom: 8px;
+  }
+  .rgpd h1 em { font-style: italic; color: var(--olive); font-weight: 500; }
+  .rgpd .sub {
+    color: var(--muted); font-size: 13px; line-height: 1.5;
+    margin-bottom: 26px;
+  }
+  .rgpd-block {
+    background: white; border: 1px solid var(--line);
+    border-radius: 18px; padding: 18px;
+    margin-bottom: 12px;
+  }
+  .rgpd-block .head {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 12px;
+  }
+  .rgpd-block .ico {
+    width: 40px; height: 40px;
+    background: var(--bg-warm); border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--olive);
+  }
+  .rgpd-block .info { flex: 1; }
+  .rgpd-block .name {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 16px; font-weight: 700; letter-spacing: -0.02em;
+  }
+  .rgpd-block .law {
+    font-family: 'Geist Mono', monospace; font-size: 10px;
+    color: var(--muted); margin-top: 2px; letter-spacing: 0.04em;
+  }
+  .rgpd-block .desc {
+    font-size: 13px; color: var(--ink-soft); line-height: 1.5;
+    margin-bottom: 14px;
+  }
+  .rgpd-block .action-btn {
+    width: 100%; padding: 12px;
+    background: transparent; border: 1px solid var(--ink); color: var(--ink);
+    border-radius: 100px;
+    font-family: 'Geist', sans-serif; font-size: 13px; font-weight: 600;
+    cursor: pointer;
+  }
+  .rgpd-block .action-btn.danger {
+    color: var(--danger); border-color: var(--danger);
+  }
+
+  /* ═══════════ ELIMINAR CUENTA ═══════════ */
+  .delete-screen { padding: 24px 24px 28px; height: 100%; display: flex; flex-direction: column; overflow-y: auto; }
+  .delete-screen::-webkit-scrollbar { display: none; }
+  .delete-warn {
+    background: linear-gradient(135deg, #1a1108 0%, #2a1810 100%);
+    color: var(--bg-cream); border-radius: 20px;
+    padding: 24px; margin-bottom: 22px; text-align: center;
+    border: 1px solid #3a2418;
+  }
+  .delete-warn .ico {
+    width: 64px; height: 64px;
+    background: var(--danger); border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 18px;
+  }
+  .delete-warn h1 {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 26px; font-weight: 700; letter-spacing: -0.03em;
+    line-height: 1.1; margin-bottom: 10px;
+  }
+  .delete-warn p {
+    color: rgba(255,255,255,0.7); font-size: 13px; line-height: 1.5;
+  }
+  .delete-list {
+    background: white; border: 1px solid var(--line);
+    border-radius: 16px; padding: 18px; margin-bottom: 18px;
+  }
+  .delete-list h3 {
+    font-family: 'Geist Mono', monospace; font-size: 10px;
+    text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--muted); margin-bottom: 14px;
+  }
+  .delete-list ul { list-style: none; }
+  .delete-list li {
+    padding: 8px 0; font-size: 13px; color: var(--ink-soft);
+    display: flex; gap: 10px;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .delete-list li:last-child { border-bottom: none; }
+  .delete-list li::before {
+    content: "○"; color: var(--danger); font-weight: 700; font-size: 14px;
+  }
+  .delete-confirm {
+    background: var(--bg-warm); border-radius: 14px;
+    padding: 16px; margin-bottom: 18px;
+  }
+  .delete-confirm .lab {
+    font-family: 'Geist Mono', monospace; font-size: 10px;
+    text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .delete-confirm input {
+    width: 100%; background: white; border: 1px solid var(--line);
+    border-radius: 10px; padding: 12px 14px;
+    font-family: 'Geist Mono', monospace; font-size: 14px;
+    color: var(--ink); outline: none;
+  }
+  .delete-confirm .hint {
+    font-size: 11px; color: var(--muted); margin-top: 8px;
+  }
+  .delete-confirm .hint b {
+    font-family: 'Geist Mono', monospace; color: var(--ink); font-weight: 600;
+  }
+
+</style>
+</head>
+<body>
+
+<div class="chrome">
+  <div class="chrome-brand">
+    <span class="dot"></span> PadelPro · Mockups <span style="color:var(--muted);font-weight:400;font-size:13px;margin-left:8px;">Tanda 2 · 18 pantallas</span>
+  </div>
+  <div class="chrome-nav" id="nav"></div>
+  <div class="chrome-counter" id="counter">01 / 18</div>
+</div>
+
+<!-- ═══════════════ 01 · SPLASH ═══════════════ -->
+<div class="stage active" data-stage="1">
+  <div class="stage-header">
+    <div class="stage-title">
+      <span class="num">01 · ONBOARDING · MOBILE</span>
+      Splash / Bienvenida
+    </div>
+    <div class="stage-meta">
+      Capability: <span>auth-local</span><br>
+      Endpoint: <span>—</span><br>
+      Permisos: <span>público</span>
+    </div>
+  </div>
+  <div class="stage-body">
+    <div class="phone">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <div class="phone-status dark"><span>9:41</span><span>● ● ●</span></div>
+        <div class="phone-content">
+          <div class="splash">
+            <div class="logo"><span class="dot"></span> PadelPro</div>
+            <div class="glyph">PP</div>
+            <div class="footer">
+              <div class="tagline">Reserva, <em>juega</em>,<br>vuelve.</div>
+              <div class="actions">
+                <button class="p-btn">Crear cuenta</button>
+                <button class="p-btn outline">Ya tengo cuenta</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="stage-notes">
+      <h3>Notas de diseño</h3>
+      <ul>
+        <li><b>Versión inversa</b> de la pantalla de login: fondo negro, glifo crema, esfera lima como masa visual dominante.</li>
+        <li>Solo dos acciones: crear cuenta (primario) o entrar (secundario). Cero ruido cognitivo.</li>
+        <li>Refuerza identidad de marca antes de pedir nada al usuario.</li>
+        <li>Cubre <span class="cap">auth-local</span> punto de entrada.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ 02 · REGISTRO ═══════════════ -->
+<div class="stage" data-stage="2">
+  <div class="stage-header">
+    <div class="stage-title">
+      <span class="num">02 · ONBOARDING · MOBILE</span>
+      Crear cuenta
+    </div>
+    <div class="stage-meta">
+      Capability: <span>auth-local, usuarios</span><br>
+      Endpoint: <span>POST /api/v1/auth/register</span><br>
+      Permisos: <span>público</span>
+    </div>
+  </div>
+  <div class="stage-body">
+    <div class="phone">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <div class="phone-status"><span>9:41</span><span>● ● ●</span></div>
+        <div class="phone-content">
+          <div class="reg">
+            <div class="p-back" style="margin-bottom: 24px;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+            </div>
+            <div class="reg-hero">
+              <div class="step">Paso 1 de 1</div>
+              <h1>Crea tu<br><em>cuenta.</em></h1>
+            </div>
+            <div class="reg-form">
+              <div class="row">
+                <span class="p-input-label">Nombre completo</span>
+                <input class="p-input" type="text" value="Laura Casado">
+              </div>
+              <div class="row">
+                <span class="p-input-label">Email</span>
+                <input class="p-input" type="email" value="laura.casado@email.com">
+              </div>
+              <div class="row">
+                <span class="p-input-label">Teléfono</span>
+                <input class="p-input" type="tel" value="+34 612 345 678">
+              </div>
+              <div class="row">
+                <span class="p-input-label">Contraseña</span>
+                <input class="p-input" type="password" value="••••••••••">
+              </div>
+              <div class="check">
+                <input type="checkbox" checked>
+                <span>Acepto los <a href="#">términos</a> y la <a href="#">política de privacidad</a>. He leído cómo se tratan mis datos según el RGPD.</span>
+              </div>
+              <button class="p-btn lime" style="margin-top: auto;">
+                Crear cuenta <span class="arrow">→</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="stage-notes">
+      <h3>Notas de diseño</h3>
+      <ul>
+        <li><b>Un solo paso</b>: minimizamos fricción frente al wizard multi-pantalla típico.</li>
+        <li><b>Itálica en "cuenta"</b>: refuerza identidad editorial.</li>
+        <li><b>Check RGPD explícito</b>: requisito legal y cumple <span class="rn">RN-rgpd-01</span>.</li>
+        <li>El "Paso 1 de 1" parece innecesario pero comunica al usuario "no hay más".</li>
+        <li>Cubre <span class="cap">auth-local</span> Req registro y <span class="cap">usuarios</span> creación.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ 03 · RECUPERAR CONTRASEÑA ═══════════════ -->
+<div class="stage" data-stage="3">
+  <div class="stage-header">
+    <div class="stage-title">
+      <span class="num">03 · ONBOARDING · MOBILE</span>
+      Recuperar contraseña
+    </div>
+    <div class="stage-meta">
+      Capability: <span>auth-local</span><br>
+      Endpoint: <span>POST /api/v1/auth/forgot-password</span><br>
+      Permisos: <span>público</span>
+    </div>
+  </div>
+  <div class="stage-body">
+    <div class="phone">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <div class="phone-status"><span>9:41</span><span>● ● ●</span></div>
+        <div class="phone-content">
+          <div class="forgot">
+            <div class="p-back" style="margin-bottom: 28px;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+            </div>
+            <div class="forgot-hero">
+              <h1>¿Olvidaste la<br>contraseña?</h1>
+              <p>Tranquilo, te enviamos un enlace al email para que puedas crear una nueva.</p>
+            </div>
+            <div class="reg-form">
+              <div class="row">
+                <span class="p-input-label">Email registrado</span>
+                <input class="p-input" type="email" value="laura.casado@email.com">
+              </div>
+              <button class="p-btn lime" style="margin-top: 8px;">
+                Enviar enlace <span class="arrow">→</span>
+              </button>
+              <div style="text-align: center; margin-top: 24px; font-size: 13px; color: var(--muted);">
+                ¿Recuerdas tu contraseña? <a href="#" style="color: var(--ink); border-bottom: 1px solid var(--ink); text-decoration: none; font-weight: 500;">Inicia sesión</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="stage-notes">
+      <h3>Notas de diseño</h3>
+      <ul>
+        <li><b>Mensaje tranquilizador</b> antes del campo: reduce ansiedad del usuario que ya está en mal momento.</li>
+        <li><b>Sin scroll</b>: una sola pantalla, una sola acción.</li>
+        <li>Por seguridad, la pantalla siguiente <b>no debe revelar</b> si el email existe (responde 200 siempre).</li>
+        <li>Cubre <span class="cap">auth-local</span> Req "recuperar contraseña".</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ 04 · RESET CONTRASEÑA ═══════════════ -->
+<div class="stage" data-stage="4">
+  <div class="stage-header">
+    <div class="stage-title">
+      <span class="num">04 · ONBOARDING · MOBILE</span>
+      Nueva contraseña
+    </div>
+    <div class="stage-meta">
+      Capability: <span>auth-local</span><br>
+      Endpoint: <span>POST /api/v1/auth/reset-password</span><br>
+      Permisos: <span>token reset válido</span>
+    </div>
+  </div>
+  <div class="stage-body">
+    <div class="phone">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <div class="phone-status"><span>9:41</span><span>● ● ●</span></div>
+        <div class="phone-content">
+          <div class="forgot">
+            <div class="forgot-hero">
+              <div style="font-family: 'Geist Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); margin-bottom: 12px;">
+                Hola Laura
+              </div>
+              <h1>Crea una<br><em style="font-style:italic;font-weight:500;color:var(--olive);">nueva</em> contraseña</h1>
+              <p style="margin-top: 14px;">Debe tener al menos 8 caracteres, una mayúscula, un número y un símbolo.</p>
+            </div>
+            <div class="reg-form">
+              <div class="row">
+                <span class="p-input-label">Nueva contraseña</span>
+                <input class="p-input" type="password" value="••••••••••••">
+                <div class="reset-strength">
+                  <span class="fill1"></span>
+                  <span class="fill2"></span>
+                  <span class="fill3"></span>
+                  <span></span>
+                </div>
+                <div class="reset-strength-label">Fuerte</div>
+                <div class="reset-rules">
+                  <div class="ok">8 caracteres o más</div>
+                  <div class="ok">1 mayúscula</div>
+                  <div class="ok">1 número</div>
+                  <div class="ko" style="color:var(--muted);">1 símbolo (!@#$%)</div>
+                </div>
+              </div>
+              <div class="row" style="margin-top: 14px;">
+                <span class="p-input-label">Confirmar contraseña</span>
+                <input class="p-input" type="password" value="••••••••••••">
+              </div>
+              <button class="p-btn lime" style="margin-top: 14px;">
+                Guardar contraseña <span class="arrow">→</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="stage-notes">
+      <h3>Notas de diseño</h3>
+      <ul>
+        <li><b>Barra de fuerza</b> con 4 segmentos: comunicación instantánea de calidad.</li>
+        <li><b>Reglas con check en tiempo real</b>: el usuario sabe qué le falta sin enviar el form.</li>
+        <li><b>"Hola Laura"</b> personaliza desde el token de reset; sin filtrar email si lo abre el dueño del enlace o terceros.</li>
+        <li>Cubre <span class="cap">auth-local</span> Req "reset con token" y <span class="rn">RN-auth-04</span> política de contraseñas.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ 05 · CHECKOUT REDSYS ═══════════════ -->
+<div class="stage" data-stage="5">
+  <div class="stage-header">
+    <div class="stage-title">
+      <span class="num">05 · PAGO · MOBILE</span>
+      Checkout Redsys
+    </div>
+    <div class="stage-meta">
+      Capability: <span>pagos-redsys</span><br>
+      Endpoint: <span>POST /api/v1/pagos/iniciar → redirect Redsys</span><br>
+      Permisos: <span>JUGADOR autenticado</span>
+    </div>
+  </div>
+  <div class="stage-body">
+    <div class="phone">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <div class="phone-status"><span>9:41</span><span>● ● ●</span></div>
+        <div class="phone-content">
+          <div class="checkout">
+            <div class="checkout-header">
+              <div class="p-back">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+              </div>
+              <h1>Pagar con tarjeta</h1>
+            </div>
+            <div class="checkout-merch">
+              <div class="logo">PP</div>
+              <div class="info">
+                <div class="name">PadelPro · Club Madrid Este</div>
+                <div class="url">checkout.redsys.es/sis</div>
+              </div>
+              <div class="secure">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                3DSv2
+              </div>
+            </div>
+            <div class="checkout-amount">
+              <div class="lab">Importe</div>
+              <div class="price">16,00€</div>
+              <div class="desc">Pista 3 · Jue 22 May · 18:30</div>
+            </div>
+
+            <div class="card-preview">
+              <div class="chip"></div>
+              <div class="num">4539 •••• •••• 7421</div>
+              <div class="row">
+                <div>Titular<b>Laura Casado</b></div>
+                <div>Caducidad<b>09 / 28</b></div>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <span class="lab">Número de tarjeta</span>
+              <input class="form-input" type="text" value="4539 ••••  ••••  7421">
+            </div>
+            <div class="form-grid">
+              <div class="form-row" style="margin-bottom:0;">
+                <span class="lab">Caducidad</span>
+                <input class="form-input" type="text" value="09 / 28">
+              </div>
+              <div class="form-row" style="margin-bottom:0;">
+                <span class="lab">CVV</span>
+                <input class="form-input" type="text" value="•••">
+              </div>
+            </div>
+
+            <button class="p-btn lime">
+              Pagar 16,00€ <span class="arrow">→</span>
+            </button>
+
+            <div style="text-align: center; margin-top: 16px; font-family: 'Geist Mono', monospace; font-size: 10px; color: var(--muted); letter-spacing: 0.04em;">
+              Procesado por Redsys · HMAC SHA-256 · PCI-DSS L1
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="stage-notes">
+      <h3>Notas de diseño</h3>
+      <ul>
+        <li><b>Merchant header</b> con URL Redsys + 3DSv2: el usuario entiende que es checkout externo seguro.</li>
+        <li><b>Tarjeta visual</b> con bandas olive como simulación de Resy/Stripe: refuerza confianza.</li>
+        <li><b>Precio enorme</b> en hero del checkout: el usuario sabe exactamente qué paga.</li>
+        <li><b>Footer técnico discreto</b>: HMAC + PCI-DSS, sin asustar.</li>
+        <li>Cubre <span class="cap">pagos-redsys</span> Req "iniciar pago" + <span class="rn">RN-pago-01</span> firma HMAC SHA-256.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ 06 · PAGO CONFIRMADO ═══════════════ -->
+<div class="stage" data-stage="6">
+  <div class="stage-header">
+    <div class="stage-title">
+      <span class="num">06 · PAGO · MOBILE</span>
+      Pago confirmado
+    </div>
+    <div class="stage-meta">
+      Capability: <span>pagos-redsys, reservas, notificaciones</span><br>
+      Endpoint: <span>Webhook Redsys → callback HMAC verificado</span><br>
+      Permisos: <span>JUGADOR autenticado</span>
+    </div>
+  </div>
+  <div class="stage-body">
+    <div class="phone">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <div class="phone-status dark"><span>9:41</span><span>● ● ●</span></div>
+        <div class="phone-content">
+          <div class="success">
+            <div class="success-ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+            </div>
+            <h1>¡Pista <em>reservada!</em></h1>
+            <div class="sub">Te esperamos en pista el jueves a las 18:30</div>
+
+            <div class="success-card">
+              <div class="row">
+                <span class="lab">Reserva</span>
+                <span class="val">R-2026-0512</span>
+              </div>
+              <div class="row">
+                <span class="lab">Pista</span>
+                <span class="val">Pista 3 · Cristal</span>
+              </div>
+              <div class="row">
+                <span class="lab">Cuándo</span>
+                <span class="val">Jue 22 May · 18:30</span>
+              </div>
+              <div class="row">
+                <span class="lab">Importe</span>
+                <span class="val">16,00€</span>
+              </div>
+              <div class="row">
+                <span class="lab">Pago</span>
+                <span class="val" style="color:var(--lime);">✓ Confirmado</span>
+              </div>
+            </div>
+
+            <div style="text-align:center;font-family:'Geist Mono',monospace;font-size:10px;color:var(--muted-light);letter-spacing:0.08em;margin-bottom:8px;">
+              Recibo enviado a laura.casado@email.com
+            </div>
+
+            <div class="actions">
+              <button class="p-btn">Añadir al calendario</button>
+              <button class="p-btn outline">Ver reserva →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="stage-notes">
+      <h3>Notas de diseño</h3>
+      <ul>
+        <li><b>Verde lima sobre negro</b>: éxito sin caer en el cliché del checkmark verde.</li>
+        <li><b>Glow radial detrás del ícono</b>: refuerza el momento de celebración.</li>
+        <li><b>Resumen escaneable</b> con check explícito en "Pago confirmado".</li>
+        <li><b>Recibo por email</b> mencionado: cierre del flujo + confianza.</li>
+        <li>Cubre <span class="cap">pagos-redsys</span> Req "callback OK", <span class="cap">notificaciones</span> "AFTER_COMMIT" <span class="rn">RN-notif-01</span>.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ 07 · DETALLE RESERVA + CANCELAR ═══════════════ -->
+<div class="stage" data-stage="7">
+  <div class="stage-header">
+    <div class="stage-title">
+      <span class="num">07 · RESERVAS · MOBILE</span>
+      Detalle de mi reserva
+    </div>
+    <div class="stage-meta">
+      Capability: <span>reservas</span><br>
+      Endpoint: <span>GET /api/v1/reservas/{id} · DELETE /api/v1/reservas/{id}</span><br>
+      Permisos: <span>JUGADOR (propias)</span>
+    </div>
+  </div>
+  <div class="stage-body">
+    <div class="phone">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <div class="phone-status dark"><span>9:41</span><span>● ● ●</span></div>
+        <div class="phone-content">
+          <div class="resdet">
+            <div class="resdet-hero">
+              <div class="resdet-back">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+              </div>
+              <div class="resdet-status">
+                <span class="dot"></span> Confirmada · empieza en 3h
+              </div>
+              <h1>Pista 3</h1>
+              <div class="meta">Cristal · Outdoor · Club Madrid Este</div>
+              <div class="code">R-2026-0512</div>
+            </div>
+            <div class="resdet-body">
+              <div class="resdet-section">
+                <h3>Horario</h3>
+                <div class="resdet-info-grid">
+                  <div class="info-pill">
+                    <div class="lab">Día</div>
+                    <div class="val">Jue 22 May</div>
+                  </div>
+                  <div class="info-pill">
+                    <div class="lab">Hora</div>
+                    <div class="val">18:30 — 20:00</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="resdet-section">
+                <h3>Jugadores · 3 de 4</h3>
+                <div class="players-row">
+                  <div class="player-chip">
+                    <div class="av">LC</div>
+                    Laura · Tú
+                  </div>
+                  <div class="player-chip">
+                    <div class="av">MR</div>
+                    Marcos R.
+                  </div>
+                  <div class="player-chip">
+                    <div class="av">PG</div>
+                    Pablo G.
+                  </div>
+                  <div class="player-chip empty">
+                    <div class="av">+</div>
+                    Invitar
+                  </div>
+                </div>
+              </div>
+
+              <div class="resdet-section">
+                <h3>Pago</h3>
+                <div class="resdet-info-grid">
+                  <div class="info-pill">
+                    <div class="lab">Importe</div>
+                    <div class="val">16,00 €</div>
+                  </div>
+                  <div class="info-pill">
+                    <div class="lab">Método</div>
+                    <div class="val">VISA •7421</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="resdet-footer">
+              <button class="p-btn outline" style="flex: 1;">Modificar</button>
+              <button class="p-btn danger" style="flex: 1.4;">Cancelar reserva</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="stage-notes">
+      <h3>Notas de diseño</h3>
+      <ul>
+        <li><b>Hero olive con código de reserva en lima</b>: jerarquía clara, código fácil de leer/citar.</li>
+        <li><b>Player chips con avatar</b>: ver al equipo de un vistazo + invitar a cuarto miembro.</li>
+        <li><b>Cancelar en rojo</b> como acción peligrosa, modificar neutro. Jerarquía de riesgo visible.</li>
+        <li><b>Sin overlay confuso</b>: el cancelar abre un modal con la política <span class="rn">RN-04</span> aplicada al caso.</li>
+        <li>Cubre <span class="cap">reservas</span> Req "ver detalle" + "cancelar".</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ 08 · PERFIL ═══════════════ -->
+<div class="stage" data-stage="8">
+  <div class="stage-header">
+    <div class="stage-title">
+      <span class="num">08 · PERFIL · MOBILE</span>
+      Mi perfil
+    </div>
+    <div class="stage-meta">
+      Capability: <span>usuarios, auth-otp-telegram</span><br>
+      Endpoint: <span>GET /api/v1/users/me</span><br>
+      Permisos: <span>JUGADOR autenticado</span>
+    </div>
+  </div>
+  <div class="stage-body">
+    <div class="phone">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <div class="phone-status"><span>9:41</span><span>● ● ●</span></div>
+        <div class="phone-content">
+          <div class="profile">
+            <div class="profile-head">
+              <div class="profile-avatar">LC</div>
+              <div class="info">
+                <h1>Laura Casado</h1>
+                <div class="email">laura.casado@email.com</div>
+              </div>
+            </div>
+
+            <div class="profile-section">
+              <h2>Cuenta</h2>
+              <div class="profile-row">
+                <div class="ico">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a7 7 0 0114 0v1"/></svg>
+                </div>
+                <div class="text">
+                  <div class="name">Datos personales</div>
+                  <div class="sub">Nombre, email, teléfono</div>
+                </div>
+                <span class="chev">→</span>
+              </div>
+              <div class="profile-row">
+                <div class="ico">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                </div>
+                <div class="text">
+                  <div class="name">Seguridad</div>
+                  <div class="sub">Cambiar contraseña</div>
+                </div>
+                <span class="chev">→</span>
+              </div>
+            </div>
+
+            <div class="profile-section">
+              <h2>Conexiones</h2>
+              <div class="profile-row">
+                <div class="ico" style="background:#E8F0FA;color:var(--info);">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M21.5 4.5l-3 15s-.5 1-1.5 1c-.5 0-2-1-2-1l-7-5-3-1s-1-.5-1-1.5 1-1.5 1-1.5l16-5s.5-.5 1-.5c.5 0 .5.5.5.5z"/></svg>
+                </div>
+                <div class="text">
+                  <div class="name">Telegram</div>
+                  <div class="sub">Recibe avisos y usa OTP</div>
+                </div>
+                <span class="status linked">Vinculado</span>
+              </div>
+              <div class="profile-row">
+                <div class="ico">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+                </div>
+                <div class="text">
+                  <div class="name">Métodos de pago</div>
+                  <div class="sub">VISA •7421</div>
+                </div>
+                <span class="chev">→</span>
+              </div>
+            </div>
+
+            <div class="profile-section">
+              <h2>Privacidad</h2>
+              <div class="profile-row">
+                <div class="ico">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                </div>
+                <div class="text">
+                  <div class="name">Mis datos · RGPD</div>
+                  <div class="sub">Exportar o eliminar</div>
+                </div>
+                <span class="chev">→</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="p-tabbar">
+            <div class="p-tab">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12L12 3l9 9v9a2 2 0 01-2 2h-4v-7H9v7H5a2 2 0 01-2-2v-9z"/></svg>
+              Inicio
+            </div>
+            <div class="p-tab">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>
+              Buscar
+            </div>
+            <div class="p-tab">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              Reservas
+            </div>
+            <div class="p-tab active">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a7 7 0 0114 0v1"/></svg>
+              Perfil
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="stage-notes">
+      <h3>Notas de diseño</h3>
+      <ul>
+        <li><b>3 secciones claras</b>: Cuenta, Conexiones, Privacidad. RGPD destacado como sección propia.</li>
+        <li><b>Pill "Vinculado" en lima</b> para Telegram: estado visible sin entrar al detalle.</li>
+        <li><b>Iconografía única</b> para Telegram (azul) entre los iconos olive: lo distingue como integración externa.</li>
+        <li>Cubre <span class="cap">usuarios</span> + entrada a <span class="cap">auth-otp-telegram</span> + <span class="cap">exportaciones-rgpd</span>.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ 09 · VINCULAR TELEGRAM ═══════════════ -->
+<div class="stage" data-stage="9">
+  <div class="stage-header">
+    <div class="stage-title">
+      <span class="num">09 · TELEGRAM · MOBILE</span>
+      Vincular Telegram
+    </div>
+    <div class="stage-meta">
+      Capability: <span>auth-otp-telegram</span><br>
+      Endpoint: <span>POST /api/v1/telegram/link/initiate</span><br>
+      Permisos: <span>JUGADOR autenticado</span>
+    </div>
+  </div>
+  <div class="stage-body">
+    <div class="phone">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <div class="phone-status"><span>9:41</span><span>● ● ●</span></div>
+        <div class="phone-content">
+          <div class="tg">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+              <div class="p-back">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+              </div>
+            </div>
+            <div class="tg-hero">
+              <div class="tg-icon">
+                <svg viewBox="0 0 24 24" fill="white"><path d="M21.5 4.5l-3 15s-.5 1-1.5 1c-.5 0-2-1-2-1l-7-5-3-1s-1-.5-1-1.5 1-1.5 1-1.5l16-5s.5-.5 1-.5c.5 0 .5.5.5.5z"/></svg>
+              </div>
+              <h1>Activa <em>Telegram</em> en tu cuenta</h1>
+              <p>Recibe avisos de tu próxima reserva y usa el bot como segundo factor de autenticación.</p>
+            </div>
+
+            <div class="tg-steps">
+              <div class="tg-step">
+                <div class="num">1</div>
+                <div class="text">
+                  <div class="title">Abre el bot en Telegram</div>
+                  <div class="desc">Pulsa el botón de abajo o búscalo en Telegram.</div>
+                  <span class="botname">@PadelPro_bot</span>
+                </div>
+              </div>
+              <div class="tg-step">
+                <div class="num">2</div>
+                <div class="text">
+                  <div class="title">Envía /vincular en el chat</div>
+                  <div class="desc">El bot te pedirá un código que verás en la siguiente pantalla.</div>
+                </div>
+              </div>
+              <div class="tg-step">
+                <div class="num">3</div>
+                <div class="text">
+                  <div class="title">Introduce el código de 6 dígitos</div>
+                  <div class="desc">Solo válido durante 5 minutos. Si caduca, vuelve a empezar.</div>
+                </div>
+              </div>
+            </div>
+
+            <button class="p-btn lime" style="margin-top: auto;">
+              Abrir Telegram <span class="arrow">→</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="stage-notes">
+      <h3>Notas de diseño</h3>
+      <ul>
+        <li><b>Color azul Telegram</b> respetado en el icono e ilustración: confianza inmediata con la marca.</li>
+        <li><b>3 pasos numerados</b>: el flujo cross-app es confuso, lo desglosamos para evitar abandono.</li>
+        <li><b>Username del bot en mono</b>: el usuario sabe que es un identificador técnico exacto.</li>
+        <li><b>Mención de 5 minutos</b>: gestiona expectativas sobre <span class="rn">RN-otp-01</span> caducidad.</li>
+        <li>Cubre <span class="cap">auth-otp-telegram</span> Req "iniciar vinculación".</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ 10 · OTP TELEGRAM ═══════════════ -->
+<div class="stage" data-stage="10">
+  <div class="stage-header">
+    <div class="stage-title">
+      <span class="num">10 · TELEGRAM · MOBILE</span>
+      Introducir OTP
+    </div>
+    <div class="stage-meta">
+      Capability: <span>auth-otp-telegram</span><br>
+      Endpoint: <span>POST /api/v1/telegram/link/verify</span><br>
+      Permisos: <span>JUGADOR autenticado</span>
+    </div>
+  </div>
+  <div class="stage-body">
+    <div class="phone">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <div class="phone-status"><span>9:41</span><span>● ● ●</span></div>
+        <div class="phone-content">
+          <div class="otp">
+            <div class="p-back" style="margin-bottom: 28px;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+            </div>
+            <div class="otp-hero">
+              <h1>Introduce el código</h1>
+              <p>Te hemos enviado un código de 6 dígitos a tu chat de Telegram <b>@laucasado</b>. Cópialo aquí abajo.</p>
+            </div>
+
+            <div class="otp-boxes">
+              <div class="otp-box filled">4</div>
+              <div class="otp-box filled">9</div>
+              <div class="otp-box filled">2</div>
+              <div class="otp-box filled">7</div>
+              <div class="otp-box active"><div class="cursor"></div></div>
+              <div class="otp-box"></div>
+            </div>
+
+            <div class="otp-timer">
+              Expira en <span class="num">4:12</span>
+            </div>
+
+            <button class="p-btn lime">
+              Verificar <span class="arrow">→</span>
+            </button>
+
+            <div class="otp-resend">
+              ¿No te llegó? <a href="#">Reenviar código</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="stage-notes">
+      <h3>Notas de diseño</h3>
+      <ul>
+        <li><b>6 cajas independientes</b>: feedback inmediato de cuántos dígitos faltan.</li>
+        <li><b>Active state con shadow olive</b>: el usuario sabe dónde escribir aunque tape el cursor con el teclado.</li>
+        <li><b>Timer en mono</b> con el segundero contando: presión sutil pero clara, conecta con <span class="rn">RN-otp-01</span>.</li>
+        <li><b>Username Telegram</b> visible: confirma que va al chat correcto antes de pegar.</li>
+        <li>Cubre <span class="cap">auth-otp-telegram</span> Req "verificar OTP".</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ 11 · GESTION PISTAS ADMIN ═══════════════ -->
+<div class="stage" data-stage="11">
+  <div class="stage-header">
+    <div class="stage-title">
+      <span class="num">11 · ADMIN CLUB · DESKTOP</span>
+      Gestión de pistas
+    </div>
+    <div class="stage-meta">
+      Capability: <span>pistas</span><br>
+      Endpoint: <span>GET /api/v1/admin/pistas</span><br>
+      Permisos: <span>MANAGER_CLUB · ADMIN</span>
+    </div>
+  </div>
+  <div class="stage-body" style="gap: 40px;">
+    <div class="desktop">
+      <div class="desktop-bar">
+        <div class="traffic"><span></span><span></span><span></span></div>
+        <div class="url">padelpro.app/admin/pistas</div>
+      </div>
+      <div class="desktop-content">
+        <div class="admin">
+          <div class="admin-sidebar">
+            <div class="admin-brand"><span class="dot"></span> PadelPro</div>
+            <div class="admin-club-pill">
+              <div class="lab">Gestionando</div>
+              <div class="name">Club Madrid Este</div>
+            </div>
+            <div class="admin-nav-section">Operación</div>
+            <div class="admin-nav">
+              <div class="admin-nav-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Dashboard</div>
+              <div class="admin-nav-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Calendario</div>
+              <div class="admin-nav-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 17 9 11 13 15 21 7"/><polyline points="14 7 21 7 21 14"/></svg>Reservas</div>
+              <div class="admin-nav-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>Pagos</div>
+            </div>
+            <div class="admin-nav-section">Configuración</div>
+            <div class="admin-nav">
+              <div class="admin-nav-item active"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="9" x2="9" y2="21"/></svg>Pistas</div>
+              <div class="admin-nav-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a7 7 0 0114 0v1"/></svg>Usuarios</div>
+              <div class="admin-nav-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Política</div>
+            </div>
+          </div>
+
+          <div class="admin-main">
+            <div class="admin-topbar">
+              <div>
+                <h1>Pistas del club</h1>
+                <div class="date">6 pistas activas · 1 en mantenimiento</div>
+              </div>
+              <div class="admin-topbar-actions">
+                <button class="admin-btn">Importar</button>
+                <button class="admin-btn dark">+ Nueva pista</button>
+              </div>
+            </div>
+
+            <div class="admin-content">
+              <div class="courts-grid">
+                <div class="court-card">
+                  <span class="badge active">Activa</span>
+                  <div class="ico-court"></div>
+                  <div class="name">Pista Central</div>
+                  <div class="meta">Cristal · Indoor</div>
+                  <div class="stats">
+                    <div class="stat">
+                      <div class="lab">Ocupación</div>
+                      <div class="val">91%</div>
+                    </div>
+                    <div class="stat">
+                      <div class="lab">Tarifa hora</div>
+                      <div class="val">18€</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="court-card">
+                  <span class="badge active">Activa</span>
+                  <div class="ico-court"></div>
+                  <div class="name">Pista 3</div>
+                  <div class="meta">Cristal · Outdoor</div>
+                  <div class="stats">
+                    <div class="stat">
+                      <div class="lab">Ocupación</div>
+                      <div class="val">84%</div>
+                    </div>
+                    <div class="stat">
+                      <div class="lab">Tarifa hora</div>
+                      <div class="val">16€</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="court-card">
+                  <span class="badge active">Activa</span>
+                  <div class="ico-court"></div>
+                  <div class="name">Pista 5</div>
+                  <div class="meta">Muro · Outdoor</div>
+                  <div class="stats">
+                    <div class="stat">
+                      <div class="lab">Ocupación</div>
+                      <div class="val">72%</div>
+                    </div>
+                    <div class="stat">
+                      <div class="lab">Tarifa hora</div>
+                      <div class="val">14€</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="court-card">
+                  <span class="badge active">Activa</span>
+                  <div class="ico-court"></div>
+                  <div class="name">Pista 6</div>
+                  <div class="meta">Cristal · Indoor</div>
+                  <div class="stats">
+                    <div class="stat">
+                      <div class="lab">Ocupación</div>
+                      <div class="val">88%</div>
+                    </div>
+                    <div class="stat">
+                      <div class="lab">Tarifa hora</div>
+                      <div class="val">18€</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="court-card">
+                  <span class="badge maint">Mantenimiento</span>
+                  <div class="ico-court" style="opacity:0.4;"></div>
+                  <div class="name">Pista 7</div>
+                  <div class="meta">Cristal · Outdoor</div>
+                  <div class="stats">
+                    <div class="stat">
+                      <div class="lab">Reapertura</div>
+                      <div class="val" style="font-size:14px;">28 May</div>
+                    </div>
+                    <div class="stat">
+                      <div class="lab">Tarifa hora</div>
+                      <div class="val">16€</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="court-card add">
+                  <div class="plus">+</div>
+                  <div class="lab">Añadir pista</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="stage-notes" style="width: 280px;">
+      <h3>Notas de diseño</h3>
+      <ul>
+        <li><b>Icono visual de pista</b> con líneas tipo cancha de pádel: hace memorable y reconocible.</li>
+        <li><b>Mantenimiento con icono opaco</b>: comunica "fuera de servicio" sin tener que leer.</li>
+        <li><b>KPIs por pista</b>: el manager evalúa ROI individual.</li>
+        <li><b>Card de "añadir"</b> visualmente distinto, dashed: acción de bajo riesgo y no compite con cards reales.</li>
+        <li>Cubre <span class="cap">pistas</span> Req CRUD.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ 12 · CALENDARIO SEMANAL ═══════════════ -->
+<div class="stage" data-stage="12">
+  <div class="stage-header">
+    <div class="stage-title">
+      <span class="num">12 · ADMIN CLUB · DESKTOP</span>
+      Calendario semanal
+    </div>
+    <div class="stage-meta">
+      Capability: <span>reservas, disponibilidad-pistas</span><br>
+      Endpoint: <span>GET /api/v1/admin/reservas?semana=21</span><br>
+      Permisos: <span>MANAGER_CLUB · ADMIN</span>
+    </div>
+  </div>
+  <div class="stage-body" style="gap: 40px;">
+    <div class="desktop">
+      <div class="desktop-bar">
+        <div class="traffic"><span></span><span></span><span></span></div>
+        <div class="url">padelpro.app/admin/calendario</div>
+      </div>
+      <div class="desktop-content">
+        <div class="admin">
+          <div class="admin-sidebar">
+            <div class="admin-brand"><span class="dot"></span> PadelPro</div>
+            <div class="admin-club-pill">
+              <div class="lab">Gestionando</div>
+              <div class="name">Club Madrid Este</div>
+            </div>
+            <div class="admin-nav-section">Operación</div>
+            <div class="admin-nav">
+              <div class="admin-nav-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Dashboard</div>
+              <div class="admin-nav-item active"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Calendario</div>
+              <div class="admin-nav-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 17 9 11 13 15 21 7"/><polyline points="14 7 21 7 21 14"/></svg>Reservas</div>
+              <div class="admin-nav-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>Pagos</div>
+            </div>
+            <div class="admin-nav-section">Configuración</div>
+            <div class="admin-nav">
+              <div class="admin-nav-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="9" x2="9" y2="21"/></svg>Pistas</div>
+              <div class="admin-nav-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a7 7 0 0114 0v1"/></svg>Usuarios</div>
+            </div>
+          </div>
+
+          <div class="admin-main">
+            <div class="admin-topbar">
+              <div>
+                <h1>Calendario · Pista 3</h1>
+                <div class="date">Vista semanal · ocupación por franja</div>
+              </div>
+              <div class="admin-topbar-actions">
+                <button class="admin-btn">Pista 3 · Cristal ▾</button>
+                <button class="admin-btn dark">+ Reserva manual</button>
+              </div>
+            </div>
+
+            <div class="admin-content">
+              <div class="cal-toolbar">
+                <div class="week">
+                  Semana 21 · 19 — 25 Mayo
+                  <span class="sub">2026</span>
+                </div>
+                <div class="cal-nav">
+                  <button>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+                  </button>
+                  <button class="today">Hoy</button>
+                  <button>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                  </button>
+                </div>
+              </div>
+
+              <div class="cal-grid">
+                <div class="cal-head">
+                  <div></div>
+                  <div class="h"><div class="dow">Lun</div><div class="num">19</div></div>
+                  <div class="h"><div class="dow">Mar</div><div class="num">20</div></div>
+                  <div class="h"><div class="dow">Mié</div><div class="num">21</div></div>
+                  <div class="h today"><div class="dow">Jue</div><div class="num">22</div></div>
+                  <div class="h"><div class="dow">Vie</div><div class="num">23</div></div>
+                  <div class="h"><div class="dow">Sáb</div><div class="num">24</div></div>
+                  <div class="h"><div class="dow">Dom</div><div class="num">25</div></div>
+                </div>
+                <div class="cal-body">
+                  <div class="cal-hours">
+                    <div class="cal-hour">9:00</div>
+                    <div class="cal-hour">10:00</div>
+                    <div class="cal-hour">11:00</div>
+                    <div class="cal-hour">12:00</div>
+                    <div class="cal-hour">13:00</div>
+                    <div class="cal-hour">14:00</div>
+                    <div class="cal-hour">15:00</div>
+                    <div class="cal-hour">16:00</div>
+                    <div class="cal-hour">17:00</div>
+                    <div class="cal-hour">18:00</div>
+                  </div>
+
+                  <div class="cal-col">
+                    <div class="hline"></div><div class="hline"></div><div class="hline"></div><div class="hline"></div>
+                    <div class="hline"></div><div class="hline"></div><div class="hline"></div><div class="hline"></div>
+                    <div class="hline"></div><div class="hline"></div>
+                    <div class="cal-event" style="top:56px;height:84px;"><span class="t">10:00 — 11:30</span>Liga municipal</div>
+                    <div class="cal-event alt" style="top:280px;height:84px;"><span class="t">14:00 — 15:30</span>Sergio M.</div>
+                    <div class="cal-event" style="top:448px;height:84px;"><span class="t">17:00 — 18:30</span>P. Vega</div>
+                  </div>
+
+                  <div class="cal-col">
+                    <div class="hline"></div><div class="hline"></div><div class="hline"></div><div class="hline"></div>
+                    <div class="hline"></div><div class="hline"></div><div class="hline"></div><div class="hline"></div>
+                    <div class="hline"></div><div class="hline"></div>
+                    <div class="cal-event" style="top:112px;height:84px;"><span class="t">11:00 — 12:30</span>Carla L.</div>
+                    <div class="cal-event alt" style="top:336px;height:56px;"><span class="t">15:00</span>Iván R.</div>
+                  </div>
+
+                  <div class="cal-col">
+                    <div class="hline"></div><div class="hline"></div><div class="hline"></div><div class="hline"></div>
+                    <div class="hline"></div><div class="hline"></div><div class="hline"></div><div class="hline"></div>
+                    <div class="hline"></div><div class="hline"></div>
+                    <div class="cal-event maint" style="top:0;height:84px;"><span class="t">09:00 — 10:30</span>Mantenimiento</div>
+                    <div class="cal-event" style="top:224px;height:84px;"><span class="t">13:00 — 14:30</span>D. Ríos</div>
+                    <div class="cal-event alt" style="top:392px;height:56px;"><span class="t">16:00</span>J. Pérez</div>
+                  </div>
+
+                  <div class="cal-col">
+                    <div class="hline"></div><div class="hline"></div><div class="hline"></div><div class="hline"></div>
+                    <div class="hline"></div><div class="hline"></div><div class="hline"></div><div class="hline"></div>
+                    <div class="hline"></div><div class="hline"></div>
+                    <div class="cal-event" style="top:56px;height:84px;"><span class="t">10:00 — 11:30</span>María Sanz</div>
+                    <div class="cal-event alt" style="top:280px;height:84px;"><span class="t">14:00 — 15:30</span>N. Castro</div>
+                    <div class="cal-event lime" style="top:504px;height:84px;"><span class="t">18:30 — 20:00</span>Laura C.</div>
+                  </div>
+
+                  <div class="cal-col">
+                    <div class="hline"></div><div class="hline"></div><div class="hline"></div><div class="hline"></div>
+                    <div class="hline"></div><div class="hline"></div><div class="hline"></div><div class="hline"></div>
+                    <div class="hline"></div><div class="hline"></div>
+                    <div class="cal-event" style="top:168px;height:56px;"><span class="t">12:00</span>A. Rivas</div>
+                    <div class="cal-event alt" style="top:336px;height:84px;"><span class="t">15:00 — 16:30</span>Cuarteto J.</div>
+                    <div class="cal-event" style="top:448px;height:84px;"><span class="t">17:00 — 18:30</span>P. Vega</div>
+                  </div>
+
+                  <div class="cal-col">
+                    <div class="hline"></div><div class="hline"></div><div class="hline"></div><div class="hline"></div>
+                    <div class="hline"></div><div class="hline"></div><div class="hline"></div><div class="hline"></div>
+                    <div class="hline"></div><div class="hline"></div>
+                    <div class="cal-event" style="top:0;height:84px;"><span class="t">09:00 — 10:30</span>Liga municipal</div>
+                    <div class="cal-event alt" style="top:112px;height:56px;"><span class="t">11:00</span>Sara F.</div>
+                    <div class="cal-event" style="top:224px;height:84px;"><span class="t">13:00 — 14:30</span>M. Sanz</div>
+                    <div class="cal-event alt" style="top:336px;height:56px;"><span class="t">15:00</span>Sergio M.</div>
+                  </div>
+
+                  <div class="cal-col">
+                    <div class="hline"></div><div class="hline"></div><div class="hline"></div><div class="hline"></div>
+                    <div class="hline"></div><div class="hline"></div><div class="hline"></div><div class="hline"></div>
+                    <div class="hline"></div><div class="hline"></div>
+                    <div class="cal-event" style="top:56px;height:84px;"><span class="t">10:00 — 11:30</span>Carla L.</div>
+                    <div class="cal-event alt" style="top:280px;height:84px;"><span class="t">14:00 — 15:30</span>Pablo G.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="stage-notes" style="width: 280px;">
+      <h3>Notas de diseño</h3>
+      <ul>
+        <li><b>Día actual con header negro</b>: ancla visual fuerte sin colores estridentes.</li>
+        <li><b>Reservas en tonos de olive</b> según turno; mantenimiento rojo; reserva resaltada en lima.</li>
+        <li><b>Pista seleccionable</b> en topbar: filtro principal sin ocupar mucho espacio.</li>
+        <li><b>Reserva manual</b> como acción primaria: caso típico de soporte telefónico.</li>
+        <li>Cubre <span class="cap">reservas</span> + <span class="cap">disponibilidad-pistas</span> vista admin.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ 13 · LISTADO RESERVAS ADMIN ═══════════════ -->
+<div class="stage" data-stage="13">
+  <div class="stage-header">
+    <div class="stage-title">
+      <span class="num">13 · ADMIN CLUB · DESKTOP</span>
+      Reservas del club
+    </div>
+    <div class="stage-meta">
+      Capability: <span>reservas, pagos-redsys</span><br>
+      Endpoint: <span>GET /api/v1/admin/reservas</span><br>
+      Permisos: <span>MANAGER_CLUB · ADMIN</span>
+    </div>
+  </div>
+  <div class="stage-body" style="gap: 40px;">
+    <div class="desktop">
+      <div class="desktop-bar">
+        <div class="traffic"><span></span><span></span><span></span></div>
+        <div class="url">padelpro.app/admin/reservas</div>
+      </div>
+      <div class="desktop-content">
+        <div class="admin">
+          <div class="admin-sidebar">
+            <div class="admin-brand"><span class="dot"></span> PadelPro</div>
+            <div class="admin-club-pill">
+              <div class="lab">Gestionando</div>
+              <div class="name">Club Madrid Este</div>
+            </div>
+            <div class="admin-nav-section">Operación</div>
+            <div class="admin-nav">
+              <div class="admin-nav-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Dashboard</div>
+              <div class="admin-nav-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Calendario</div>
+              <div class="admin-nav-item active"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 17 9 11 13 15 21 7"/><polyline points="14 7 21 7 21 14"/></svg>Reservas</div>
+              <div class="admin-nav-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>Pagos</div>
+            </div>
+          </div>
+
+          <div class="admin-main">
+            <div class="admin-topbar">
+              <div>
+                <h1>Reservas</h1>
+                <div class="date">Esta semana · 184 reservas · 2.890€</div>
+              </div>
+              <div class="admin-topbar-actions">
+                <button class="admin-btn">Exportar CSV</button>
+                <button class="admin-btn dark">+ Reserva manual</button>
+              </div>
+            </div>
+
+            <div class="admin-content">
+              <div class="filters-bar">
+                <div class="filter-chip active">Todas <span class="count">184</span></div>
+                <div class="filter-chip">Confirmadas <span class="count">162</span></div>
+                <div class="filter-chip">Pendientes <span class="count">8</span></div>
+                <div class="filter-chip">Canceladas <span class="count">14</span></div>
+                <div class="search-box">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>
+                  <input type="text" placeholder="Buscar por email, código o jugador…">
+                </div>
+              </div>
+
+              <div style="background:white;border:1px solid var(--line);border-radius:16px;overflow:hidden;">
+                <div class="table-head">
+                  <div class="col">Código</div>
+                  <div class="col">Jugador</div>
+                  <div class="col">Día / hora</div>
+                  <div class="col">Pista</div>
+                  <div class="col">Importe</div>
+                  <div class="col">Estado</div>
+                  <div></div>
+                </div>
+
+                <div class="table-row">
+                  <div class="code">R-2026-0512</div>
+                  <div class="player">
+                    <div class="av">LC</div>
+                    <div><div class="name">Laura Casado</div><div class="email">laura.casado@email.com</div></div>
+                  </div>
+                  <div class="when"><div class="d">Jue 22 May</div><div class="h">18:30 — 20:00</div></div>
+                  <div class="court-name">Pista 3<span class="sub">Cristal · OUT</span></div>
+                  <div class="amount">16,00€</div>
+                  <div class="pill ok">OK</div>
+                  <div style="color:var(--muted-light);">→</div>
+                </div>
+
+                <div class="table-row">
+                  <div class="code">R-2026-0517</div>
+                  <div class="player">
+                    <div class="av">SM</div>
+                    <div><div class="name">Sergio Martín</div><div class="email">s.martin@padelpro.com</div></div>
+                  </div>
+                  <div class="when"><div class="d">Vie 23 May</div><div class="h">20:00 — 21:30</div></div>
+                  <div class="court-name">P. Central<span class="sub">Cristal · IN</span></div>
+                  <div class="amount">18,00€</div>
+                  <div class="pill warn">Pago</div>
+                  <div style="color:var(--muted-light);">→</div>
+                </div>
+
+                <div class="table-row">
+                  <div class="code">R-2026-0521</div>
+                  <div class="player">
+                    <div class="av">IR</div>
+                    <div><div class="name">Iván Reyes</div><div class="email">ivan.reyes@email.com</div></div>
+                  </div>
+                  <div class="when"><div class="d">Sáb 24 May</div><div class="h">10:30 — 12:00</div></div>
+                  <div class="court-name">Pista 5<span class="sub">Muro · OUT</span></div>
+                  <div class="amount">14,00€</div>
+                  <div class="pill ok">OK</div>
+                  <div style="color:var(--muted-light);">→</div>
+                </div>
+
+                <div class="table-row">
+                  <div class="code">R-2026-0508</div>
+                  <div class="player">
+                    <div class="av">MS</div>
+                    <div><div class="name">María Sanz</div><div class="email">maria.sanz@email.com</div></div>
+                  </div>
+                  <div class="when"><div class="d">Jue 22 May</div><div class="h">15:00 — 16:30</div></div>
+                  <div class="court-name">Pista 3<span class="sub">Cristal · OUT</span></div>
+                  <div class="amount">16,00€</div>
+                  <div class="pill ok">OK</div>
+                  <div style="color:var(--muted-light);">→</div>
+                </div>
+
+                <div class="table-row">
+                  <div class="code">R-2026-0498</div>
+                  <div class="player">
+                    <div class="av">PG</div>
+                    <div><div class="name">Pablo García</div><div class="email">p.garcia@email.com</div></div>
+                  </div>
+                  <div class="when"><div class="d">Mié 21 May</div><div class="h">19:00 — 20:30</div></div>
+                  <div class="court-name">Pista 6<span class="sub">Cristal · IN</span></div>
+                  <div class="amount">−18,00€</div>
+                  <div class="pill bad">Cancelada</div>
+                  <div style="color:var(--muted-light);">→</div>
+                </div>
+
+                <div class="table-row">
+                  <div class="code">R-2026-0492</div>
+                  <div class="player">
+                    <div class="av">CL</div>
+                    <div><div class="name">Carla López</div><div class="email">carla.lopez@email.com</div></div>
+                  </div>
+                  <div class="when"><div class="d">Mié 21 May</div><div class="h">11:00 — 12:30</div></div>
+                  <div class="court-name">Pista 3<span class="sub">Cristal · OUT</span></div>
+                  <div class="amount">16,00€</div>
+                  <div class="pill ok">OK</div>
+                  <div style="color:var(--muted-light);">→</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="stage-notes" style="width: 280px;">
+      <h3>Notas de diseño</h3>
+      <ul>
+        <li><b>Filtros con contador</b>: el admin sabe cuántas hay sin filtrar primero.</li>
+        <li><b>Buscador por email/código</b>: caso típico de atención al cliente.</li>
+        <li><b>Importe negativo en cancelaciones</b>: reembolso visible sin tener que leer.</li>
+        <li><b>Pills minimalistas</b>: OK / Pago / Cancelada en 3 estados claros.</li>
+        <li><b>Exportar CSV</b> para conciliación contable.</li>
+        <li>Cubre <span class="cap">reservas</span> + <span class="cap">pagos-redsys</span> vista operativa.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ 14 · CREAR PARTIDA ═══════════════ -->
+<div class="stage" data-stage="14">
+  <div class="stage-header">
+    <div class="stage-title">
+      <span class="num">14 · PARTIDAS · MOBILE</span>
+      Crear partida pública
+    </div>
+    <div class="stage-meta">
+      Capability: <span>partidas</span><br>
+      Endpoint: <span>POST /api/v1/partidas</span><br>
+      Permisos: <span>JUGADOR autenticado</span>
+    </div>
+  </div>
+  <div class="stage-body">
+    <div class="phone">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <div class="phone-status"><span>9:41</span><span>● ● ●</span></div>
+        <div class="phone-content">
+          <div class="p-screen partidas">
+            <div class="p-top">
+              <div class="p-back">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+              </div>
+              <h1>Nueva partida</h1>
+            </div>
+
+            <div class="crear-step">
+              <h3>Reserva base</h3>
+              <div style="background:var(--ink);color:var(--bg-cream);border-radius:16px;padding:16px;display:flex;align-items:center;gap:14px;">
+                <div style="text-align:center;padding-right:14px;border-right:1px solid #2a2a28;">
+                  <div style="font-family:'Bricolage Grotesque',sans-serif;font-size:24px;font-weight:700;letter-spacing:-0.02em;line-height:1;">18:30</div>
+                  <div style="font-family:'Geist Mono',monospace;font-size:9px;color:var(--muted-light);margin-top:4px;letter-spacing:0.08em;">90 MIN</div>
+                </div>
+                <div style="flex:1;">
+                  <div style="font-family:'Bricolage Grotesque',sans-serif;font-size:16px;font-weight:700;">Pista 3 · Jue 22</div>
+                  <div style="font-size:11px;color:var(--muted-light);margin-top:2px;">Cristal · Outdoor · 16€</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="crear-step">
+              <h3>Tipo de partida</h3>
+              <div class="toggle-row">
+                <div>
+                  <div class="name">Partida pública</div>
+                  <div class="sub">Otros jugadores pueden unirse</div>
+                </div>
+                <div class="switch"></div>
+              </div>
+              <div class="toggle-row">
+                <div>
+                  <div class="name">Pago compartido</div>
+                  <div class="sub">El coste se divide entre 4</div>
+                </div>
+                <div class="switch"></div>
+              </div>
+            </div>
+
+            <div class="crear-step">
+              <h3>Nivel</h3>
+              <div class="level-pick">
+                <div class="opt">
+                  <div class="num">1-2</div>
+                  <div class="lab">Inicia</div>
+                </div>
+                <div class="opt active">
+                  <div class="num">3-4</div>
+                  <div class="lab">Medio</div>
+                </div>
+                <div class="opt">
+                  <div class="num">5-6</div>
+                  <div class="lab">Avanz.</div>
+                </div>
+                <div class="opt">
+                  <div class="num">7+</div>
+                  <div class="lab">Pro</div>
+                </div>
+              </div>
+            </div>
+
+            <button class="p-btn lime">
+              Crear partida <span class="arrow">→</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="stage-notes">
+      <h3>Notas de diseño</h3>
+      <ul>
+        <li><b>Reserva base como card destacada</b>: deja claro que la partida cuelga de una reserva existente.</li>
+        <li><b>Switches lima</b>: público + pago compartido como toggles intuitivos.</li>
+        <li><b>Nivel en 4 segmentos</b> compatible con Playtomic: facilita migración de usuarios habituales.</li>
+        <li><b>Sin scroll</b>: el flujo de creación cabe en una pantalla.</li>
+        <li>Cubre <span class="cap">partidas</span> Req "crear partida" (Fase 2).</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ 15 · BUSCAR PARTIDAS ═══════════════ -->
+<div class="stage" data-stage="15">
+  <div class="stage-header">
+    <div class="stage-title">
+      <span class="num">15 · PARTIDAS · MOBILE</span>
+      Partidas abiertas
+    </div>
+    <div class="stage-meta">
+      Capability: <span>partidas</span><br>
+      Endpoint: <span>GET /api/v1/partidas/abiertas</span><br>
+      Permisos: <span>JUGADOR autenticado</span>
+    </div>
+  </div>
+  <div class="stage-body">
+    <div class="phone">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <div class="phone-status"><span>9:41</span><span>● ● ●</span></div>
+        <div class="phone-content">
+          <div class="p-screen partidas">
+            <h1 class="p-h1" style="margin-bottom:6px;">Partidas<br><em style="font-style:italic;font-weight:500;color:var(--olive);">abiertas</em></h1>
+            <div style="color:var(--muted);font-size:13px;margin-bottom:24px;">12 buscan jugador en tu nivel</div>
+
+            <div class="partidas-tabs">
+              <div class="partidas-tab active">Hoy</div>
+              <div class="partidas-tab">Mañana</div>
+              <div class="partidas-tab">Semana</div>
+            </div>
+
+            <div class="partida-card">
+              <div class="head">
+                <div class="when-block">
+                  18:30
+                  <div class="d">Hoy · 90min</div>
+                </div>
+                <span class="level med">Nivel 3-4</span>
+              </div>
+              <div class="court-line">Pista Central · Cristal · Indoor</div>
+              <div class="players">
+                <div class="av">MR</div>
+                <div class="av">PG</div>
+                <div class="av">AS</div>
+                <div class="av empty">+1</div>
+                <span class="count"><b>3</b> · falta 1 jugador</span>
+              </div>
+              <div class="footer">
+                <div class="price">4,50€ <small>/jugador</small></div>
+                <button class="join-btn">Unirme →</button>
+              </div>
+            </div>
+
+            <div class="partida-card">
+              <div class="head">
+                <div class="when-block">
+                  20:00
+                  <div class="d">Hoy · 90min</div>
+                </div>
+                <span class="level med">Nivel 4</span>
+              </div>
+              <div class="court-line">Pista 5 · Muro · Outdoor</div>
+              <div class="players">
+                <div class="av">CL</div>
+                <div class="av">DM</div>
+                <div class="av empty">+1</div>
+                <div class="av empty">+1</div>
+                <span class="count"><b>2</b> · faltan 2 jugadores</span>
+              </div>
+              <div class="footer">
+                <div class="price">3,50€ <small>/jugador</small></div>
+                <button class="join-btn">Unirme →</button>
+              </div>
+            </div>
+
+            <div class="partida-card">
+              <div class="head">
+                <div class="when-block">
+                  21:30
+                  <div class="d">Hoy · 60min</div>
+                </div>
+                <span class="level adv">Nivel 5-6</span>
+              </div>
+              <div class="court-line">Pista 3 · Cristal · Outdoor</div>
+              <div class="players">
+                <div class="av">NC</div>
+                <div class="av">SF</div>
+                <div class="av">JP</div>
+                <div class="av empty">+1</div>
+                <span class="count"><b>3</b> · falta 1 jugador</span>
+              </div>
+              <div class="footer">
+                <div class="price">4,00€ <small>/jugador</small></div>
+                <button class="join-btn">Unirme →</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="p-tabbar">
+            <div class="p-tab">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12L12 3l9 9v9a2 2 0 01-2 2h-4v-7H9v7H5a2 2 0 01-2-2v-9z"/></svg>
+              Inicio
+            </div>
+            <div class="p-tab active">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>
+              Buscar
+            </div>
+            <div class="p-tab">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              Reservas
+            </div>
+            <div class="p-tab">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a7 7 0 0114 0v1"/></svg>
+              Perfil
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="stage-notes">
+      <h3>Notas de diseño</h3>
+      <ul>
+        <li><b>Avatares apilados</b> con huecos para faltantes: la falta es visible y tentadora.</li>
+        <li><b>Nivel destacado</b> con color (azul medio, rojo avanzado): match rápido visualmente.</li>
+        <li><b>Precio por jugador</b>: cálculo hecho, sin tener que dividir mentalmente.</li>
+        <li><b>"Unirme →" en lima</b>: acción dominante. Botón único, decisión clara.</li>
+        <li>Cubre <span class="cap">partidas</span> Req "listar abiertas" (Fase 2).</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ 16 · UNIRSE A PARTIDA ═══════════════ -->
+<div class="stage" data-stage="16">
+  <div class="stage-header">
+    <div class="stage-title">
+      <span class="num">16 · PARTIDAS · MOBILE</span>
+      Confirmar unión
+    </div>
+    <div class="stage-meta">
+      Capability: <span>partidas, pagos-redsys</span><br>
+      Endpoint: <span>POST /api/v1/partidas/{id}/unirse</span><br>
+      Permisos: <span>JUGADOR autenticado</span>
+    </div>
+  </div>
+  <div class="stage-body">
+    <div class="phone">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <div class="phone-status dark"><span>9:41</span><span>● ● ●</span></div>
+        <div class="phone-content">
+          <div class="resdet">
+            <div class="resdet-hero">
+              <div class="resdet-back">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+              </div>
+              <div class="resdet-status">
+                <span class="dot"></span> Partida pública · Hoy 18:30
+              </div>
+              <h1>Falta<br>1 jugador</h1>
+              <div class="meta">Pista Central · Cristal · Indoor</div>
+              <div class="code">PARTIDA-2026-094</div>
+            </div>
+            <div class="resdet-body">
+              <div class="resdet-section">
+                <h3>Jugadores · 3 confirmados</h3>
+                <div class="players-row">
+                  <div class="player-chip">
+                    <div class="av">MR</div>
+                    Marcos R. · Anfitrión
+                  </div>
+                  <div class="player-chip">
+                    <div class="av">PG</div>
+                    Pablo G.
+                  </div>
+                  <div class="player-chip">
+                    <div class="av">AS</div>
+                    Andrea S.
+                  </div>
+                  <div class="player-chip empty">
+                    <div class="av">?</div>
+                    Tú
+                  </div>
+                </div>
+              </div>
+
+              <div class="resdet-section">
+                <h3>Detalles</h3>
+                <div class="resdet-info-grid">
+                  <div class="info-pill">
+                    <div class="lab">Horario</div>
+                    <div class="val">18:30 — 20:00</div>
+                  </div>
+                  <div class="info-pill">
+                    <div class="lab">Nivel</div>
+                    <div class="val">Medio · 3-4</div>
+                  </div>
+                  <div class="info-pill">
+                    <div class="lab">Tu parte</div>
+                    <div class="val">4,50€</div>
+                  </div>
+                  <div class="info-pill">
+                    <div class="lab">Total partida</div>
+                    <div class="val">18,00€</div>
+                  </div>
+                </div>
+              </div>
+
+              <div style="background:var(--bg-warm);border-radius:14px;padding:14px;font-size:12px;color:var(--muted);line-height:1.5;margin-top:14px;">
+                <b style="color:var(--ink);">¡Compatible con tu nivel!</b><br>
+                Tu nivel registrado es 3-4. Si la partida no se completa antes de 1h del inicio, se cancela y se reembolsa.
+              </div>
+            </div>
+            <div class="resdet-footer">
+              <button class="p-btn lime" style="flex:1;">Unirme · 4,50€ →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="stage-notes">
+      <h3>Notas de diseño</h3>
+      <ul>
+        <li><b>Tú como hueco vacío</b> en la lista: posiciona al usuario en el equipo antes de unirse.</li>
+        <li><b>Anfitrión destacado</b>: si hay conflicto, hay un responsable.</li>
+        <li><b>Tu parte / Total</b> en pills separadas: claridad de precio en pago compartido.</li>
+        <li><b>Política de cancelación automática</b>: protege al usuario de pagar por partidas que no se completen.</li>
+        <li>Cubre <span class="cap">partidas</span> Req "unirse" + cobro <span class="cap">pagos-redsys</span>.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ 17 · MIS DATOS RGPD ═══════════════ -->
+<div class="stage" data-stage="17">
+  <div class="stage-header">
+    <div class="stage-title">
+      <span class="num">17 · RGPD · MOBILE</span>
+      Mis datos y privacidad
+    </div>
+    <div class="stage-meta">
+      Capability: <span>exportaciones-rgpd</span><br>
+      Endpoint: <span>POST /api/v1/users/me/export · DELETE /api/v1/users/me</span><br>
+      Permisos: <span>JUGADOR autenticado</span>
+    </div>
+  </div>
+  <div class="stage-body">
+    <div class="phone">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <div class="phone-status"><span>9:41</span><span>● ● ●</span></div>
+        <div class="phone-content">
+          <div class="rgpd">
+            <div class="p-top" style="margin-bottom:18px;">
+              <div class="p-back">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+              </div>
+            </div>
+            <h1>Tus<br><em>datos.</em></h1>
+            <div class="sub">Bajo el Reglamento General de Protección de Datos, tienes pleno control sobre tu información en PadelPro.</div>
+
+            <div class="rgpd-block">
+              <div class="head">
+                <div class="ico">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                </div>
+                <div class="info">
+                  <div class="name">Descargar mis datos</div>
+                  <div class="law">Art. 15 RGPD · Derecho de acceso</div>
+                </div>
+              </div>
+              <div class="desc">Te enviamos un archivo JSON con todo lo que tenemos sobre ti: perfil, reservas, partidas y pagos.</div>
+              <button class="action-btn">Solicitar exportación</button>
+            </div>
+
+            <div class="rgpd-block">
+              <div class="head">
+                <div class="ico">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><polygon points="18.5 2.5 22 6 12 16 8 16 8 12 18.5 2.5"/></svg>
+                </div>
+                <div class="info">
+                  <div class="name">Editar mis datos</div>
+                  <div class="law">Art. 16 RGPD · Rectificación</div>
+                </div>
+              </div>
+              <div class="desc">Modifica tu nombre, email o teléfono. Los cambios quedan registrados en auditoría.</div>
+              <button class="action-btn">Editar perfil</button>
+            </div>
+
+            <div class="rgpd-block">
+              <div class="head">
+                <div class="ico" style="background:#FBE8E0;color:var(--danger);">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                </div>
+                <div class="info">
+                  <div class="name">Eliminar mi cuenta</div>
+                  <div class="law">Art. 17 RGPD · Derecho al olvido</div>
+                </div>
+              </div>
+              <div class="desc">Tu cuenta queda anonimizada inmediatamente. Las reservas pasadas se conservan según ley fiscal (4 años).</div>
+              <button class="action-btn danger">Eliminar cuenta</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="stage-notes">
+      <h3>Notas de diseño</h3>
+      <ul>
+        <li><b>Referencia al artículo</b> RGPD en cada bloque: confianza legal y trazabilidad.</li>
+        <li><b>3 acciones diferenciadas</b>: descargar, editar, eliminar. Cada una con su semántica.</li>
+        <li><b>Eliminar en rojo</b> + icono distintivo: jerarquía de riesgo visible.</li>
+        <li><b>Mención a retención fiscal</b>: gestiona expectativa "qué significa eliminar".</li>
+        <li>Cubre <span class="cap">exportaciones-rgpd</span> Req "acceso, rectificación, olvido".</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ 18 · ELIMINAR CUENTA ═══════════════ -->
+<div class="stage" data-stage="18">
+  <div class="stage-header">
+    <div class="stage-title">
+      <span class="num">18 · RGPD · MOBILE</span>
+      Confirmar eliminación
+    </div>
+    <div class="stage-meta">
+      Capability: <span>exportaciones-rgpd, auditoria</span><br>
+      Endpoint: <span>DELETE /api/v1/users/me</span><br>
+      Permisos: <span>JUGADOR autenticado</span>
+    </div>
+  </div>
+  <div class="stage-body">
+    <div class="phone">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <div class="phone-status"><span>9:41</span><span>● ● ●</span></div>
+        <div class="phone-content">
+          <div class="delete-screen">
+            <div class="p-back" style="margin-bottom:18px;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+            </div>
+            <div class="delete-warn">
+              <div class="ico">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              </div>
+              <h1>Esta acción es definitiva</h1>
+              <p>Tu cuenta y tus datos personales se anonimizan inmediatamente. No se puede deshacer.</p>
+            </div>
+
+            <div class="delete-list">
+              <h3>Qué pasará con tus datos</h3>
+              <ul>
+                <li>Tu perfil (nombre, email, teléfono) será borrado.</li>
+                <li>Tus reservas pasadas quedan anonimizadas pero se conservan 4 años (ley fiscal).</li>
+                <li>Tu vinculación con Telegram se elimina.</li>
+                <li>Las partidas activas se cancelan y se reembolsan.</li>
+                <li>El movimiento queda registrado en auditoría sin tu identidad.</li>
+              </ul>
+            </div>
+
+            <div class="delete-confirm">
+              <div class="lab">Confirma escribiendo</div>
+              <input type="text" value="ELIMINAR LAURA" placeholder="ELIMINAR LAURA">
+              <div class="hint">Escribe exactamente <b>ELIMINAR LAURA</b> para continuar</div>
+            </div>
+
+            <button class="p-btn danger">
+              Eliminar cuenta para siempre
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="stage-notes">
+      <h3>Notas de diseño</h3>
+      <ul>
+        <li><b>Card "warning" en negro+rojo</b>: paleta única para esta acción crítica, sin colores festivos.</li>
+        <li><b>Lista explícita de consecuencias</b>: gestiona expectativas legales sin ambigüedad.</li>
+        <li><b>Confirmación tipo-tu-nombre</b>: patrón anti-clic accidental tipo GitHub delete repo.</li>
+        <li><b>Mención a auditoría sin identidad</b>: cumple <span class="rn">RN-rgpd-02</span> y <span class="rn">RN-aud-01</span>.</li>
+        <li>Cubre <span class="cap">exportaciones-rgpd</span> + <span class="cap">auditoria</span> Req "derecho al olvido".</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+  const STAGES = [
+    { n: 1, label: '01·Splash' },
+    { n: 2, label: '02·Registro' },
+    { n: 3, label: '03·Olvido' },
+    { n: 4, label: '04·Reset' },
+    { n: 5, label: '05·Checkout' },
+    { n: 6, label: '06·Pago OK' },
+    { n: 7, label: '07·Detalle' },
+    { n: 8, label: '08·Perfil' },
+    { n: 9, label: '09·Telegram' },
+    { n: 10, label: '10·OTP' },
+    { n: 11, label: '11·Pistas' },
+    { n: 12, label: '12·Calendar' },
+    { n: 13, label: '13·Reservas' },
+    { n: 14, label: '14·Crear part.' },
+    { n: 15, label: '15·Buscar part.' },
+    { n: 16, label: '16·Unirse' },
+    { n: 17, label: '17·Mis datos' },
+    { n: 18, label: '18·Eliminar' },
+  ];
+  const nav = document.getElementById('nav');
+  STAGES.forEach((s, i) => {
+    const btn = document.createElement('button');
+    btn.textContent = s.label;
+    btn.dataset.stage = s.n;
+    if (i === 0) btn.classList.add('active');
+    btn.addEventListener('click', () => goto(s.n));
+    nav.appendChild(btn);
+  });
+
+  let current = 1;
+  function goto(n) {
+    if (n < 1 || n > STAGES.length) return;
+    document.querySelectorAll('.stage').forEach(s => s.classList.remove('active'));
+    document.querySelector(`.stage[data-stage="${n}"]`).classList.add('active');
+    document.querySelectorAll('#nav button').forEach(b =>
+      b.classList.toggle('active', Number(b.dataset.stage) === n)
+    );
+    const num = String(n).padStart(2, '0');
+    const total = String(STAGES.length).padStart(2, '0');
+    document.getElementById('counter').textContent = `${num} / ${total}`;
+    current = n;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight') goto(current + 1);
+    if (e.key === 'ArrowLeft') goto(current - 1);
+  });
+</script>
+
+</body>
+</html>
