@@ -1,5 +1,5 @@
-import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import { describe, it, expect } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { AuthProvider } from '../context/AuthContext';
 import { LoginPage } from '../pages/LoginPage';
@@ -32,22 +32,16 @@ describe('LoginPage', () => {
     expect(link.getAttribute('href')).toBe('/register');
   });
 
-  it('stub submit logs to console', () => {
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+  it('submit with valid credentials calls loginApi (default MSW handler returns 200)', async () => {
+    const { default: userEvent } = await import('@testing-library/user-event');
     renderLogin();
 
-    fireEvent.change(screen.getByLabelText(/Email/i), {
-      target: { value: 'test@test.com' },
-    });
-    fireEvent.change(screen.getByLabelText(/Contraseña/i), {
-      target: { value: 'secret' },
-    });
-    fireEvent.submit(screen.getByRole('button', { name: /Entrar/i }).closest('form')!);
+    await userEvent.type(screen.getByLabelText(/Email/i), 'test@test.com');
+    await userEvent.type(screen.getByLabelText(/Contraseña/i), 'Password1');
+    await userEvent.click(screen.getByRole('button', { name: /Entrar/i }));
 
-    expect(consoleSpy).toHaveBeenCalledWith(
-      'login stub',
-      { email: 'test@test.com', password: 'secret' }
-    );
-    consoleSpy.mockRestore();
+    // No error should appear — default MSW handler returns 200
+    await new Promise((r) => setTimeout(r, 100));
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 });

@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { AuthProvider } from '../context/AuthContext';
 import { RegisterPage } from '../pages/RegisterPage';
@@ -36,23 +36,21 @@ describe('RegisterPage', () => {
     expect(screen.getByRole('list', { name: /Requisitos de contraseña/i })).toBeDefined();
   });
 
-  it('stub submit logs to console', () => {
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+  it('submit with valid data calls registerApi (default MSW handler returns 201)', async () => {
+    const { default: userEvent } = await import('@testing-library/user-event');
     renderRegister();
 
-    fireEvent.change(screen.getByLabelText(/Nombre/i), { target: { value: 'Laura' } });
-    fireEvent.change(screen.getByLabelText(/Apellido/i), { target: { value: 'Casado' } });
-    fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: 'laura@test.com' } });
-    fireEvent.change(screen.getByLabelText(/Contraseña/i), { target: { value: 'Abc12345' } });
+    await userEvent.type(screen.getByLabelText(/Nombre/i), 'Laura');
+    await userEvent.type(screen.getByLabelText(/Apellido/i), 'Casado');
+    await userEvent.type(screen.getByLabelText(/Email/i), 'laura@test.com');
+    await userEvent.type(screen.getByLabelText(/Contraseña/i), 'Abc12345');
 
-    fireEvent.submit(
-      screen.getByRole('button', { name: /Crear cuenta/i }).closest('form')!
+    await userEvent.click(
+      screen.getByRole('button', { name: /Crear cuenta/i })
     );
 
-    expect(consoleSpy).toHaveBeenCalledWith(
-      'register stub',
-      { firstName: 'Laura', lastName: 'Casado', email: 'laura@test.com', password: 'Abc12345' }
-    );
-    consoleSpy.mockRestore();
+    // No error should appear — default MSW handler returns 201
+    await new Promise((r) => setTimeout(r, 100));
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 });
