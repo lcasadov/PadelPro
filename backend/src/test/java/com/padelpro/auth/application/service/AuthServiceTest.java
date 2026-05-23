@@ -48,8 +48,8 @@ class AuthServiceTest {
     private User buildActiveUser(String email) {
         return new User(
                 email,
-                // BCrypt hash of "Password1" — real hash ensures the service can verify
-                "$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj/lHGYSL5m2",
+                // BCrypt(12) hash of "Password1" — generated for Wave 3 Green phase
+                "$2a$12$XeUGfFM7WvseSi9H8cLSdugcl7C38Y/UiiqH28Sjne6ix9xavuevi",
                 "Test",
                 "User",
                 email,
@@ -63,7 +63,8 @@ class AuthServiceTest {
     private User buildUserWithStatus(String email, UserStatus status) {
         return new User(
                 email,
-                "$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj/lHGYSL5m2",
+                // BCrypt(12) hash of "Password1" — generated for Wave 3 Green phase
+                "$2a$12$XeUGfFM7WvseSi9H8cLSdugcl7C38Y/UiiqH28Sjne6ix9xavuevi",
                 "Test",
                 "User",
                 email,
