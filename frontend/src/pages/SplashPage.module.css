@@ -1,0 +1,89 @@
+/* SplashPage — fondo negro, glifo crema/lima (ref: 07-splash.html) */
+.splash {
+  min-height: 100dvh;
+  background: var(--ink);
+  color: var(--cream);
+  display: flex;
+  flex-direction: column;
+  padding: 48px 28px 40px;
+  max-width: 430px;
+  margin: 0 auto;
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.top :global(.p-logo) {
+  color: var(--cream);
+}
+
+.top :global(.p-dot) {
+  background: var(--lime);
+}
+
+.center {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.center :global(.p-glyph) {
+  color: var(--lime);
+  opacity: 0.9;
+  font-size: 220px;
+}
+
+.footer {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.tagline {
+  font-family: var(--font-display);
+  font-size: 44px;
+  font-weight: 700;
+  line-height: 0.95;
+  letter-spacing: -0.04em;
+  color: var(--cream);
+}
+
+.tagline em {
+  font-style: italic;
+  font-weight: 500;
+  color: var(--lime);
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.btnRegister {
+  background: var(--lime);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.btnRegister:hover {
+  background: var(--lime-dark);
+}
+
+.btnLogin {
+  border-color: rgba(245, 240, 232, 0.35);
+  color: var(--cream);
+  text-decoration: none;
+}
+
+.btnLogin:hover {
+  border-color: var(--cream);
+}
