@@ -14,6 +14,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
+import org.mockito.ArgumentCaptor;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -63,11 +65,18 @@ class RegistrationServiceTest {
         // Act
         UserDto result = registrationService.register(command);
 
-        // Assert
+        // Assert basic DTO fields
         assertThat(result).isNotNull();
         assertThat(result.email()).isEqualTo("alice@example.com");
         assertThat(result.role()).isEqualTo(UserRole.USER);
-        verify(userRepository).save(any());
+
+        // Assert R-1.1: the User passed to save() must have status=PENDING
+        ArgumentCaptor<com.padelpro.auth.domain.model.User> userCaptor =
+                ArgumentCaptor.forClass(com.padelpro.auth.domain.model.User.class);
+        verify(userRepository).save(userCaptor.capture());
+        assertThat(userCaptor.getValue().getStatus())
+                .as("newly registered user must be PENDING")
+                .isEqualTo(UserStatus.PENDING);
     }
 
     // -------------------------------------------------------------------------
