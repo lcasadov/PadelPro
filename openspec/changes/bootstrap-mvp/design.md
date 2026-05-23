@@ -83,13 +83,7 @@ Este diseño cumple con RN-RGPD-03 (las respuestas no exponen datos de otros usu
 | Longitud máxima | 128 caracteres | RN-AUTH-08 |
 | Mayúscula requerida | Sí (≥1) | RN-AUTH-08 |
 | Número requerido | Sí (≥1) | RN-AUTH-08 |
-| Símbolo requerido | **No especificado en fuente autoritativa** | Ver nota |
-
-<!-- DECISION-PENDING: el brief de diseño mencionó "una mayúscula, un número, un símbolo" como política.
-     Sin embargo, RN-AUTH-08 (fuente autoritativa: docs/openapi.yaml > docs/security-design.md) solo especifica
-     "mínimo 8 caracteres + 1 mayúscula + 1 número". No hay referencia a símbolo requerido.
-     La pantalla 10-nueva-password.html (pantalla de reset, change futuro) deberá mostrar la política vigente.
-     Se adopta RN-AUTH-08 sin el símbolo. Requiere validación de lcasadov antes de pasar el change a "approved". -->
+| Símbolo requerido | **No** — validado con `lcasadov` el 2026-05-23 | RN-AUTH-08; símbolo descartado |
 
 **Implementación:** Regex de validación en el servicio de dominio (no en el controlador). La validación es responsabilidad del backend; el frontend puede replicarla para UX pero el backend es la única fuente de verdad.
 
