@@ -118,3 +118,26 @@ de la AEPD. La anonimización es irreversible y no elimina registros contables n
 - **`notificaciones`**: tras la anonimización, el usuario no puede recibir notificaciones porque `email` y `telegram_chat_id` han sido nullificados; `MensajeriaPort` debe manejar esta condición sin lanzar excepción.
 - **`reservas`**: las reservas históricas del usuario permanecen intactas con `owner_id` apuntando al usuario anonimizado (que sigue existiendo en la tabla).
 - **`pagos-redsys`**: los pagos históricos permanecen intactos; `registered_by_id` pasa a NULL por FK SET NULL si el usuario anonimizado era el admin que registró pagos en efectivo.
+
+## Mockups asociados
+
+Los siguientes mockups en alta fidelidad ilustran la experiencia de usuario para esta capability. La fuente única de verdad UX es [`docs/ux/README.md`](../../../docs/ux/README.md).
+
+### Pantallas
+
+| # | Pantalla | Dispositivo | Permisos | Mockup |
+|---|----------|-------------|----------|--------|
+| 19 | Mis datos y privacidad | Mobile | USER | [`23-mis-datos.html`](../../../docs/ux/mockups/23-mis-datos.html) |
+| 20 | Confirmar eliminación | Mobile | USER | [`24-eliminar-cuenta.html`](../../../docs/ux/mockups/24-eliminar-cuenta.html) |
+
+### Flujos relacionados
+
+Esta capability participa en los siguientes flujos (ver [`docs/ux/flujos.md`](../../../docs/ux/flujos.md)):
+
+- **Flujo RGPD — derecho al olvido** — cubre el flujo completo: desde la pantalla de mis datos y privacidad (pantalla 19) con referencias a los artículos RGPD, hasta la pantalla de confirmación de eliminación de cuenta (pantalla 20) con la advertencia de irreversibilidad.
+
+### Notas de UX
+
+> - La pantalla de confirmar eliminación (pantalla 20) debe requerir que el usuario escriba literalmente "ELIMINAR" (o su nombre) para confirmar la acción destructiva; el botón permanece deshabilitado hasta que el campo de confirmación coincide.
+> - La anonimización es irreversible; la pantalla 20 debe listar explícitamente las consecuencias (pérdida de acceso, datos anonimizados, historial preservado por obligación fiscal) antes de permitir continuar (RN-RGPD-01, RN-RGPD-02).
+> - La pantalla de mis datos (pantalla 19) debe mostrar referencia al artículo legal aplicable (Art. 15, 16, 17 RGPD) para cada acción disponible.

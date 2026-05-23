@@ -110,3 +110,27 @@ Permite a los usuarios ver las reservas con plazas libres (partidas abiertas) y 
 ## Dependencias con otras capabilities
 - **reservas**: Las partidas son un subconjunto de reservas. La lógica de creación, estado y cancelación de la reserva base pertenece a la capability `reservas`.
 - **disponibilidad-pistas**: La consulta de disponibilidad (`GET /api/reservas/disponibles`) alimenta también la vista de partidas joinables.
+
+## Mockups asociados
+
+Los siguientes mockups en alta fidelidad ilustran la experiencia de usuario para esta capability. La fuente única de verdad UX es [`docs/ux/README.md`](../../../docs/ux/README.md).
+
+### Pantallas
+
+| # | Pantalla | Dispositivo | Permisos | Mockup |
+|---|----------|-------------|----------|--------|
+| 16 | Partidas abiertas | Mobile | USER | [`21-partidas-abiertas.html`](../../../docs/ux/mockups/21-partidas-abiertas.html) |
+| 17 | Crear partida pública | Mobile | USER | [`20-crear-partida.html`](../../../docs/ux/mockups/20-crear-partida.html) |
+| 18 | Confirmar unión | Mobile | USER | [`22-confirmar-union.html`](../../../docs/ux/mockups/22-confirmar-union.html) |
+
+### Flujos relacionados
+
+Esta capability participa en los siguientes flujos (ver [`docs/ux/flujos.md`](../../../docs/ux/flujos.md)):
+
+- **Flujo de partida pública** — cubre el ciclo completo de una partida pública: listado de partidas abiertas (pantalla 16), creación de nueva partida (pantalla 17) y confirmación de unión a una partida existente (pantalla 18).
+
+### Notas de UX
+
+> - La pantalla de partidas abiertas (pantalla 16) solo muestra reservas con plazas libres (`participants_count < max_participants`); las partidas completas no aparecen.
+> - Si el usuario ya es participante de una reserva e intenta unirse de nuevo, el sistema responde 409; la pantalla debe mostrar un mensaje claro sin redirigir al checkout (RN-AUTH-03).
+> - La pantalla de confirmar unión (pantalla 18) debe mostrar la política de cancelación automática y el importe que corresponde al usuario antes de confirmar (RN-RES-04, RN-RES-02).

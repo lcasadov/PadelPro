@@ -108,3 +108,24 @@ Gestión del catálogo de pistas (courts) del club. Permite al ADMIN crear, cons
 ## Dependencias con otras capabilities
 - **reservas**: La disponibilidad de la pista es prerrequisito para crear reservas. La capability `reservas` consume los tramos devueltos por `/api/reservas/disponibles`.
 - **disponibilidad-pistas**: Esta capability es la vista de consulta de disponibilidad; `pistas` es el plano de configuración que la controla.
+
+## Mockups asociados
+
+Los siguientes mockups en alta fidelidad ilustran la experiencia de usuario para esta capability. La fuente única de verdad UX es [`docs/ux/README.md`](../../../docs/ux/README.md).
+
+### Pantallas
+
+| # | Pantalla | Dispositivo | Permisos | Mockup |
+|---|----------|-------------|----------|--------|
+| 24 | Gestión de pistas | Desktop | ADMIN | [`17-gestion-pistas.html`](../../../docs/ux/mockups/17-gestion-pistas.html) |
+
+### Flujos relacionados
+
+Esta capability participa en los siguientes flujos (ver [`docs/ux/flujos.md`](../../../docs/ux/flujos.md)):
+
+- **Flujo admin — gestión del club** — la pantalla de gestión de pistas (pantalla 24) permite al ADMIN ver el estado operativo (Activa / Mantenimiento) y las métricas de ocupación y tarifa de la pista; desde aquí se controla si la pista acepta nuevas reservas.
+
+### Notas de UX
+
+> - Cuando la pista pasa a estado MANTENIMIENTO, la pantalla debe advertir que las reservas existentes no se cancelan automáticamente; solo se bloquean nuevas reservas (RN-RES-04).
+> - Los campos sensibles de `system_config` (claves Redsys, token Telegram, contraseña SMTP) nunca se muestran en claro en la pantalla de configuración (RN-SEC-02).

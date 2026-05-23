@@ -96,3 +96,19 @@ En Fase 2 (target behavior):
 - **`pagos-redsys`**: fuente de datos de ingresos. En v1.0, el frontend usa `GET /api/admin/pagos?status=PAID` con filtros de fecha.
 - **`auditoria`**: las consultas de dashboard por ADMIN generan entradas `ADMIN_USER_DATA_ACCESS` en `audit_log` para trazabilidad de acceso a datos agregados.
 - **`exportaciones-rgpd`**: los informes CSV deben respetar las restricciones RGPD sobre exposición de datos personales (RN-RGPD-04); la capability de exportaciones-rgpd define qué campos están sujetos a protección.
+
+## Mockups asociados
+
+Los siguientes mockups en alta fidelidad ilustran la experiencia de usuario para esta capability. La fuente única de verdad UX es [`docs/ux/README.md`](../../../docs/ux/README.md).
+
+### Pantallas
+
+| # | Pantalla | Dispositivo | Permisos | Mockup |
+|---|----------|-------------|----------|--------|
+| 21 | Dashboard club | Desktop | ADMIN | [`06-dashboard-club.html`](../../../docs/ux/mockups/06-dashboard-club.html) |
+
+### Flujos relacionados
+
+Esta capability participa en los siguientes flujos (ver [`docs/ux/flujos.md`](../../../docs/ux/flujos.md)):
+
+- **Flujo admin — gestión del club** — el dashboard (pantalla 21) es la pantalla principal del flujo admin; muestra KPIs de reservas, ingresos, ocupación y cancelaciones que en v1.0 el frontend agrega a partir de los endpoints existentes de `reservas` y `pagos-redsys`.

@@ -137,3 +137,13 @@ Fase 1
 - **`notificaciones`**: las notificaciones por email usan la configuración SMTP de `system_config`.
 - **`auditoria`**: toda actualización de `system_config` genera una entrada en `audit_log`.
 - **`roles-permisos`**: ambos endpoints de esta capability requieren `role=ADMIN`.
+
+## Mockups asociados
+
+Esta capability es **transversal o puramente backend**. No tiene pantallas de usuario directas en el sistema actual.
+
+Está implícita en los siguientes mockups donde el concepto aparece de forma indirecta:
+
+- **`configuracion-club`**: los valores de `system_config` (`max_participants`, horario de apertura, `price_per_hour`) condicionan la disponibilidad mostrada en `07 · Buscar disponibilidad` → [`03-buscar-disponibilidad.html`](../../../docs/ux/mockups/03-buscar-disponibilidad.html) y el importe mostrado en `08 · Confirmar reserva` → [`04-confirmar-reserva.html`](../../../docs/ux/mockups/04-confirmar-reserva.html). El estado de mantenimiento de la pista (también en `system_config`) vacía el resultado de disponibilidad en esas mismas pantallas. Los parámetros de cancelación (`cancellation_deadline_hours`) determinan si el botón de cancelación está activo en `12 · Detalle de reserva` → [`13-detalle-reserva.html`](../../../docs/ux/mockups/13-detalle-reserva.html).
+
+Si se evoluciona esta capability hacia una UI dedicada de configuración para el ADMIN, añadir el flujo correspondiente en [`docs/ux/flujos.md`](../../../docs/ux/flujos.md) antes de generar mockups.

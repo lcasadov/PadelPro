@@ -162,3 +162,31 @@ Gestión del ciclo de pago online mediante la pasarela Redsys (HMAC SHA-256) y d
 ## Dependencias con otras capabilities
 - **reservas**: Cada pago está asociado a una reserva (FK UNIQUE); la reserva se crea atómicamente con el pago en `status=PENDING`. El estado de la reserva puede actualizarse tras la confirmación del pago (ej. `PENDING_CONFIRMATION → CONFIRMED`).
 - **pistas**: La configuración del sistema (incluidas las credenciales Redsys) se gestiona desde la capability `pistas` via `system_config`.
+
+## Mockups asociados
+
+Los siguientes mockups en alta fidelidad ilustran la experiencia de usuario para esta capability. La fuente única de verdad UX es [`docs/ux/README.md`](../../../docs/ux/README.md).
+
+### Pantallas
+
+| # | Pantalla | Dispositivo | Permisos | Mockup |
+|---|----------|-------------|----------|--------|
+| 08 | Confirmar reserva | Mobile | USER | [`04-confirmar-reserva.html`](../../../docs/ux/mockups/04-confirmar-reserva.html) |
+| 09 | Checkout Redsys | Mobile | USER | [`11-checkout-redsys.html`](../../../docs/ux/mockups/11-checkout-redsys.html) |
+| 10 | Pago confirmado | Mobile | USER | [`12-pago-confirmado.html`](../../../docs/ux/mockups/12-pago-confirmado.html) |
+| 18 | Confirmar unión | Mobile | USER | [`22-confirmar-union.html`](../../../docs/ux/mockups/22-confirmar-union.html) |
+| 23 | Reservas del club | Desktop | ADMIN | [`19-reservas-club.html`](../../../docs/ux/mockups/19-reservas-club.html) |
+
+### Flujos relacionados
+
+Esta capability participa en los siguientes flujos (ver [`docs/ux/flujos.md`](../../../docs/ux/flujos.md)):
+
+- **Flujo de reserva de pista con pago Redsys** — esta capability gestiona el checkout (pantalla 09) y la confirmación de pago (pantalla 10); el importe mostrado en pantalla 08 proviene del cálculo backend.
+- **Flujo de partida pública** — la confirmación de unión (pantalla 18) puede requerir pago cuando la reserva tiene pago compartido.
+- **Flujo admin — gestión del club** — la tabla de reservas del club (pantalla 23) incluye el estado e importe de cada pago asociado a las reservas.
+
+### Notas de UX
+
+> - Los datos de tarjeta (PAN, CVV, fecha) nunca pasan por el frontend de PadelPro; la pantalla de checkout (pantalla 09) muestra solo previsualización de tarjeta guardada y redirige al TPV de Redsys (RN-PAY-03).
+> - El importe mostrado en todas las pantallas de pago proviene exclusivamente del backend; el usuario no puede modificarlo (RN-RES-03).
+> - La pantalla de pago confirmado (pantalla 10) debe mostrar el código de reserva y la referencia Redsys para que el usuario pueda reclamar en caso de incidencia.

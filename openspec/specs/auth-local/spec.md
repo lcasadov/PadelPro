@@ -204,3 +204,30 @@ Todos los endpoints de esta capability tienen `security: []` (no requieren JWT s
 - **`usuarios`**: el registro crea un usuario en la tabla `users`; la aprobación de cuenta es responsabilidad de la capability `usuarios` (endpoint `PATCH /api/admin/usuarios/{id}/aprobar`).
 - **`auditoria`**: cada evento de autenticación (login exitoso/fallido, logout, reset) genera una entrada en `audit_log`.
 - **`roles-permisos`**: los endpoints admin requieren que la capa de seguridad valide el rol `ADMIN` antes de permitir el acceso.
+
+## Mockups asociados
+
+Los siguientes mockups en alta fidelidad ilustran la experiencia de usuario para esta capability. La fuente única de verdad UX es [`docs/ux/README.md`](../../../docs/ux/README.md).
+
+### Pantallas
+
+| # | Pantalla | Dispositivo | Permisos | Mockup |
+|---|----------|-------------|----------|--------|
+| 01 | Splash & bienvenida | Mobile | público | [`07-splash.html`](../../../docs/ux/mockups/07-splash.html) |
+| 02 | Login | Mobile | público | [`01-login.html`](../../../docs/ux/mockups/01-login.html) |
+| 03 | Crear cuenta | Mobile | público | [`08-crear-cuenta.html`](../../../docs/ux/mockups/08-crear-cuenta.html) |
+| 04 | Recuperar contraseña | Mobile | público | [`09-recuperar-password.html`](../../../docs/ux/mockups/09-recuperar-password.html) |
+| 05 | Nueva contraseña | Mobile | Token reset | [`10-nueva-password.html`](../../../docs/ux/mockups/10-nueva-password.html) |
+
+### Flujos relacionados
+
+Esta capability participa en los siguientes flujos (ver [`docs/ux/flujos.md`](../../../docs/ux/flujos.md)):
+
+- **Flujo de onboarding y autenticación** — cubre splash, login, creación de cuenta, recuperación de contraseña y establecimiento de nueva contraseña; es el flujo completo que gestiona esta capability.
+
+### Notas de UX
+
+> - El mensaje de error de login no debe revelar si el email o login existe en el sistema (anti-enumeración, RN-RGPD-03 y del scenario "Login fallido con contraseña incorrecta").
+> - Tras 10 intentos fallidos la cuenta se bloquea 15 minutos; la pantalla de login debe mostrar el tiempo de espera restante.
+> - La contraseña debe tener mínimo 8 caracteres, 1 mayúscula y 1 número; la pantalla de nueva contraseña incluye barra de fortaleza y lista de requisitos visuales (RN-AUTH-08).
+> - El OTP de reset de contraseña caduca a los 10 minutos; si el usuario intenta confirmar con un código expirado debe recibir un mensaje claro sin información adicional (RN-AUTH-07).

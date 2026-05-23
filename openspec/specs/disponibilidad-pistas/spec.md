@@ -99,3 +99,27 @@ Consulta de franjas horarias libres de la pista para una fecha concreta. Permite
 - **reservas**: La disponibilidad se calcula a partir de las reservas activas; cada creación o cancelación de reserva invalida la caché de `available-slots` para la fecha afectada.
 - **partidas**: La vista de partidas joinables se basa en la misma consulta de disponibilidad, filtrando los tramos con `plazasLibres > 0` asociados a reservas existentes con huecos.
 - **pistas**: El estado operativo de la pista (MANTENIMIENTO) afecta directamente al resultado de disponibilidad; se lee de `system_config`.
+
+## Mockups asociados
+
+Los siguientes mockups en alta fidelidad ilustran la experiencia de usuario para esta capability. La fuente única de verdad UX es [`docs/ux/README.md`](../../../docs/ux/README.md).
+
+### Pantallas
+
+| # | Pantalla | Dispositivo | Permisos | Mockup |
+|---|----------|-------------|----------|--------|
+| 06 | Home jugador | Mobile | USER | [`02-home-jugador.html`](../../../docs/ux/mockups/02-home-jugador.html) |
+| 07 | Buscar disponibilidad | Mobile | USER | [`03-buscar-disponibilidad.html`](../../../docs/ux/mockups/03-buscar-disponibilidad.html) |
+| 22 | Calendario semanal | Desktop | ADMIN | [`18-calendario-semanal.html`](../../../docs/ux/mockups/18-calendario-semanal.html) |
+
+### Flujos relacionados
+
+Esta capability participa en los siguientes flujos (ver [`docs/ux/flujos.md`](../../../docs/ux/flujos.md)):
+
+- **Flujo de reserva de pista con pago Redsys** — la pantalla de búsqueda de disponibilidad (pantalla 07) es la puerta de entrada al flujo de reserva; el resultado de disponibilidad determina qué franjas horarias puede seleccionar el usuario.
+- **Flujo admin — gestión del club** — el calendario semanal (pantalla 22) visualiza la ocupación de las franjas horarias, construida sobre la misma lógica de disponibilidad.
+
+### Notas de UX
+
+> - Cuando la pista está en mantenimiento, la pantalla de búsqueda de disponibilidad (pantalla 07) debe mostrar lista vacía sin revelar el motivo (RN-RES-04); el mensaje genérico es suficiente.
+> - El parámetro `fecha` debe validarse en formato YYYY-MM-DD; un formato incorrecto muestra error 400 antes de renderizar resultados.

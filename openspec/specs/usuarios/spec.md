@@ -152,3 +152,26 @@ Fase 1
 - **`roles-permisos`**: los endpoints `/api/admin/usuarios/**` están protegidos por la capa RBAC que verifica `role=ADMIN`.
 - **`auditoria`**: cada operación administrativa (creación, aprobación, desactivación, cambio de rol) genera una entrada en `audit_log`.
 - **`exportaciones-rgpd`**: la anonimización completa de datos personales (derecho de supresión RGPD) se implementa como extensión del endpoint `DELETE /api/admin/usuarios/{id}`.
+
+## Mockups asociados
+
+Los siguientes mockups en alta fidelidad ilustran la experiencia de usuario para esta capability. La fuente única de verdad UX es [`docs/ux/README.md`](../../../docs/ux/README.md).
+
+### Pantallas
+
+| # | Pantalla | Dispositivo | Permisos | Mockup |
+|---|----------|-------------|----------|--------|
+| 03 | Crear cuenta | Mobile | No autenticado | [`08-crear-cuenta.html`](../../../docs/ux/mockups/08-crear-cuenta.html) |
+| 13 | Mi perfil | Mobile | USER | [`14-mi-perfil.html`](../../../docs/ux/mockups/14-mi-perfil.html) |
+
+### Flujos relacionados
+
+Esta capability participa en los siguientes flujos (ver [`docs/ux/flujos.md`](../../../docs/ux/flujos.md)):
+
+- **Flujo de onboarding y autenticación** — el formulario de creación de cuenta (pantalla 03) recoge los datos del nuevo usuario que esta capability persiste en estado PENDING.
+- **Flujo de vinculación Telegram** — la pantalla de Mi perfil (pantalla 13) es el punto de entrada al flujo de vinculación, y también donde el usuario actualiza sus datos de perfil.
+
+### Notas de UX
+
+> - El mensaje de error al actualizar email duplicado no debe revelar datos del otro usuario (RN-RGPD-03); la pantalla debe indicar solo que el email ya está en uso.
+> - Los campos `role` y `status` no son editables por el propio usuario desde Mi perfil; el formulario no debe mostrar controles para modificarlos.

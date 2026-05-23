@@ -186,3 +186,27 @@ Fase 1
 - **`usuarios`**: la vinculación se refleja en el campo `telegram_chat_id` de la tabla `users`.
 - **`notificaciones`**: una vez vinculada la cuenta, el módulo de notificaciones puede usar el `telegram_chat_id` para enviar mensajes directos.
 - **`auditoria`**: todos los eventos OTP (generación, validación exitosa, fallo, invalidación) se registran en `audit_log`.
+
+## Mockups asociados
+
+Los siguientes mockups en alta fidelidad ilustran la experiencia de usuario para esta capability. La fuente única de verdad UX es [`docs/ux/README.md`](../../../docs/ux/README.md).
+
+### Pantallas
+
+| # | Pantalla | Dispositivo | Permisos | Mockup |
+|---|----------|-------------|----------|--------|
+| 13 | Mi perfil | Mobile | USER | [`14-mi-perfil.html`](../../../docs/ux/mockups/14-mi-perfil.html) |
+| 14 | Vincular Telegram | Mobile | USER | [`15-vincular-telegram.html`](../../../docs/ux/mockups/15-vincular-telegram.html) |
+| 15 | Introducir OTP | Mobile | USER | [`16-otp-telegram.html`](../../../docs/ux/mockups/16-otp-telegram.html) |
+
+### Flujos relacionados
+
+Esta capability participa en los siguientes flujos (ver [`docs/ux/flujos.md`](../../../docs/ux/flujos.md)):
+
+- **Flujo de vinculación Telegram** — cubre el flujo completo: desde Mi perfil (pantalla 13) donde el usuario inicia la vinculación, pasando por las instrucciones del bot (pantalla 14), hasta la introducción del OTP de 6 dígitos (pantalla 15).
+
+### Notas de UX
+
+> - El OTP caduca a los 10 minutos; la pantalla de introducción de OTP (pantalla 15) debe mostrar un contador de tiempo restante en monospace (RN-AUTH-07).
+> - Tras 3 intentos fallidos el OTP se invalida automáticamente; la pantalla debe indicar que el código ha sido invalidado y ofrecer la opción de solicitar uno nuevo (RN-AUTH-07).
+> - El OTP nunca aparece en claro en la pantalla de vinculación; el usuario lo recibe directamente en Telegram y lo introduce manualmente (RN-AUTH-07).
