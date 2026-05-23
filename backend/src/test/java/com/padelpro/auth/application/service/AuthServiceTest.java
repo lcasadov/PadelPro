@@ -2,13 +2,17 @@ package com.padelpro.auth.application.service;
 
 import com.padelpro.auth.application.dto.LoginCommand;
 import com.padelpro.auth.application.dto.TokenPair;
+import com.padelpro.auth.domain.model.AuditLog;
 import com.padelpro.auth.domain.model.User;
 import com.padelpro.auth.domain.model.UserRole;
 import com.padelpro.auth.domain.model.UserStatus;
+import com.padelpro.auth.domain.port.out.AuditLogRepositoryPort;
 import com.padelpro.auth.infrastructure.persistence.UserRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -38,8 +42,21 @@ class AuthServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private AuditLogRepositoryPort auditLogRepository;
+
     @InjectMocks
     private AuthService authService;
+
+    /**
+     * Mockito uses constructor injection for AuthService (single-arg constructor).
+     * After construction, setter injection for optional ports does NOT happen
+     * automatically — we inject auditLogRepository explicitly via its Spring setter.
+     */
+    @BeforeEach
+    void injectOptionalPorts() {
+        authService.setAuditLogRepository(auditLogRepository);
+    }
 
     // -------------------------------------------------------------------------
     // Helpers
@@ -256,5 +273,108 @@ class AuthServiceTest {
                 .isNotNull()
                 .isAfterOrEqualTo(OffsetDateTime.now().minusSeconds(5));
         verify(userRepository).save(activeUser);
+    }
+
+    // -------------------------------------------------------------------------
+    // R-5.1 — Successful login generates a LOGIN_SUCCESS audit log entry
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("R-5.1: should log LOGIN_SUCCESS with user_id and null details on successful login")
+    void should_log_login_success_to_audit_log() {
+        // Arrange
+        String email = "user@example.com";
+        User activeUser = buildActiveUser(email);
+        when(userRepository.findByEmail(email))
+                .thenReturn(Optional.of(activeUser));
+        when(userRepository.save(activeUser))
+                .thenReturn(activeUser);
+
+        LoginCommand command = new LoginCommand(email, "Password1");
+
+        // Act
+        authService.login(command);
+
+        // Assert — exactly one audit log entry saved with LOGIN_SUCCESS
+        ArgumentCaptor<AuditLog> captor = ArgumentCaptor.forClass(AuditLog.class);
+        verify(auditLogRepository).save(captor.capture());
+        AuditLog logged = captor.getValue();
+        assertThat(logged.getAction())
+                .as("audit action must be LOGIN_SUCCESS")
+                .isEqualTo("LOGIN_SUCCESS");
+        assertThat(logged.getUser())
+                .as("audit log must reference the authenticated user")
+                .isEqualTo(activeUser);
+        assertThat(logged.getDetails())
+                .as("details must be NULL — no PII (RN-RGPD-04)")
+                .isNull();
+    }
+
+    // -------------------------------------------------------------------------
+    // R-5.2 — Failed login with existing email logs LOGIN_FAILURE with user_id
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("R-5.2: should log LOGIN_FAILURE with user_id when password is wrong for existing email")
+    void should_log_login_failure_with_user_id_when_email_exists() {
+        // Arrange
+        String email = "user@example.com";
+        User activeUser = buildActiveUser(email);
+        when(userRepository.findByEmail(email))
+                .thenReturn(Optional.of(activeUser));
+
+        LoginCommand command = new LoginCommand(email, "WrongPassword1");
+
+        // Act — exception is expected; capture it so the test does not abort
+        assertThatThrownBy(() -> authService.login(command))
+                .isNotInstanceOf(UnsupportedOperationException.class);
+
+        // Assert — audit log must record the failure with the user's id
+        ArgumentCaptor<AuditLog> captor = ArgumentCaptor.forClass(AuditLog.class);
+        verify(auditLogRepository).save(captor.capture());
+        AuditLog logged = captor.getValue();
+        assertThat(logged.getAction())
+                .as("audit action must be LOGIN_FAILURE")
+                .isEqualTo("LOGIN_FAILURE");
+        assertThat(logged.getUser())
+                .as("audit log must reference the user whose password was wrong")
+                .isEqualTo(activeUser);
+        assertThat(logged.getDetails())
+                .as("details must be NULL — no PII (RN-RGPD-04)")
+                .isNull();
+    }
+
+    // -------------------------------------------------------------------------
+    // R-5.3 — Failed login with unknown email logs LOGIN_FAILURE with null user_id
+    //         and must NOT store the email (anti-PII)
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("R-5.3: should log LOGIN_FAILURE with null user and without email when address is unknown")
+    void should_log_login_failure_with_null_user_id_when_email_not_found() {
+        // Arrange
+        String unknownEmail = "ghost@example.com";
+        when(userRepository.findByEmail(unknownEmail))
+                .thenReturn(Optional.empty());
+
+        LoginCommand command = new LoginCommand(unknownEmail, "AnyPassword1");
+
+        // Act — exception is expected
+        assertThatThrownBy(() -> authService.login(command))
+                .isNotInstanceOf(UnsupportedOperationException.class);
+
+        // Assert — user must be null; email must NOT appear in the details field (anti-PII)
+        ArgumentCaptor<AuditLog> captor = ArgumentCaptor.forClass(AuditLog.class);
+        verify(auditLogRepository).save(captor.capture());
+        AuditLog logged = captor.getValue();
+        assertThat(logged.getAction())
+                .as("audit action must be LOGIN_FAILURE")
+                .isEqualTo("LOGIN_FAILURE");
+        assertThat(logged.getUser())
+                .as("user_id must be NULL for unknown email (R-5.3)")
+                .isNull();
+        assertThat(logged.getDetails())
+                .as("email must NOT be stored in audit_log details (anti-PII, RN-RGPD-04)")
+                .isNull();
     }
 }
