@@ -6,7 +6,6 @@ import com.padelpro.auth.application.dto.TokenPair;
 import com.padelpro.auth.application.dto.UserDto;
 import com.padelpro.auth.application.port.in.LoginUseCase;
 import com.padelpro.auth.application.port.in.RegisterUseCase;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -66,17 +65,11 @@ public class AuthController {
         TokenPair result = loginUseCase.login(command);
 
         // Set HttpOnly refresh-token cookie (RN-AUTH-10)
+        // Path=/api/auth/refresh restricts the cookie to the refresh endpoint only (security-design.md §2.5)
         if (result.rawRefreshToken() != null) {
-            Cookie cookie = new Cookie("refresh_token", result.rawRefreshToken());
-            cookie.setHttpOnly(true);
-            cookie.setSecure(true);
-            cookie.setPath("/");
-            cookie.setMaxAge(604800); // 7 days
-            // SameSite=Strict — set via header because Cookie API doesn't expose it
-            response.addCookie(cookie);
             response.setHeader("Set-Cookie",
                     "refresh_token=" + result.rawRefreshToken()
-                    + "; HttpOnly; Secure; SameSite=Strict; Max-Age=604800; Path=/");
+                    + "; HttpOnly; Secure; SameSite=Strict; Max-Age=604800; Path=/api/auth/refresh");
         }
 
         return ResponseEntity.ok(result);
