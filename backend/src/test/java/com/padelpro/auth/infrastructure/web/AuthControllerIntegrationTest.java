@@ -76,8 +76,8 @@ class AuthControllerIntegrationTest {
     private Map<String, String> registerBody(String firstName, String lastName,
                                               String email, String password) {
         return Map.of(
-                "firstName", firstName,
-                "lastName", lastName,
+                "first_name", firstName,
+                "last_name", lastName,
                 "email", email,
                 "password", password
         );

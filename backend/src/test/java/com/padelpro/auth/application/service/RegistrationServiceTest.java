@@ -4,7 +4,7 @@ import com.padelpro.auth.application.dto.RegisterCommand;
 import com.padelpro.auth.application.dto.UserDto;
 import com.padelpro.auth.domain.model.UserRole;
 import com.padelpro.auth.domain.model.UserStatus;
-import com.padelpro.auth.infrastructure.persistence.UserRepository;
+import com.padelpro.auth.domain.port.out.UserRepositoryPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -36,7 +36,7 @@ import static org.mockito.Mockito.when;
 class RegistrationServiceTest {
 
     @Mock
-    private UserRepository userRepository;
+    private UserRepositoryPort userRepository;
 
     @InjectMocks
     private RegistrationService registrationService;

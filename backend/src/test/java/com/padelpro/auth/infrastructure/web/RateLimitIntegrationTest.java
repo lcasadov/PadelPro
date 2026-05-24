@@ -78,8 +78,8 @@ class RateLimitIntegrationTest {
 
     private String registerJson(String email) throws Exception {
         return objectMapper.writeValueAsString(Map.of(
-                "firstName", "Test",
-                "lastName", "User",
+                "first_name", "Test",
+                "last_name", "User",
                 "email", email,
                 "password", "Password1"
         ));
@@ -95,6 +95,21 @@ class RateLimitIntegrationTest {
         return mockMvc.perform(post("/api/auth/register")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(registerJson("rate" + emailSuffix + "@example.com")));
+    }
+
+    // =========================================================================
+    // R-4.1 — Requests below the threshold are processed normally
+    // =========================================================================
+
+    @Test
+    @DisplayName("R-4.1: login requests below threshold (≤5) are not rate-limited")
+    void login_requests_below_threshold_are_not_rate_limited() throws Exception {
+        // Send exactly 5 requests (the limit); none should be 429
+        for (int i = 0; i < 5; i++) {
+            performLogin("below_threshold@example.com")
+                    .andExpect(result ->
+                            assertThat(result.getResponse().getStatus()).isNotEqualTo(429));
+        }
     }
 
     // =========================================================================

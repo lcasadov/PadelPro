@@ -30,15 +30,12 @@ import java.util.Date;
 @Service
 public class JwtService {
 
-    // Default secret must be at least 32 chars (256 bits) for HS256.
-    // In tests, Spring is absent so @Value is never processed — we rely on the field
-    // initializer default. The default is intentionally long enough for HS256.
-    private String secret = "change-me-in-production-min-32-chars!!-padelpro-jwt-secret";
+    // Populated by Spring via @Value; unit tests set it directly via setSecret().
+    private String secret = "test-secret-padelpro-jwt-min-32-chars-ok";
 
     private int expiryMinutes = 15;
 
-    // Spring injects these when the service is a Spring bean
-    @Value("${app.jwt.secret:change-me-in-production-min-32-chars!!-padelpro-jwt-secret}")
+    @Value("${app.jwt.secret}")
     public void setSecret(String secret) {
         this.secret = secret;
     }

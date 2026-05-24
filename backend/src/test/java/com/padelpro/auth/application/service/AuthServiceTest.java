@@ -7,7 +7,7 @@ import com.padelpro.auth.domain.model.User;
 import com.padelpro.auth.domain.model.UserRole;
 import com.padelpro.auth.domain.model.UserStatus;
 import com.padelpro.auth.domain.port.out.AuditLogRepositoryPort;
-import com.padelpro.auth.infrastructure.persistence.UserRepository;
+import com.padelpro.auth.domain.port.out.UserRepositoryPort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -40,7 +40,7 @@ import static org.mockito.Mockito.when;
 class AuthServiceTest {
 
     @Mock
-    private UserRepository userRepository;
+    private UserRepositoryPort userRepository;
 
     @Mock
     private AuditLogRepositoryPort auditLogRepository;

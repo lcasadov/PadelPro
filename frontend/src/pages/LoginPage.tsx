@@ -99,7 +99,7 @@ export function LoginPage() {
           <button
             type="button"
             className="p-link"
-            onClick={() => console.log('forgot password stub')}
+            onClick={() => {}}
           >
             ¿Olvidaste la contraseña?
           </button>
