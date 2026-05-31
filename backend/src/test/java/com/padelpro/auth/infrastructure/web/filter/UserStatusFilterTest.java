@@ -34,8 +34,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * TDD RED — Unit tests for UserStatusFilter.
- * These tests FAIL until UserStatusFilter is implemented.
+ * Unit tests for UserStatusFilter (GREEN phase after implementation).
  */
 @ExtendWith(MockitoExtension.class)
 class UserStatusFilterTest {
@@ -55,7 +54,12 @@ class UserStatusFilterTest {
     @Mock
     private FilterChain filterChain;
 
-    @InjectMocks
+    // Real ObjectMapper — cannot be mocked because @InjectMocks only injects by type
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper =
+            new com.fasterxml.jackson.databind.ObjectMapper()
+                    .findAndRegisterModules()
+                    .disable(com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+
     private UserStatusFilter userStatusFilter;
 
     private StringWriter responseWriter;
@@ -63,10 +67,8 @@ class UserStatusFilterTest {
     @BeforeEach
     void setUp() throws Exception {
         SecurityContextHolder.clearContext();
+        userStatusFilter = new UserStatusFilter(userRepositoryPort, auditLogRepositoryPort, objectMapper);
         responseWriter = new StringWriter();
-        when(response.getWriter()).thenReturn(new PrintWriter(responseWriter));
-        when(request.getRemoteAddr()).thenReturn("127.0.0.1");
-        when(auditLogRepositoryPort.save(any(AuditLog.class))).thenAnswer(inv -> inv.getArgument(0));
     }
 
     @AfterEach
@@ -111,6 +113,9 @@ class UserStatusFilterTest {
         setAuthContext("42");
         User inactiveUser = buildUser(42L, UserStatus.INACTIVE);
         when(userRepositoryPort.findById(42L)).thenReturn(Optional.of(inactiveUser));
+        when(response.getWriter()).thenReturn(new PrintWriter(responseWriter));
+        when(request.getRemoteAddr()).thenReturn("127.0.0.1");
+        when(auditLogRepositoryPort.save(any(AuditLog.class))).thenAnswer(inv -> inv.getArgument(0));
 
         userStatusFilter.doFilterInternal(request, response, filterChain);
 
@@ -125,6 +130,9 @@ class UserStatusFilterTest {
         setAuthContext("42");
         User pendingUser = buildUser(42L, UserStatus.PENDING);
         when(userRepositoryPort.findById(42L)).thenReturn(Optional.of(pendingUser));
+        when(response.getWriter()).thenReturn(new PrintWriter(responseWriter));
+        when(request.getRemoteAddr()).thenReturn("127.0.0.1");
+        when(auditLogRepositoryPort.save(any(AuditLog.class))).thenAnswer(inv -> inv.getArgument(0));
 
         userStatusFilter.doFilterInternal(request, response, filterChain);
 

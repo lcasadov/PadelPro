@@ -9,7 +9,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.access.AccessDeniedException;
@@ -27,8 +26,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * TDD RED — Unit tests for CustomAccessDeniedHandler.
- * These tests FAIL until CustomAccessDeniedHandler is implemented.
+ * Unit tests for CustomAccessDeniedHandler (GREEN phase after implementation).
  */
 @ExtendWith(MockitoExtension.class)
 class CustomAccessDeniedHandlerTest {
@@ -42,7 +40,11 @@ class CustomAccessDeniedHandlerTest {
     @Mock
     private HttpServletResponse response;
 
-    @InjectMocks
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper =
+            new com.fasterxml.jackson.databind.ObjectMapper()
+                    .findAndRegisterModules()
+                    .disable(com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+
     private CustomAccessDeniedHandler handler;
 
     private StringWriter responseWriter;
@@ -50,6 +52,7 @@ class CustomAccessDeniedHandlerTest {
     @BeforeEach
     void setUp() throws Exception {
         SecurityContextHolder.clearContext();
+        handler = new CustomAccessDeniedHandler(auditLogRepositoryPort, objectMapper);
         responseWriter = new StringWriter();
         when(response.getWriter()).thenReturn(new PrintWriter(responseWriter));
         when(request.getRemoteAddr()).thenReturn("127.0.0.1");

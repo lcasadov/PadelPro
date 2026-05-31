@@ -6,7 +6,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.core.AuthenticationException;
@@ -19,8 +18,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * TDD RED — Unit tests for CustomAuthenticationEntryPoint.
- * These tests FAIL until CustomAuthenticationEntryPoint is implemented.
+ * Unit tests for CustomAuthenticationEntryPoint (GREEN phase after implementation).
  */
 @ExtendWith(MockitoExtension.class)
 class CustomAuthenticationEntryPointTest {
@@ -31,13 +29,18 @@ class CustomAuthenticationEntryPointTest {
     @Mock
     private HttpServletResponse response;
 
-    @InjectMocks
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper =
+            new com.fasterxml.jackson.databind.ObjectMapper()
+                    .findAndRegisterModules()
+                    .disable(com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+
     private CustomAuthenticationEntryPoint entryPoint;
 
     private StringWriter responseWriter;
 
     @BeforeEach
     void setUp() throws Exception {
+        entryPoint = new CustomAuthenticationEntryPoint(objectMapper);
         responseWriter = new StringWriter();
         when(response.getWriter()).thenReturn(new PrintWriter(responseWriter));
     }
