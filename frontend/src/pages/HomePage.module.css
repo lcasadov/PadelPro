@@ -1,0 +1,138 @@
+/* HomePage — Ref visual: docs/ux/mockups/02-home-jugador.html */
+
+.homePage {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding: 24px 24px 40px;
+  background: var(--cream);
+  max-width: 430px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* ── Top bar ── */
+.topBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32px;
+}
+
+.avatarBtn {
+  width: 40px;
+  height: 40px;
+  background: var(--olive);
+  color: var(--lime);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: opacity 0.15s ease;
+}
+
+.avatarBtn:hover {
+  opacity: 0.85;
+}
+
+/* ── Greeting ── */
+.greet {
+  margin-bottom: 32px;
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  display: block;
+  margin-bottom: 8px;
+}
+
+.greet h1 {
+  font-family: var(--font-display);
+  font-size: 42px;
+  font-weight: 700;
+  line-height: 0.95;
+  letter-spacing: -0.04em;
+}
+
+.greet h1 em {
+  font-style: italic;
+  font-weight: 500;
+  color: var(--olive);
+}
+
+/* ── Quick actions grid ── */
+.actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+
+.action {
+  background: white;
+  border: 1px solid rgba(13, 13, 13, 0.1);
+  border-radius: 18px;
+  padding: 18px 16px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-decoration: none;
+  color: var(--ink);
+  display: block;
+}
+
+.action:hover {
+  border-color: rgba(13, 13, 13, 0.3);
+  transform: translateY(-1px);
+}
+
+.actionPrimary {
+  background: var(--lime);
+  border-color: var(--lime);
+}
+
+.actionPrimary:hover {
+  background: var(--lime-dark);
+  border-color: var(--lime-dark);
+}
+
+.actionIco {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 18px;
+}
+
+.actionIco svg {
+  width: 20px;
+  height: 20px;
+}
+
+.actionLabel {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.actionSub {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.actionPrimary .actionSub {
+  color: var(--olive);
+}
+
+/* ── Logout ── */
+.logoutBtn {
+  margin-top: auto;
+}

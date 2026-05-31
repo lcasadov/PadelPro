@@ -1,233 +1,322 @@
-# Capability: auth-local
+# Capability: auth-local — Change bootstrap-mvp
 
-## Resumen
+> **Tipo de artefacto:** spec de change (delta sobre `openspec/specs/auth-local/spec.md`).
+> Todos los requirements de este fichero están marcados `[AÑADIDO]` porque son la primera implementación de la capability.
+> Al archivar este change (`/opsx:archive bootstrap-mvp`), estos requirements se fusionan con el spec base.
 
-Gestiona el ciclo de autenticación local de PadelPro: registro de nuevos usuarios, inicio de sesión con login y contraseña, renovación del access token, cierre de sesión y recuperación de contraseña mediante OTP enviado por Telegram. Implementa el modelo de doble token (access + refresh) con JWT HS256.
+**Change slug:** `bootstrap-mvp`
+**Capability:** `auth-local`
+**Issue GitHub:** #76
 
-## Fase
+---
 
-Fase 1
+## Propósito
+
+Permite a un usuario crear una cuenta y autenticarse con email y contraseña, obteniendo un token JWT (HS256) para llamadas posteriores a la API. Es la capability mínima que habilita el resto de la Fase 1.
+
+---
+
+## Roles que consumen esta capability
+
+| Rol | Operación permitida |
+|---|---|
+| `USER` (jugador registrado) | Puede hacer login, obtener token y acceder a recursos propios. |
+| No autenticado (antes del registro) | Puede registrarse (`POST /api/auth/register`) y hacer login (`POST /api/auth/login`). Tras el registro, el usuario obtiene rol `USER`. |
+
+> Los roles `ADMIN` y `USER` son los únicos roles válidos en v1.0 (AGENTS.md §4 regla 3). El concepto de "usuario no autenticado" no es un rol del sistema; es el estado previo al registro.
+
+---
 
 ## Reglas de negocio implicadas
 
-- **RN-AUTH-06**: Bloqueo de cuenta tras 10 fallos de login en 10 minutos (15 min de bloqueo), aplicado de forma independiente por IP y por usuario.
-- **RN-AUTH-07**: OTP de 6 dígitos, TTL 10 min, máximo 3 intentos, almacenado como SHA-256, de un solo uso.
-- **RN-AUTH-08**: Contraseña: mínimo 8 caracteres + 1 mayúscula + 1 número; máximo 128 caracteres; hash BCrypt cost 12.
-- **RN-AUTH-09**: Access token 15 min almacenado en memoria JavaScript; refresh token 7 días en cookie httpOnly.
-- **RN-RGPD-04**: Los logs no contienen contraseñas, tokens JWT, códigos OTP ni datos de tarjeta.
-- **RN-SEC-01**: Rate limiting: login 5/min/IP, registro 3/min/IP, solicitud de reset 3/min/IP.
+| Código | Descripción |
+|---|---|
+| **RN-AUTH-08** | Contraseña: mínimo 8 caracteres + 1 mayúscula + 1 número; máximo 128 caracteres; hash BCrypt cost 12. |
+| **RN-AUTH-09** | Access token 15 min almacenado en memoria JS; refresh token 7 días en cookie httpOnly. |
+| **RN-RGPD-03** | Las respuestas de error no exponen datos de otros usuarios (anti-enumeración). |
+| **RN-RGPD-04** | Los logs no contienen contraseñas, tokens JWT, códigos OTP ni datos de tarjeta. |
+| **RN-SEC-01** | Rate limiting: login 5/min/IP, registro 3/min/IP. |
 
-## Entidades implicadas
+---
 
-**users** (tabla `users`):
-- `id`, `login`, `password_hash`, `first_name`, `last_name`, `phone`, `email`, `status` (`PENDING|ACTIVE|INACTIVE`), `role` (`ADMIN|USER`), `telegram_chat_id`, `registered_at`, `updated_at`
+## Endpoints cubiertos por este change
 
-**refresh_tokens** (tabla `refresh_tokens`):
-- `id`, `user_id`, `token_hash` (SHA-256 del token), `expires_at`, `revoked`, `ip_address`, `created_at`
+| Método | Path | Autenticación |
+|---|---|---|
+| `POST` | `/api/auth/register` | Pública |
+| `POST` | `/api/auth/login` | Pública |
 
-**otp_codes** (tabla `otp_codes`):
-- `id`, `user_id`, `code` (SHA-256), `type` (`PASSWORD_RESET`), `expires_at`, `used`, `created_at`
+> Los endpoints `/api/auth/refresh`, `/api/auth/logout` y `/api/auth/password/*` se declaran en changes posteriores (`auth-session-management`, `auth-password-reset`).
 
-## Endpoints
-
-Todos los endpoints de esta capability tienen `security: []` (no requieren JWT salvo `/auth/logout`).
-
-| Método | Path | OperationId | Autenticación |
-|---|---|---|---|
-| `POST` | `/api/auth/login` | `login` | Pública |
-| `POST` | `/api/auth/register` | `register` | Pública |
-| `POST` | `/api/auth/refresh` | `refreshToken` | Pública (cookie httpOnly) |
-| `POST` | `/api/auth/logout` | `logout` | JWT requerido |
-| `POST` | `/api/auth/password/solicitar-reset` | `solicitarResetPassword` | Pública |
-| `POST` | `/api/auth/password/confirmar-reset` | `confirmarResetPassword` | Pública |
-
-## Permisos
-
-| Operación | ADMIN | USER | No autenticado |
-|---|---|---|---|
-| `POST /api/auth/login` | Permitido | Permitido | Permitido |
-| `POST /api/auth/register` | No aplica | No aplica | Permitido |
-| `POST /api/auth/refresh` | Permitido | Permitido | Permitido (con cookie) |
-| `POST /api/auth/logout` | Permitido | Permitido | Denegado (401) |
-| `POST /api/auth/password/solicitar-reset` | Permitido | Permitido | Permitido |
-| `POST /api/auth/password/confirmar-reset` | Permitido | Permitido | Permitido |
+---
 
 ## Requirements
 
-### Requirement 1: Login con doble token
+### R-1 — Registro de usuario con email único `[AÑADIDO]`
 
-**El sistema DEBE autenticar al usuario con login y contraseña, devolver un access token JWT HS256 con TTL de 15 minutos y establecer un refresh token en cookie httpOnly con TTL de 7 días.**
+Un usuario no autenticado puede crear una cuenta proporcionando su nombre, apellido, email y contraseña. El email debe ser único en el sistema. La contraseña debe cumplir la política mínima (RN-AUTH-08). El sistema crea la cuenta con rol `USER` y estado `ACTIVE`.
 
-#### Scenario: Login exitoso con credenciales válidas
+#### Scenarios
 
-- **GIVEN** un usuario existe en el sistema con `status=ACTIVE` y `role=USER`
-- **AND** el usuario no está bloqueado por intentos fallidos
-- **WHEN** se envía `POST /api/auth/login` con `login` y `password` correctos
-- **THEN** el sistema responde con código `200`
-- **AND** el cuerpo contiene un `accessToken` JWT HS256 válido con `exp` a 15 minutos vista
-- **AND** la respuesta incluye `Set-Cookie: refresh_token=...; HttpOnly; Secure; SameSite=Strict; Path=/api/auth/refresh; Max-Age=604800`
-- **AND** el token contiene los claims `sub`, `login`, `role`, `iat`, `exp`, `jti`
+**Scenario R-1.1 — Registro válido**
+```
+GIVEN un usuario no autenticado
+  AND los campos {first_name, last_name, email, password} son válidos
+  AND el email no existe en el sistema
+WHEN el usuario envía POST /api/auth/register con esos campos
+THEN el sistema responde 201 Created
+  AND el body contiene {id, email, role: "USER"}
+  AND el usuario queda persistido en la tabla users con status=PENDING
+  AND se genera una entrada en audit_log con action=USER_REGISTERED
+```
 
-#### Scenario: Login fallido con contraseña incorrecta (timing-safe)
+**Scenario R-1.2 — Email ya registrado**
+```
+GIVEN un usuario no autenticado
+  AND el email proporcionado ya existe en la tabla users
+WHEN el usuario envía POST /api/auth/register
+THEN el sistema responde 409 Conflict
+  AND el body contiene {error: "EMAIL_ALREADY_REGISTERED"}
+  AND no se crea ningún registro nuevo en users
+  AND la respuesta no indica si la cuenta existente está activa o inactiva
+```
 
-- **GIVEN** un usuario existe en el sistema con `status=ACTIVE`
-- **WHEN** se envía `POST /api/auth/login` con `login` correcto y `password` incorrecto
-- **THEN** el sistema responde con código `401`
-- **AND** el cuerpo sigue el esquema `ErrorResponse` sin revelar si el login existe
-- **AND** el sistema registra el intento fallido en el contador de bloqueo (IP + usuario)
-- **AND** el tiempo de respuesta es similar al de un login exitoso (resistencia a timing attacks)
+**Scenario R-1.3a — Contraseña demasiado corta**
+```
+GIVEN un usuario no autenticado
+  AND la contraseña tiene menos de 8 caracteres
+WHEN el usuario envía POST /api/auth/register
+THEN el sistema responde 400 Bad Request
+  AND el body contiene {error: "INVALID_PASSWORD", details: ["MIN_LENGTH_8"]}
+  AND no se crea ningún registro en users
+```
 
-#### Scenario: Login bloqueado por exceso de intentos fallidos (RN-AUTH-06)
+**Scenario R-1.3b — Contraseña sin mayúscula**
+```
+GIVEN un usuario no autenticado
+  AND la contraseña tiene 8 o más caracteres
+  AND la contraseña no contiene ninguna letra mayúscula
+WHEN el usuario envía POST /api/auth/register
+THEN el sistema responde 400 Bad Request
+  AND el body contiene {error: "INVALID_PASSWORD", details: ["REQUIRES_UPPERCASE"]}
+  AND no se crea ningún registro en users
+```
 
-- **GIVEN** un usuario ha fallado 10 intentos de login en los últimos 10 minutos
-- **WHEN** se envía `POST /api/auth/login` con cualquier contraseña
-- **THEN** el sistema responde con código `429`
-- **AND** el cuerpo indica que la cuenta está bloqueada temporalmente
-- **AND** la respuesta incluye el tiempo restante de bloqueo (15 minutos)
+**Scenario R-1.3c — Contraseña sin número**
+```
+GIVEN un usuario no autenticado
+  AND la contraseña tiene 8 o más caracteres
+  AND la contraseña contiene al menos una letra mayúscula
+  AND la contraseña no contiene ningún dígito numérico
+WHEN el usuario envía POST /api/auth/register
+THEN el sistema responde 400 Bad Request
+  AND el body contiene {error: "INVALID_PASSWORD", details: ["REQUIRES_NUMBER"]}
+  AND no se crea ningún registro en users
+```
 
-#### Scenario: Login denegado para cuenta PENDING
-
-- **GIVEN** un usuario existe con `status=PENDING` (auto-registro no aprobado)
-- **WHEN** se envía `POST /api/auth/login` con credenciales correctas
-- **THEN** el sistema responde con código `403`
-- **AND** el mensaje indica que la cuenta está pendiente de aprobación
-
----
-
-### Requirement 2: Registro de nuevo usuario
-
-**El sistema DEBE permitir el auto-registro de nuevos usuarios. La cuenta se crea en estado PENDING hasta que un administrador la apruebe.**
-
-#### Scenario: Registro exitoso con datos válidos
-
-- **GIVEN** no existe ningún usuario con el mismo `login`, `email` ni `phone`
-- **WHEN** se envía `POST /api/auth/register` con `login`, `password`, `firstName`, `lastName`, `email` y `phone` válidos
-- **THEN** el sistema responde con código `201`
-- **AND** el usuario se crea con `status=PENDING` y `role=USER`
-- **AND** la contraseña se almacena como hash BCrypt con cost 12 (RN-AUTH-08)
-- **AND** la contraseña en claro nunca aparece en logs ni en la respuesta
-
-#### Scenario: Registro rechazado por login duplicado
-
-- **GIVEN** ya existe un usuario con `login=jdoe`
-- **WHEN** se envía `POST /api/auth/register` con `login=jdoe`
-- **THEN** el sistema responde con código `409`
-- **AND** el mensaje indica conflicto de login sin revelar datos del usuario existente
-
-#### Scenario: Registro rechazado por contraseña débil (RN-AUTH-08)
-
-- **GIVEN** el sistema tiene configurada la política de contraseñas
-- **WHEN** se envía `POST /api/auth/register` con `password` que no cumple los requisitos (menos de 8 chars, sin mayúscula o sin número)
-- **THEN** el sistema responde con código `400`
-- **AND** el mensaje detalla qué requisito de contraseña no se cumple
-
----
-
-### Requirement 3: Renovación y revocación de tokens
-
-**El sistema DEBE permitir renovar el access token usando el refresh token almacenado en la cookie httpOnly, e invalidar el refresh token al hacer logout.**
-
-#### Scenario: Renovación exitosa con refresh token válido
-
-- **GIVEN** el usuario tiene un refresh token activo (no revocado, no expirado) en cookie
-- **WHEN** se envía `POST /api/auth/refresh` con la cookie `refresh_token`
-- **THEN** el sistema responde con código `200`
-- **AND** el cuerpo contiene un nuevo `accessToken` JWT válido
-- **AND** el refresh token en la cookie se mantiene (o se rota si está habilitada la rotación)
-
-#### Scenario: Renovación fallida con refresh token revocado
-
-- **GIVEN** el usuario ha hecho logout y su refresh token fue marcado como `revoked=true`
-- **WHEN** se envía `POST /api/auth/refresh` con ese refresh token
-- **THEN** el sistema responde con código `401`
-- **AND** la cookie `refresh_token` se borra (Max-Age=0)
-
-#### Scenario: Logout invalida el refresh token
-
-- **GIVEN** el usuario tiene un access token válido y un refresh token activo
-- **WHEN** se envía `POST /api/auth/logout` con el access token en `Authorization: Bearer`
-- **THEN** el sistema responde con código `204`
-- **AND** el refresh token se marca como `revoked=true` en base de datos
-- **AND** la cookie `refresh_token` se borra (`Max-Age=0`)
-- **AND** un intento posterior de `POST /api/auth/refresh` con ese token responde `401`
+**Scenario R-1.4 — Campo obligatorio ausente**
+```
+GIVEN un usuario no autenticado
+  AND el body de la petición omite al menos uno de {first_name, last_name, email, password}
+WHEN el usuario envía POST /api/auth/register
+THEN el sistema responde 400 Bad Request
+  AND el body identifica el campo faltante
+  AND no se crea ningún registro en users
+```
 
 ---
 
-### Requirement 4: Recuperación de contraseña mediante OTP
+### R-2 — Login con credenciales válidas `[AÑADIDO]`
 
-**El sistema DEBE permitir restablecer la contraseña mediante un OTP enviado al Telegram personal del usuario. El OTP es de un solo uso con TTL de 10 minutos (RN-AUTH-07).**
+Un usuario registrado puede autenticarse con su email y contraseña. Si las credenciales son correctas y la cuenta está `ACTIVE`, el sistema emite un access token JWT y un refresh token (cookie httpOnly). Si las credenciales son incorrectas o el email no existe, el sistema responde 401 con el mismo mensaje genérico (anti-enumeración, RN-RGPD-03). Si las credenciales son correctas pero la cuenta está en estado `PENDING` o `INACTIVE`, el sistema responde 403.
 
-#### Scenario: Solicitud de reset con email registrado
+#### Scenarios
 
-- **GIVEN** existe un usuario con `email=jdoe@example.com` y `telegram_chat_id` vinculado
-- **WHEN** se envía `POST /api/auth/password/solicitar-reset` con ese email
-- **THEN** el sistema responde con código `200` (respuesta neutral, no revela si el email existe)
-- **AND** se genera un OTP de tipo `PASSWORD_RESET` almacenado como SHA-256 con TTL 10 min
-- **AND** el OTP se envía al chat personal de Telegram del usuario
+**Scenario R-2.1 — Login con credenciales válidas**
+```
+GIVEN un usuario con email=user@example.com existe en el sistema con status=ACTIVE
+  AND la contraseña proporcionada es correcta
+WHEN el usuario envía POST /api/auth/login con {email, password}
+THEN el sistema responde 200 OK
+  AND el body contiene {access_token: "<JWT>", token_type: "Bearer", expires_in: 900}
+  AND la respuesta incluye el header Set-Cookie con refresh_token; HttpOnly; SameSite=Strict; Secure; Max-Age=604800
+  AND se actualiza users.last_login_at con el timestamp actual
+```
 
-#### Scenario: Solicitud de reset con email no registrado (respuesta neutral)
+**Scenario R-2.2 — Email no registrado (anti-enumeración)**
+```
+GIVEN el email proporcionado no existe en la tabla users
+WHEN el usuario envía POST /api/auth/login con {email, password}
+THEN el sistema responde 401 Unauthorized
+  AND el body contiene {error: "AUTH_INVALID_CREDENTIALS", message: "Credenciales inválidas"}
+  AND la respuesta es indistinguible del Scenario R-2.3
+  AND no se genera ninguna entrada en audit_log con datos del email (para no exponer si existe)
+```
 
-- **GIVEN** no existe ningún usuario con el email proporcionado
-- **WHEN** se envía `POST /api/auth/password/solicitar-reset` con ese email
-- **THEN** el sistema responde con código `200` con el mismo mensaje neutral
-- **AND** no se genera ningún OTP ni se envía ningún mensaje
+**Scenario R-2.3 — Contraseña incorrecta**
+```
+GIVEN un usuario con email=user@example.com existe en el sistema con status=ACTIVE
+  AND la contraseña proporcionada es incorrecta
+WHEN el usuario envía POST /api/auth/login con {email, password}
+THEN el sistema responde 401 Unauthorized
+  AND el body contiene {error: "AUTH_INVALID_CREDENTIALS", message: "Credenciales inválidas"}
+  AND el tiempo de respuesta no revela si el email existe (se ejecuta el hash BCrypt igualmente)
+  AND se genera una entrada en audit_log con action=LOGIN_FAILURE, user_id=<id del usuario>, ip_address=<IP>
+```
 
-#### Scenario: Confirmación de reset exitosa con OTP válido
-
-- **GIVEN** existe un OTP de tipo `PASSWORD_RESET` válido (no usado, no expirado) para el usuario
-- **WHEN** se envía `POST /api/auth/password/confirmar-reset` con el `email`, el `otpCode` correcto y la nueva `password`
-- **THEN** el sistema responde con código `200`
-- **AND** la nueva contraseña se almacena como BCrypt cost 12
-- **AND** el OTP queda marcado como `used=true`
-- **AND** todos los refresh tokens del usuario se revocan
-
-#### Scenario: Confirmación de reset fallida con OTP expirado (RN-AUTH-07)
-
-- **GIVEN** existe un OTP de tipo `PASSWORD_RESET` para el usuario, pero `expires_at` es anterior al momento actual
-- **WHEN** se envía `POST /api/auth/password/confirmar-reset` con ese OTP
-- **THEN** el sistema responde con código `422`
-- **AND** el mensaje indica que el código ha expirado sin revelar información adicional
+**Scenario R-2.4 — Cuenta en estado PENDING o INACTIVE `[AÑADIDO]`**
+```
+GIVEN un usuario con email=user@example.com existe en el sistema
+  AND la contraseña proporcionada es correcta
+  AND el status del usuario es PENDING o INACTIVE
+WHEN el usuario envía POST /api/auth/login con {email, password}
+THEN el sistema responde 403 Forbidden
+  AND el body contiene {error: "ACCOUNT_NOT_ACTIVE", message: "Tu cuenta aún no está activada. Contacta con el administrador."}
+  AND no se emite ningún token JWT
+  AND se genera una entrada en audit_log con action=LOGIN_FAILURE, user_id=<id del usuario>, ip_address=<IP>
+```
 
 ---
 
-## Casos límite
+### R-3 — Emisión y validación de JWT `[AÑADIDO]`
 
-- Si el usuario no tiene `telegram_chat_id` vinculado y solicita reset de contraseña, el sistema responde `200` pero no puede enviar el OTP. El administrador debe gestionar el caso manualmente.
-- El rate limiting de `POST /api/auth/login` (5/min/IP) se aplica antes de la validación de credenciales para no revelar si el login existe.
-- Si un usuario en estado `INACTIVE` intenta hacer login, responde `403` con mensaje genérico.
-- El `jti` en el JWT permite blacklisting puntual sin invalidar todos los tokens del usuario.
-- El refresh token se almacena como `token_hash = SHA256(token)` en BD, nunca el token en claro.
+El sistema emite access tokens JWT firmados con HS256. El token es válido durante 15 minutos. El sistema rechaza tokens expirados o manipulados.
 
-## Dependencias con otras capabilities
+#### Scenarios
 
-- **`auth-otp-telegram`**: la recuperación de contraseña (`confirmar-reset`) consume el servicio OTP y requiere que la capability de vinculación Telegram esté operativa para enviar el código.
-- **`usuarios`**: el registro crea un usuario en la tabla `users`; la aprobación de cuenta es responsabilidad de la capability `usuarios` (endpoint `PATCH /api/admin/usuarios/{id}/aprobar`).
-- **`auditoria`**: cada evento de autenticación (login exitoso/fallido, logout, reset) genera una entrada en `audit_log`.
-- **`roles-permisos`**: los endpoints admin requieren que la capa de seguridad valide el rol `ADMIN` antes de permitir el acceso.
+**Scenario R-3.1 — Token recién emitido es válido**
+```
+GIVEN un access token JWT emitido en el login del Scenario R-2.1
+  AND el token tiene menos de 15 minutos de antigüedad
+WHEN el cliente envía el token en el header Authorization: Bearer <token> a cualquier endpoint protegido
+THEN el sistema acepta el token
+  AND procesa la petición con el rol extraído del claim "role"
+```
+
+**Scenario R-3.2 — Token expirado se rechaza**
+```
+GIVEN un access token JWT cuyo campo exp es anterior al momento actual
+WHEN el cliente envía ese token en el header Authorization: Bearer <token>
+THEN el sistema responde 401 Unauthorized
+  AND el body contiene {error: "TOKEN_EXPIRED"}
+  AND no se procesa la operación solicitada
+```
+
+**Scenario R-3.3 — Token con firma manipulada se rechaza**
+```
+GIVEN un access token JWT cuya firma ha sido alterada (payload modificado o firma cambiada)
+WHEN el cliente envía ese token en el header Authorization: Bearer <token>
+THEN el sistema responde 401 Unauthorized
+  AND el body contiene {error: "TOKEN_INVALID"}
+  AND no se procesa la operación solicitada
+  AND se genera una entrada en audit_log con action=TOKEN_TAMPERED, ip_address=<IP>
+```
+
+---
+
+### R-4 — Rate limiting de endpoints públicos de auth `[AÑADIDO]`
+
+Los endpoints públicos `POST /api/auth/login` y `POST /api/auth/register` están sujetos a throttling por IP para prevenir ataques de fuerza bruta (RN-SEC-01).
+
+#### Scenarios
+
+**Scenario R-4.1 — Peticiones por debajo del umbral se procesan**
+```
+GIVEN una IP que ha enviado 4 peticiones a POST /api/auth/login en el último minuto
+WHEN esa IP envía una 5ª petición a POST /api/auth/login
+THEN el sistema procesa la petición normalmente (200 o 401 según las credenciales)
+  AND no se devuelve ningún código de error relacionado con el límite
+```
+
+**Scenario R-4.2 — Al superar el umbral se devuelve 429**
+```
+GIVEN una IP que ha enviado 5 peticiones a POST /api/auth/login en el último minuto
+WHEN esa IP envía una 6ª petición a POST /api/auth/login
+THEN el sistema responde 429 Too Many Requests
+  AND la respuesta incluye el header Retry-After con los segundos hasta que se libera el cupo
+  AND el body contiene {error: "RATE_LIMIT_EXCEEDED"}
+  AND no se procesa la autenticación
+```
+
+**Scenario R-4.3 — Rate limiting de registro**
+```
+GIVEN una IP que ha enviado 3 peticiones a POST /api/auth/register en el último minuto
+WHEN esa IP envía una 4ª petición a POST /api/auth/register
+THEN el sistema responde 429 Too Many Requests con Retry-After
+```
+
+---
+
+### R-5 — Auditoría de intentos de login `[AÑADIDO]`
+
+Cada intento de login (exitoso o fallido) genera una entrada en la tabla `audit_log` con timestamp, dirección IP y resultado. La contraseña nunca se registra ni se insinúa en los logs (RN-RGPD-04).
+
+#### Scenarios
+
+**Scenario R-5.1 — Login exitoso genera entrada de auditoría**
+```
+GIVEN un usuario autentica correctamente (Scenario R-2.1)
+THEN el sistema registra en audit_log:
+  - action = 'LOGIN_SUCCESS'
+  - user_id = <id del usuario autenticado>
+  - ip_address = <IP del cliente>
+  - created_at = <timestamp actual>
+  - details = NULL (no se almacena token ni contraseña)
+```
+
+**Scenario R-5.2 — Login fallido con usuario existente genera entrada de auditoría**
+```
+GIVEN un usuario envía credenciales incorrectas para un email que existe (Scenario R-2.3)
+THEN el sistema registra en audit_log:
+  - action = 'LOGIN_FAILURE'
+  - user_id = <id del usuario cuyo email se intentó>
+  - ip_address = <IP del cliente>
+  - created_at = <timestamp actual>
+  - details = NULL (sin contraseña, sin token)
+```
+
+**Scenario R-5.3 — Login fallido con email inexistente NO expone el email en audit_log**
+```
+GIVEN un usuario envía credenciales con un email que no existe en el sistema (Scenario R-2.2)
+THEN el sistema registra en audit_log:
+  - action = 'LOGIN_FAILURE'
+  - user_id = NULL
+  - ip_address = <IP del cliente>
+  - created_at = <timestamp actual>
+  - details = NULL
+  AND el email enviado NO se almacena en audit_log (para no acumular datos de personas no registradas)
+```
+
+---
 
 ## Mockups asociados
 
-Los siguientes mockups en alta fidelidad ilustran la experiencia de usuario para esta capability. La fuente única de verdad UX es [`docs/ux/README.md`](../../../docs/ux/README.md).
+Los siguientes mockups ilustran la experiencia de usuario para este change. Todos los links son relativos desde `openspec/changes/bootstrap-mvp/specs/auth-local/spec.md`.
 
 ### Pantallas
 
-| # | Pantalla | Dispositivo | Permisos | Mockup |
-|---|----------|-------------|----------|--------|
-| 01 | Splash & bienvenida | Mobile | público | [`07-splash.html`](../../../docs/ux/mockups/07-splash.html) |
-| 02 | Login | Mobile | público | [`01-login.html`](../../../docs/ux/mockups/01-login.html) |
-| 03 | Crear cuenta | Mobile | público | [`08-crear-cuenta.html`](../../../docs/ux/mockups/08-crear-cuenta.html) |
-| 04 | Recuperar contraseña | Mobile | público | [`09-recuperar-password.html`](../../../docs/ux/mockups/09-recuperar-password.html) |
-| 05 | Nueva contraseña | Mobile | Token reset | [`10-nueva-password.html`](../../../docs/ux/mockups/10-nueva-password.html) |
+| Pantalla | Fichero | Permisos | Momento en el flujo |
+|---|---|---|---|
+| Splash / Bienvenida | [`07-splash.html`](../../../../../docs/ux/mockups/07-splash.html) | Pública | Primer punto de entrada. CTAs "Iniciar sesión" y "Crear cuenta". |
+| Login | [`01-login.html`](../../../../../docs/ux/mockups/01-login.html) | Pública | Campos email + contraseña. Mensaje de error genérico en 401 (R-2.2 y R-2.3). |
+| Crear cuenta (registro) | [`08-crear-cuenta.html`](../../../../../docs/ux/mockups/08-crear-cuenta.html) | Pública | Campos nombre, apellido, email, contraseña. Feedback de política de contraseñas (R-1.3). |
 
 ### Flujos relacionados
 
-Esta capability participa en los siguientes flujos (ver [`docs/ux/flujos.md`](../../../docs/ux/flujos.md)):
+- **Flujo 1 · Onboarding y autenticación** → [`docs/ux/flujos.md`](../../../../../docs/ux/flujos.md)
 
-- **Flujo de onboarding y autenticación** — cubre splash, login, creación de cuenta, recuperación de contraseña y establecimiento de nueva contraseña; es el flujo completo que gestiona esta capability.
+El flujo muestra:
+```
+07-splash → ¿Tiene cuenta? → Sí → 01-login → OK → 02-home-jugador
+                            → No → 08-crear-cuenta → POST /api/auth/register 201 → pantalla de confirmación (cuenta pendiente de aprobación)
+```
 
-### Notas de UX
+Índice completo de pantallas: [`docs/ux/README.md`](../../../../../docs/ux/README.md)
 
-> - El mensaje de error de login no debe revelar si el email o login existe en el sistema (anti-enumeración, RN-RGPD-03 y del scenario "Login fallido con contraseña incorrecta").
-> - Tras 10 intentos fallidos la cuenta se bloquea 15 minutos; la pantalla de login debe mostrar el tiempo de espera restante.
-> - La contraseña debe tener mínimo 8 caracteres, 1 mayúscula y 1 número; la pantalla de nueva contraseña incluye barra de fortaleza y lista de requisitos visuales (RN-AUTH-08).
-> - El OTP de reset de contraseña caduca a los 10 minutos; si el usuario intenta confirmar con un código expirado debe recibir un mensaje claro sin información adicional (RN-AUTH-07).
+### Notas de UX derivadas de los requirements
+
+> **Anti-enumeración (R-2.2 / R-2.3):** La pantalla `01-login.html` muestra un único mensaje de error genérico ("Credenciales inválidas") tanto si el email no existe como si la contraseña es incorrecta. El frontend no puede diferenciar los casos porque el backend devuelve el mismo 401 en ambos.
+
+> **Política de contraseñas (R-1.3):** La pantalla `08-crear-cuenta.html` puede mostrar un indicador de fortaleza en tiempo real. Sin embargo, la validación autoritativa ocurre en el backend; si el frontend la omite, el 400 debe ser legible (campo `details` con criterio fallido).
+
+> **Cookie httpOnly (R-2.1):** El refresh token no es accesible desde JavaScript. El frontend no necesita gestionarlo explícitamente; el navegador lo envía automáticamente en las peticiones a `/api/auth/refresh`. El access token sí debe gestionarse en memoria JS (T-029).

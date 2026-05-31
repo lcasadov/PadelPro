@@ -1,0 +1,71 @@
+package com.padelpro.auth.domain.port.out;
+
+import com.padelpro.auth.domain.model.User;
+import com.padelpro.auth.domain.model.UserStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
+import java.util.Optional;
+
+/**
+ * Outbound port — persistence operations on {@link User}.
+ *
+ * <p>Application services depend on this interface, never on the concrete
+ * Spring Data repository. This enforces the Dependency Inversion Principle:
+ * the infrastructure adapter ({@code UserRepository}) implements this port,
+ * keeping the domain and application layers free of infrastructure coupling.
+ *
+ * <p>Introduced in Wave 3 to fix the ArchUnit violation tracked in Issue #79.
+ */
+public interface UserRepositoryPort {
+
+    /**
+     * Find a user by email address.
+     *
+     * @param email the email address to look up
+     * @return the matching user, or empty if not found
+     */
+    Optional<User> findByEmail(String email);
+
+    /**
+     * Check whether a user with the given email already exists.
+     *
+     * @param email the email to check
+     * @return {@code true} if a user with this email exists
+     */
+    boolean existsByEmail(String email);
+
+    /**
+     * Persist a user (insert or update).
+     *
+     * @param user the user entity to save
+     * @return the persisted entity (may have {@code id} populated after insert)
+     */
+    User save(User user);
+
+    /**
+     * Find a user by their primary key.
+     */
+    Optional<User> findById(Long id);
+
+    /**
+     * Check if another user (different id) already uses this email.
+     * Used to detect email conflicts on profile updates.
+     */
+    boolean existsByEmailAndIdNot(String email, Long id);
+
+    /**
+     * Check whether a user with the given login already exists.
+     */
+    boolean existsByLogin(String login);
+
+    /**
+     * Return a page of users filtered by status.
+     */
+    Page<User> findByStatus(UserStatus status, Pageable pageable);
+
+    /**
+     * Return a page of all users (no status filter).
+     */
+    Page<User> findAll(Pageable pageable);
+}

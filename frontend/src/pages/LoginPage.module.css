@@ -1,0 +1,81 @@
+/* LoginPage — fondo crema, glifo PP en lima rotado (ref: 01-login.html) */
+.loginPage {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding: 36px 28px 32px;
+  background: linear-gradient(180deg, var(--cream) 0%, var(--warm) 100%);
+  max-width: 430px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.hero {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding-bottom: 8px;
+  position: relative;
+}
+
+.hero :global(.p-glyph) {
+  position: absolute;
+  top: 20px;
+  right: -10px;
+  font-size: 200px;
+  color: var(--lime);
+  opacity: 0.95;
+  transform: rotate(-4deg);
+  z-index: 1;
+}
+
+.hero :global(.p-logo) {
+  position: relative;
+  z-index: 2;
+}
+
+.headline {
+  font-family: var(--font-display);
+  font-size: 52px;
+  font-weight: 700;
+  line-height: 0.9;
+  letter-spacing: -0.05em;
+  position: relative;
+  z-index: 2;
+  margin-top: 16px;
+}
+
+.headline em {
+  font-style: italic;
+  font-weight: 500;
+  color: var(--olive);
+}
+
+.sub {
+  margin-top: 16px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+  max-width: 280px;
+  position: relative;
+  z-index: 2;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-top: 28px;
+}
+
+.submitBtn {
+  margin-top: 8px;
+}
+
+.footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: -4px;
+}
