@@ -52,6 +52,15 @@ public class User {
     @Column(name = "last_login_at")
     private OffsetDateTime lastLoginAt;
 
+    @Column(length = 20)
+    private String phone;
+
+    @Column(name = "telegram_chat_id", length = 50)
+    private String telegramChatId;
+
+    @Column(name = "telegram_linked_at")
+    private OffsetDateTime telegramLinkedAt;
+
     // -------------------------------------------------------------------------
     // Constructors
     // -------------------------------------------------------------------------
@@ -109,4 +118,13 @@ public class User {
 
     public OffsetDateTime getLastLoginAt() { return lastLoginAt; }
     public void setLastLoginAt(OffsetDateTime lastLoginAt) { this.lastLoginAt = lastLoginAt; }
+
+    public String getPhone() { return phone; }
+    public void setPhone(String phone) { this.phone = phone; }
+
+    public String getTelegramChatId() { return telegramChatId; }
+    public void setTelegramChatId(String telegramChatId) { this.telegramChatId = telegramChatId; }
+
+    public OffsetDateTime getTelegramLinkedAt() { return telegramLinkedAt; }
+    public void setTelegramLinkedAt(OffsetDateTime telegramLinkedAt) { this.telegramLinkedAt = telegramLinkedAt; }
 }
