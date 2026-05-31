@@ -6,6 +6,7 @@ import com.padelpro.auth.domain.exception.EmailAlreadyExistsException;
 import com.padelpro.auth.domain.exception.InvalidPasswordException;
 import com.padelpro.auth.domain.exception.TokenExpiredException;
 import com.padelpro.auth.domain.exception.TokenInvalidException;
+import com.padelpro.auth.domain.exception.ValidationException;
 import com.padelpro.auth.infrastructure.web.dto.ErrorResponse;
 import com.padelpro.usuarios.domain.exception.AdminSelfDeactivationException;
 import com.padelpro.usuarios.domain.exception.EmailConflictException;
@@ -118,5 +119,16 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
                 .body(new ErrorResponse("USUARIOS_EMAIL_CONFLICT", ex.getMessage()));
+    }
+
+    // -------------------------------------------------------------------------
+    // auditoria capability
+    // -------------------------------------------------------------------------
+
+    @ExceptionHandler(ValidationException.class)
+    public ResponseEntity<ErrorResponse> handleValidation(ValidationException ex) {
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse("VALIDATION_ERROR", ex.getMessage()));
     }
 }
