@@ -2,7 +2,7 @@
 
 **Generado:** 2026-05-31  
 **Base:** dependencias declaradas en `openspec/specs/*/spec.md`  
-**Estado:** 2/14 capabilities implementadas
+**Estado:** 3/14 capabilities implementadas
 
 ---
 
@@ -12,7 +12,7 @@
 |---|---|---|
 | `auth-local` | ✅ Implementada | `archive/2026-05-31-bootstrap-mvp` |
 | `usuarios` | ✅ Implementada | `archive/2026-05-31-usuarios` |
-| `roles-permisos` | 📋 Pendiente | — |
+| `roles-permisos` | ✅ Implementada | `archive/2026-05-31-roles-permisos` |
 | `auditoria` | 📋 Pendiente | — |
 | `configuracion-club` | 📋 Pendiente | — |
 | `pistas` | 📋 Pendiente | — |
