@@ -1,7 +1,10 @@
 package com.padelpro.auth.infrastructure.persistence;
 
 import com.padelpro.auth.domain.model.User;
+import com.padelpro.auth.domain.model.UserStatus;
 import com.padelpro.auth.domain.port.out.UserRepositoryPort;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -36,6 +39,31 @@ public interface UserRepository extends JpaRepository<User, Long>, UserRepositor
      * Check whether a user with the given email already exists.
      */
     boolean existsByEmail(String email);
+
+    /**
+     * Check if another user (different id) already uses this email.
+     */
+    boolean existsByEmailAndIdNot(String email, Long id);
+
+    /**
+     * Check whether a user with the given login already exists.
+     */
+    boolean existsByLogin(String login);
+
+    /**
+     * Return a page of users filtered by status.
+     */
+    Page<User> findByStatus(UserStatus status, Pageable pageable);
+
+    /**
+     * Resolves the ambiguity between {@link UserRepositoryPort#findById(Long)} and
+     * the generic {@code findById(ID)} inherited from {@link JpaRepository}.
+     */
+    @Override
+    default java.util.Optional<User> findById(Long id) {
+        throw new UnsupportedOperationException(
+                "Spring Data proxy must override this method");
+    }
 
     /**
      * Resolves the ambiguity between {@link UserRepositoryPort#save(User)} and the

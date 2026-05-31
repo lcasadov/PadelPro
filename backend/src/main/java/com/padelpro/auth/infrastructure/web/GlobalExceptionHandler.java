@@ -7,6 +7,10 @@ import com.padelpro.auth.domain.exception.InvalidPasswordException;
 import com.padelpro.auth.domain.exception.TokenExpiredException;
 import com.padelpro.auth.domain.exception.TokenInvalidException;
 import com.padelpro.auth.infrastructure.web.dto.ErrorResponse;
+import com.padelpro.usuarios.domain.exception.AdminSelfDeactivationException;
+import com.padelpro.usuarios.domain.exception.EmailConflictException;
+import com.padelpro.usuarios.domain.exception.UserNotFoundException;
+import com.padelpro.usuarios.domain.exception.UserNotPendingException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -82,5 +86,37 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.UNAUTHORIZED)
                 .body(new ErrorResponse("TOKEN_INVALID", "Access token is invalid"));
+    }
+
+    // -------------------------------------------------------------------------
+    // usuarios capability
+    // -------------------------------------------------------------------------
+
+    @ExceptionHandler(UserNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleUserNotFound(UserNotFoundException ex) {
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(new ErrorResponse("USUARIO_NOT_FOUND", ex.getMessage()));
+    }
+
+    @ExceptionHandler(UserNotPendingException.class)
+    public ResponseEntity<ErrorResponse> handleUserNotPending(UserNotPendingException ex) {
+        return ResponseEntity
+                .status(HttpStatus.UNPROCESSABLE_ENTITY)
+                .body(new ErrorResponse("USUARIO_NOT_PENDING", ex.getMessage()));
+    }
+
+    @ExceptionHandler(AdminSelfDeactivationException.class)
+    public ResponseEntity<ErrorResponse> handleAdminSelfDeactivation(AdminSelfDeactivationException ex) {
+        return ResponseEntity
+                .status(HttpStatus.UNPROCESSABLE_ENTITY)
+                .body(new ErrorResponse("ADMIN_SELF_DEACTIVATION", ex.getMessage()));
+    }
+
+    @ExceptionHandler(EmailConflictException.class)
+    public ResponseEntity<ErrorResponse> handleEmailConflict(EmailConflictException ex) {
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse("USUARIOS_EMAIL_CONFLICT", ex.getMessage()));
     }
 }

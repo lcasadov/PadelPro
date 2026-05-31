@@ -1,6 +1,9 @@
 package com.padelpro.auth.domain.port.out;
 
 import com.padelpro.auth.domain.model.User;
+import com.padelpro.auth.domain.model.UserStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.Optional;
 
@@ -39,4 +42,30 @@ public interface UserRepositoryPort {
      * @return the persisted entity (may have {@code id} populated after insert)
      */
     User save(User user);
+
+    /**
+     * Find a user by their primary key.
+     */
+    Optional<User> findById(Long id);
+
+    /**
+     * Check if another user (different id) already uses this email.
+     * Used to detect email conflicts on profile updates.
+     */
+    boolean existsByEmailAndIdNot(String email, Long id);
+
+    /**
+     * Check whether a user with the given login already exists.
+     */
+    boolean existsByLogin(String login);
+
+    /**
+     * Return a page of users filtered by status.
+     */
+    Page<User> findByStatus(UserStatus status, Pageable pageable);
+
+    /**
+     * Return a page of all users (no status filter).
+     */
+    Page<User> findAll(Pageable pageable);
 }
