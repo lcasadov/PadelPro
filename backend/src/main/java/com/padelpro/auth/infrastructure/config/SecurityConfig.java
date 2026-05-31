@@ -1,6 +1,9 @@
 package com.padelpro.auth.infrastructure.config;
 
+import com.padelpro.auth.infrastructure.config.security.CustomAccessDeniedHandler;
+import com.padelpro.auth.infrastructure.config.security.CustomAuthenticationEntryPoint;
 import com.padelpro.auth.infrastructure.web.filter.JwtAuthFilter;
+import com.padelpro.auth.infrastructure.web.filter.UserStatusFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -18,7 +21,10 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  *   <li>CSRF disabled (stateless API — no session cookies for auth).</li>
  *   <li>Sessions not created.</li>
  *   <li>{@code /api/auth/**} is open; everything else requires a valid JWT.</li>
+ *   <li>{@code /api/bot/telegram} and {@code /api/pagos/webhook} are public (webhooks).</li>
  *   <li>{@link JwtAuthFilter} runs before the standard auth filter.</li>
+ *   <li>{@link UserStatusFilter} runs after JwtAuthFilter to re-validate account status.</li>
+ *   <li>Custom 401/403 handlers return machine-readable JSON instead of HTML.</li>
  * </ul>
  */
 @Configuration
@@ -28,18 +34,27 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http,
-                                           JwtAuthFilter jwtAuthFilter) throws Exception {
+                                           JwtAuthFilter jwtAuthFilter,
+                                           UserStatusFilter userStatusFilter,
+                                           CustomAccessDeniedHandler accessDeniedHandler,
+                                           CustomAuthenticationEntryPoint authEntryPoint) throws Exception {
         return http
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(sm ->
                         sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/api/bot/telegram", "/api/pagos/webhook").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/usuarios/me").authenticated()
                         .anyRequest().authenticated()
                 )
+                .exceptionHandling(ex -> ex
+                        .accessDeniedHandler(accessDeniedHandler)
+                        .authenticationEntryPoint(authEntryPoint)
+                )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(userStatusFilter, JwtAuthFilter.class)
                 .build();
     }
 
