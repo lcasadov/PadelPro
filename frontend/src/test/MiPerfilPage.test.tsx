@@ -1,24 +1,20 @@
-// T-144 — MiPerfilPage integration tests (TDD — RED phase)
-// Tests describe the expected behavior before implementation.
+// T-144 — MiPerfilPage integration tests (TDD — GREEN phase)
 // Covers:
 //   P-1 — render profile data loaded from GET /api/usuarios/me
 //   P-2 — show success message after PATCH /api/usuarios/me → 200
 //   P-3 — show email conflict error on PATCH → 409 USUARIOS_EMAIL_CONFLICT
 //   P-4 — redirect to /login when not authenticated
 
+import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { http, HttpResponse } from 'msw';
 
-import { AuthProvider } from '../context/AuthContext';
-import { server } from './mocks/server';
-
-// ---------------------------------------------------------------------------
-// Lazy import so RED tests fail fast if the file does not exist yet
-// ---------------------------------------------------------------------------
+import { AuthContext } from '../context/AuthContext';
 import { MiPerfilPage } from '../pages/MiPerfilPage';
+import { server } from './mocks/server';
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -36,7 +32,7 @@ const mockProfile = {
 };
 
 // ---------------------------------------------------------------------------
-// MSW handler helpers
+// MSW handler helpers (called inside tests that need non-default behaviour)
 // ---------------------------------------------------------------------------
 function mockGetMe200() {
   server.use(
@@ -64,53 +60,32 @@ function mockPatchMe409() {
   );
 }
 
-function mockPatchMe400() {
-  server.use(
-    http.patch('/api/usuarios/me', () =>
-      HttpResponse.json({ code: 'VALIDATION_ERROR', message: 'Datos inválidos' }, { status: 400 })
-    )
-  );
-}
-
 // ---------------------------------------------------------------------------
 // Render helpers
 // ---------------------------------------------------------------------------
-function renderWithAuth(authenticated: boolean) {
-  const Wrapper = () => {
-    return (
-      <AuthProvider>
-        <AuthSeeder authenticated={authenticated}>
-          <MemoryRouter initialEntries={['/perfil']}>
-            <Routes>
-              <Route path="/perfil" element={<MiPerfilPage />} />
-              <Route path="/login" element={<div>Login Page</div>} />
-            </Routes>
-          </MemoryRouter>
-        </AuthSeeder>
-      </AuthProvider>
-    );
+
+/**
+ * Renders MiPerfilPage inside a controlled AuthContext with an optional token.
+ * Using a custom Provider value avoids the async-effect timing issue that arises
+ * when setting the token via useEffect inside an AuthSeeder child component.
+ */
+function renderWithToken(token: string | null) {
+  const ctxValue = {
+    accessToken: token,
+    setAccessToken: () => {},
+    isAuthenticated: !!token,
   };
-  return render(<Wrapper />);
-}
 
-// Component that injects a token into AuthContext
-import React from 'react';
-import { useAuth } from '../context/AuthContext';
-
-function AuthSeeder({
-  authenticated,
-  children,
-}: {
-  authenticated: boolean;
-  children: React.ReactNode;
-}) {
-  const { setAccessToken } = useAuth();
-  React.useEffect(() => {
-    if (authenticated) {
-      setAccessToken('test.jwt.token');
-    }
-  }, [authenticated, setAccessToken]);
-  return <>{children}</>;
+  return render(
+    <AuthContext.Provider value={ctxValue}>
+      <MemoryRouter initialEntries={['/perfil']}>
+        <Routes>
+          <Route path="/perfil" element={<MiPerfilPage />} />
+          <Route path="/login" element={<div>Login Page</div>} />
+        </Routes>
+      </MemoryRouter>
+    </AuthContext.Provider>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -123,9 +98,8 @@ describe('MiPerfilPage (T-144)', () => {
   });
 
   it('P-1 — should render profile data loaded from API', async () => {
-    renderWithAuth(true);
+    renderWithToken('test.jwt.token');
 
-    // Should show a loading state initially or directly load data
     await waitFor(() => {
       expect(screen.getByDisplayValue('Laura')).toBeInTheDocument();
     });
@@ -135,9 +109,8 @@ describe('MiPerfilPage (T-144)', () => {
   });
 
   it('P-2 — should show success message after update', async () => {
-    renderWithAuth(true);
+    renderWithToken('test.jwt.token');
 
-    // Wait for form to load
     await waitFor(() => {
       expect(screen.getByDisplayValue('Laura')).toBeInTheDocument();
     });
@@ -157,7 +130,7 @@ describe('MiPerfilPage (T-144)', () => {
 
   it('P-3 — should show email conflict error on 409', async () => {
     mockPatchMe409();
-    renderWithAuth(true);
+    renderWithToken('test.jwt.token');
 
     // Wait for form to load
     await waitFor(() => {
@@ -177,10 +150,9 @@ describe('MiPerfilPage (T-144)', () => {
   });
 
   it('P-4 — should redirect to /login if not authenticated', async () => {
-    renderWithAuth(false);
+    renderWithToken(null);
 
-    await waitFor(() => {
-      expect(screen.getByText('Login Page')).toBeInTheDocument();
-    });
+    // Synchronous redirect — no need to wait for async operations
+    expect(screen.getByText('Login Page')).toBeInTheDocument();
   });
 });
