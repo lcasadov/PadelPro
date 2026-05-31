@@ -9,12 +9,10 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 /**
- * T-ArchUnit — Hexagonal architecture boundary verification for the auth module.
+ * T-ArchUnit — Hexagonal architecture boundary verification for the entire platform.
  *
- * <p>These tests verify structural constraints and are expected to PASS with the
- * current Wave 2 skeleton, because the package boundaries are already correct.
- * They act as a regression guard: if any future change violates the hexagonal
- * boundaries, these tests will turn RED immediately.
+ * <p>Scans {@code com.padelpro} (auth + usuarios modules) to enforce hexagonal
+ * boundaries across all bounded contexts.
  *
  * <p>Rules enforced:
  * <ul>
@@ -23,10 +21,11 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
  *   <li>application services must not depend on infrastructure</li>
  *   <li>controllers live in infrastructure.web</li>
  *   <li>repositories live in infrastructure.persistence</li>
+ *   <li>resource ownership port calls belong in application services, never in controllers</li>
  * </ul>
  */
 @AnalyzeClasses(
-        packages = "com.padelpro.auth",
+        packages = "com.padelpro",
         importOptions = ImportOption.DoNotIncludeTests.class
 )
 class HexagonalArchitectureTest {
@@ -80,25 +79,44 @@ class HexagonalArchitectureTest {
 
     // -------------------------------------------------------------------------
     // Rule 4 — Controllers must reside in infrastructure.web
+    //
+    // Applies to all bounded contexts under com.padelpro (auth + usuarios + future).
     // -------------------------------------------------------------------------
 
     @ArchTest
     static final ArchRule controllers_should_be_in_infrastructure_web_package =
             classes()
                     .that().haveSimpleNameEndingWith("Controller")
-                    .should().resideInAPackage("com.padelpro.auth.infrastructure.web..")
+                    .should().resideInAPackage("..infrastructure.web..")
                     .because("All inbound HTTP adapters (controllers) belong in the " +
-                             "infrastructure.web package.");
+                             "infrastructure.web package of their respective bounded context.");
 
     // -------------------------------------------------------------------------
     // Rule 5 — Repositories must reside in infrastructure.persistence
+    //
+    // Applies to all bounded contexts under com.padelpro (auth + usuarios + future).
     // -------------------------------------------------------------------------
 
     @ArchTest
     static final ArchRule repositories_should_be_in_infrastructure_persistence_package =
             classes()
                     .that().haveSimpleNameEndingWith("Repository")
-                    .should().resideInAPackage("com.padelpro.auth.infrastructure.persistence..")
+                    .should().resideInAPackage("..infrastructure.persistence..")
                     .because("All outbound persistence adapters (repositories) belong in the " +
-                             "infrastructure.persistence package.");
+                             "infrastructure.persistence package of their respective bounded context.");
+
+    // -------------------------------------------------------------------------
+    // Rule 6 — ResourceOwnershipPort must NOT be used in controllers
+    //
+    // Ownership checks belong in application services, not in HTTP adapters.
+    // -------------------------------------------------------------------------
+
+    @ArchTest
+    static final ArchRule resource_ownership_must_not_be_in_controllers =
+            noClasses()
+                    .that().resideInAPackage("..infrastructure.web..")
+                    .should().dependOnClassesThat()
+                    .resideInAPackage("..domain.port.in..")
+                    .because("Resource ownership port calls belong in application services, " +
+                             "never in controllers.");
 }
