@@ -22,7 +22,7 @@ public class AuditLog {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, length = 50)
+    @Column(nullable = false, length = 100)
     private String action;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -37,6 +37,21 @@ public class AuditLog {
 
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
+
+    /** Domain entity type affected (e.g. "USER", "RESERVATION"). Nullable. */
+    @Column(name = "entity_type", length = 50)
+    private String entityType;
+
+    /** Identifier of the affected entity. Nullable. */
+    @Column(name = "entity_id", length = 100)
+    private String entityId;
+
+    /**
+     * Channel through which the action was triggered (e.g. "WEB", "WHATSAPP", "API").
+     * Defaults to "WEB" at the database level; nullable here until V5 migration runs.
+     */
+    @Column(name = "channel", length = 20)
+    private String channel;
 
     // -------------------------------------------------------------------------
     // Constructors
@@ -70,4 +85,10 @@ public class AuditLog {
     public String getDetails() { return details; }
 
     public OffsetDateTime getCreatedAt() { return createdAt; }
+
+    public String getEntityType() { return entityType; }
+
+    public String getEntityId() { return entityId; }
+
+    public String getChannel() { return channel; }
 }
