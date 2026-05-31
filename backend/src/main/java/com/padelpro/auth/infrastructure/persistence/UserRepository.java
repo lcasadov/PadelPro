@@ -56,6 +56,16 @@ public interface UserRepository extends JpaRepository<User, Long>, UserRepositor
     Page<User> findByStatus(UserStatus status, Pageable pageable);
 
     /**
+     * Resolves the ambiguity between {@link UserRepositoryPort#findById(Long)} and
+     * the generic {@code findById(ID)} inherited from {@link JpaRepository}.
+     */
+    @Override
+    default java.util.Optional<User> findById(Long id) {
+        throw new UnsupportedOperationException(
+                "Spring Data proxy must override this method");
+    }
+
+    /**
      * Resolves the ambiguity between {@link UserRepositoryPort#save(User)} and the
      * generic {@code <S>save(S)} inherited from {@link JpaRepository}.
      * This explicit {@code default} override makes {@code save(User)} unambiguous
