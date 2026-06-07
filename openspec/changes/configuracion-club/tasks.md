@@ -24,9 +24,16 @@
 - [x] 3.7 `AdminConfigIntegrationTest`: `unauthenticated_request_receives_401` — ✓
 - [x] 3.8 `AdminConfigIntegrationTest`: `config_update_is_recorded_in_audit_log` — ✓
 
-## 4. TDD — Tests E2E (RED, TestRestTemplate)
+## 4. TDD — Tests E2E (RED, Spring Security + MockMvc)
 
-- [x] 4.1 `AdminConfigE2ETest`: `admin_workflow_get_and_update_config` — placeholder ✓
+- [x] 4.1 `AdminConfigE2ETest`: `admin_can_access_config_endpoint_and_receives_200` — ADMIN accede GET /config ✓
+- [x] 4.2 `AdminConfigE2ETest`: `user_role_receives_403_forbidden_on_config_endpoint` — USER rechazado (403) ✓
+- [x] 4.3 `AdminConfigE2ETest`: `unauthenticated_user_receives_401_unauthorized_on_config_endpoint` — Anónimo rechazado (401) ✓
+- [x] 4.4 `AdminConfigE2ETest`: `admin_can_update_config_via_patch_and_receives_200` — ADMIN actualiza PATCH /config ✓
+- [x] 4.5 `AdminConfigE2ETest`: `user_role_receives_403_forbidden_on_config_update_patch` — USER rechazado en PATCH (403) ✓
+- [x] 4.6 `AdminConfigE2ETest`: `unauthenticated_user_receives_401_unauthorized_on_config_update_patch` — Anónimo rechazado en PATCH (401) ✓
+- [x] 4.7 `AdminConfigE2ETest`: `patch_with_redsys_missing_merchant_key_returns_400_validation_error` — Validación REDSYS (400) ✓
+- [x] 4.8 `AdminConfigE2ETest`: `response_never_exposes_secrets_only_boolean_flags` — Seguridad: no expone secretos ✓
 
 ## 5. Migración — V6 system_config
 
