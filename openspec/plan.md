@@ -1,8 +1,9 @@
 # Plan de ejecución — PadelPro OpenSpec
 
 **Generado:** 2026-05-31  
+**Última actualización:** 2026-06-07  
 **Base:** dependencias declaradas en `openspec/specs/*/spec.md`  
-**Estado:** 3/14 capabilities implementadas
+**Estado:** 4/14 capabilities implementadas
 
 ---
 
@@ -13,7 +14,7 @@
 | `auth-local` | ✅ Implementada | `archive/2026-05-31-bootstrap-mvp` |
 | `usuarios` | ✅ Implementada | `archive/2026-05-31-usuarios` |
 | `roles-permisos` | ✅ Implementada | `archive/2026-05-31-roles-permisos` |
-| `auditoria` | 📋 Pendiente | — |
+| `auditoria` | ✅ Implementada | `archive/2026-06-07-auditoria` |
 | `configuracion-club` | 📋 Pendiente | — |
 | `pistas` | 📋 Pendiente | — |
 | `disponibilidad-pistas` | 📋 Pendiente | — |

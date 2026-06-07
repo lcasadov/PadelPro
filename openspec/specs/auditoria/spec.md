@@ -24,18 +24,16 @@ consulta directa a BD por el administrador del servidor.
 - **`users`**: origen del `user_id` referenciado; en anonimización SET NULL preserva la traza histórica.
 
 ## Endpoints
-Sin endpoint REST directo en v1.0 — las entradas se generan internamente.
+- **`GET /api/admin/audit`** (Fase 1 — implementada): endpoint de consulta paginada y filtrada del log de auditoría, accesible solo para ADMIN.
 
-> En v1.0 no existe endpoint `GET /api/admin/audit`. El ADMIN accede al log directamente
-> en la base de datos PostgreSQL. En Fase 2 se expondrá como `GET /api/admin/audit` con
-> filtros por `action`, `user_id`, `entity_type` y rango de fechas, con paginación obligatoria.
+> En Fase 1 se implementó `GET /api/admin/audit` con filtros por `action`, `userId`, `entityType` y rango de fechas, con paginación obligatoria (máx 100 resultados por página).
 
 ## Permisos
 | Operación | ADMIN | USER | No autenticado |
 |---|---|---|---|
 | Generar entrada (interno) | N/A — sistema | N/A — sistema | N/A — sistema |
+| Leer `audit_log` (GET /api/admin/audit, Fase 1) | ✅ | ❌ | ❌ |
 | Leer `audit_log` propio (Fase 2) | ✅ | ❌ | ❌ |
-| Leer `audit_log` de cualquier usuario (Fase 2) | ✅ | ❌ | ❌ |
 | Modificar o eliminar entradas | ❌ | ❌ | ❌ |
 
 ## Requirements
@@ -44,9 +42,9 @@ Sin endpoint REST directo en v1.0 — las entradas se generan internamente.
 **El sistema DEBE registrar en `audit_log` todos los eventos de autenticación: login exitoso, login fallido y bloqueo de cuenta, con timestamp, IP de origen, login del usuario y canal.**
 
 #### Scenario 1: Login fallido genera entrada `USER_LOGIN_FAILED`
-- **GIVEN** un usuario registrado con `status=ACTIVE`
 - **WHEN** se realiza `POST /api/auth/login` con credenciales incorrectas
-- **THEN** se inserta una fila en `audit_log` con `action='USER_LOGIN_FAILED'`, `entity_type='USER'`, `entity_id` = id del usuario (si el login existe) o NULL, `ip_address` = IP del cliente, `channel='WEB'`, `created_at` = instante actual, Y `details` no contiene la contraseña introducida
+- **THEN** se inserta una fila en `audit_log` con `action='USER_LOGIN_FAILED'`, `entity_type='USER'`, `ip_address` = IP del cliente, `channel='WEB'`, `created_at` = instante actual
+- **AND** `details` no contiene la contraseña introducida
 
 #### Scenario 2: Décimo fallo consecutivo de login genera `USER_ACCOUNT_LOCKED`
 - **GIVEN** un usuario con 9 intentos fallidos previos dentro de la ventana de 10 minutos
@@ -54,9 +52,9 @@ Sin endpoint REST directo en v1.0 — las entradas se generan internamente.
 - **THEN** se insertan dos filas en `audit_log`: una con `action='USER_LOGIN_FAILED'` y otra con `action='USER_ACCOUNT_LOCKED'`, Y el `details` de `USER_ACCOUNT_LOCKED` incluye la duración del bloqueo (15 min) sin datos sensibles
 
 #### Scenario 3: Login exitoso genera `USER_LOGIN_SUCCESS`
-- **GIVEN** un usuario con `status=ACTIVE` y credenciales correctas
-- **WHEN** se realiza `POST /api/auth/login` con éxito
-- **THEN** se inserta una fila en `audit_log` con `action='USER_LOGIN_SUCCESS'`, `user_id` = id del usuario, `ip_address` = IP del cliente, Y el `details` no contiene el access token ni el refresh token generados
+- **WHEN** se realiza `POST /api/auth/login` con credenciales correctas
+- **THEN** se inserta una fila en `audit_log` con `action='USER_LOGIN_SUCCESS'`, `user_id` = id del usuario, `channel='WEB'`
+- **AND** el campo `details` no contiene el access token ni el refresh token generados
 
 ### Requirement 2: Registro de eventos de reservas y pagos
 **El sistema DEBE registrar en `audit_log` la creación, cancelación y cambio de estado de reservas, así como la confirmación e invalidación de pagos.**
@@ -83,14 +81,13 @@ Sin endpoint REST directo en v1.0 — las entradas se generan internamente.
 **El sistema DEBE garantizar que ningún campo de `audit_log` contiene contraseñas, tokens JWT, códigos OTP en claro, claves de API ni datos de tarjeta.**
 
 #### Scenario 7: Cambio de contraseña — `audit_log` no contiene la nueva contraseña
-- **GIVEN** un usuario que realiza `PATCH /api/usuarios/me` con un nuevo valor de `password`
-- **WHEN** `UsuarioApplicationService` procesa el cambio
-- **THEN** se inserta una fila en `audit_log` con `action='PASSWORD_CHANGED'`, Y el campo `details` contiene únicamente metadatos (ej. `{"updatedFields":["password"]}`) sin el hash BCrypt ni la contraseña en claro
+- **WHEN** un usuario realiza `PATCH /api/usuarios/me` con un nuevo valor de `password`
+- **THEN** se inserta una fila en `audit_log` con `action='PASSWORD_CHANGED'`
+- **AND** el campo `details` contiene únicamente metadatos (ej. `{"updatedFields":["password"]}`) sin el hash BCrypt ni la contraseña en claro
 
-#### Scenario 8: ADMIN no puede leer `audit_log` de otro usuario vía endpoint USER
-- **GIVEN** dos usuarios A y B con rol USER, ambos autenticados
-- **WHEN** el usuario A intenta acceder a los registros de auditoría de B (en Fase 2 con endpoint hipotético `GET /api/audit?userId={B}`)
-- **THEN** el sistema devuelve 403 Forbidden, Y no se devuelve ningún dato de `audit_log` de B al usuario A
+#### Scenario 8: `audit_log` rechaza inserción con datos sensibles (contrato de arquitectura)
+- **WHEN** se compila el proyecto con ArchUnit activo
+- **THEN** ninguna clase que construya un `AuditLog` puede pasar campos que contengan `password`, `token`, `otp` o `secret` en el campo `details` — la regla de naming convention enforced por revisión de código y tests de integración que verifican ausencia de esos términos en filas reales
 
 ### Requirement 5: Anonimización de usuario genera entrada de auditoría
 **El sistema DEBE registrar en `audit_log` la anonimización de un usuario (RGPD Art. 17) con `action='USER_ANONYMIZED'` sin incluir los datos previos del usuario en `details`.**
@@ -101,12 +98,43 @@ Sin endpoint REST directo en v1.0 — las entradas se generan internamente.
 - **THEN** se inserta una fila en `audit_log` con `action='USER_ANONYMIZED'`, `entity_type='USER'`, `entity_id` = id del usuario anonimizado, `user_id` = id del ADMIN que ejecutó la acción, Y `details` no contiene el nombre, email, teléfono ni `telegram_chat_id` anteriores del usuario
 
 ### Requirement 6: Retención mínima de 2 años y consulta por ADMIN
-**El sistema DEBE preservar todas las entradas de `audit_log` durante un mínimo de 2 años (RN-RGPD-02). Ningún proceso automático debe eliminar filas antes de ese plazo.**
+**El sistema DEBE preservar todas las entradas de `audit_log` durante un mínimo de 2 años (RN-RGPD-02) y exponer un endpoint `GET /api/admin/audit` que permita al ADMIN consultarlas con filtros y paginación.**
 
-#### Scenario 10: Job de purga no elimina registros con menos de 2 años
-- **GIVEN** el job nocturno de mantenimiento de `audit_log` se ejecuta
-- **WHEN** el job evalúa las filas a eliminar
-- **THEN** solo se eliminan (o archivan) filas con `created_at < NOW() - INTERVAL '2 years'`, Y el número de filas eliminadas queda registrado en el log de aplicación a nivel INFO sin incluir el contenido de las filas
+#### Scenario 10: ADMIN consulta audit_log sin filtros
+- **WHEN** un ADMIN autenticado envía `GET /api/admin/audit`
+- **THEN** el sistema responde `200` con un `PagedAuditLogResponse` que contiene las entradas más recientes ordenadas por `createdAt` descendente
+- **AND** la respuesta incluye los campos: `id`, `action`, `userId`, `userEmail`, `ipAddress`, `details`, `entityType`, `entityId`, `channel`, `createdAt`
+- **AND** la paginación por defecto es `page=0, size=20`
+
+#### Scenario 11: ADMIN filtra audit_log por acción
+- **WHEN** un ADMIN autenticado envía `GET /api/admin/audit?action=ACCESS_DENIED`
+- **THEN** el sistema responde `200` con entradas cuyo `action` es exactamente `ACCESS_DENIED`
+- **AND** no se incluyen entradas con otras acciones
+
+#### Scenario 12: ADMIN filtra audit_log por userId
+- **WHEN** un ADMIN autenticado envía `GET /api/admin/audit?userId=42`
+- **THEN** el sistema responde `200` con solo las entradas del usuario con `id=42`
+
+#### Scenario 13: ADMIN filtra audit_log por rango de fechas
+- **WHEN** un ADMIN autenticado envía `GET /api/admin/audit?from=2026-01-01T00:00:00Z&to=2026-12-31T23:59:59Z`
+- **THEN** el sistema responde `200` con entradas cuyo `createdAt` está dentro del rango indicado (ambos extremos inclusivos)
+
+#### Scenario 14: ADMIN solicita página con size mayor a 100
+- **WHEN** un ADMIN autenticado envía `GET /api/admin/audit?size=500`
+- **THEN** el sistema responde `400` con cuerpo `{ "error": "VALIDATION_ERROR", "message": "size must be between 1 and 100" }`
+
+#### Scenario 15: USER no puede acceder a audit_log
+- **WHEN** un usuario autenticado con `role=USER` envía `GET /api/admin/audit`
+- **THEN** el sistema responde `403` con cuerpo `{ "error": "ACCESS_DENIED", "message": "Insufficient permissions" }`
+
+#### Scenario 16: Request no autenticado recibe 401
+- **WHEN** se envía `GET /api/admin/audit` sin cabecera `Authorization`
+- **THEN** el sistema responde `401` con cuerpo `{ "error": "AUTH_REQUIRED", "message": "Authentication required" }`
+
+#### Scenario 17: Job de purga no elimina registros con menos de 2 años
+- **WHEN** se ejecuta cualquier proceso de mantenimiento
+- **THEN** solo se eliminan (o archivan) filas con `created_at < NOW() - INTERVAL '2 years'`
+- **AND** el número de filas eliminadas queda registrado en el log de aplicación a nivel INFO sin incluir el contenido de las filas
 
 ## Casos límite
 - Si la transacción de negocio principal hace rollback (ej. reserva no creada por solapamiento), la entrada de `audit_log` asociada también se revierte (están en la misma transacción); el sistema no genera entradas de auditoría huérfanas de operaciones fallidas.

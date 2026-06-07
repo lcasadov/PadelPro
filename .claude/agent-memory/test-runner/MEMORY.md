@@ -1,0 +1,1 @@
+- [PadelPro testing patterns](project_padelpro_testing_patterns.md) — STRICT_STUBS/lenient workaround for TDD-red, ArchUnit DIP violation in skeleton, Testcontainers setup, JAVA_HOME path

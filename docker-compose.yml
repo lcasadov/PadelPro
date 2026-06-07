@@ -1,0 +1,92 @@
+version: '3.9'
+
+services:
+  # PostgreSQL 15 — Base de datos
+  db:
+    image: postgres:15-alpine
+    container_name: padelpro-db
+    environment:
+      POSTGRES_DB: padelpro
+      POSTGRES_USER: padelpro
+      POSTGRES_PASSWORD: padelpro_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - padelpro_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U padelpro"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - padelpro-network
+    restart: unless-stopped
+
+  # Backend — Spring Boot
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: padelpro-backend
+    environment:
+      # Database
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/padelpro
+      SPRING_DATASOURCE_USERNAME: padelpro
+      SPRING_DATASOURCE_PASSWORD: padelpro_dev
+      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
+      SPRING_FLYWAY_ENABLED: 'true'
+      SPRING_FLYWAY_LOCATIONS: classpath:db/migration
+
+      # JWT
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-key-change-in-production-12345}
+      JWT_EXPIRATION: 3600
+      JWT_REFRESH_EXPIRATION: 604800
+
+      # Encryption (para configuracion-club en el futuro)
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-dev-encryption-key-change-in-prod-123456789}
+
+      # Spring Boot
+      SPRING_PROFILES_ACTIVE: prod
+      SERVER_PORT: 8080
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - padelpro-network
+    restart: unless-stopped
+    volumes:
+      - ./backend/target/padelpro-backend-0.0.1-SNAPSHOT.jar:/app/app.jar
+
+  # Frontend — React + Vite
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: padelpro-frontend
+    environment:
+      # Vite proxy config: /api → http://backend:8080/api
+      VITE_API_BASE_URL: http://backend:8080
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    networks:
+      - padelpro-network
+    restart: unless-stopped
+    volumes:
+      - ./frontend/src:/app/src
+
+networks:
+  padelpro-network:
+    driver: bridge
+
+volumes:
+  padelpro_postgres_data:
+    driver: local
