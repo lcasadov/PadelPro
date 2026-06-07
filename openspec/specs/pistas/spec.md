@@ -81,9 +81,28 @@ Gestión del catálogo de pistas (courts) del club. Permite al ADMIN crear, cons
 - **THEN** el sistema responde 200 con la configuración actualizada
 - **AND** los campos `maxParticipants` y `cancellationDeadlineHours` reflejan los nuevos valores
 
-### Requirement 3: Bloqueo de nuevas reservas cuando la pista está en mantenimiento
+### Requirement 3: Bloqueo de nuevas reservas cuando la pista está en mantenimiento (Estado operativo)
 
-**El sistema DEBE rechazar la creación de nuevas reservas cuando la configuración de la pista indica estado MANTENIMIENTO, sin cancelar las reservas preexistentes.**
+**El sistema DEBE permitir al ADMIN cambiar el estado operativo de la pista (ACTIVA / MANTENIMIENTO) desde la configuración. Rechaza la creación de nuevas reservas cuando la pista está en MANTENIMIENTO, sin cancelar las reservas preexistentes.**
+
+#### Scenario: Pista en estado ACTIVA permite crear reservas
+- **GIVEN** `system_config.pista_state = ACTIVA`
+- **WHEN** un usuario envía `POST /api/reservas` con datos válidos
+- **THEN** la reserva se crea exitosamente
+- **AND** `GET /api/disponibilidad-pistas` devuelve slots disponibles
+
+#### Scenario: Pista en estado MANTENIMIENTO bloquea nuevas reservas
+- **GIVEN** `system_config.pista_state = MANTENIMIENTO`
+- **WHEN** un usuario intenta `POST /api/reservas`
+- **THEN** el sistema responde con HTTP `400`
+- **AND** `GET /api/disponibilidad-pistas` devuelve estado MANTENIMIENTO sin slots
+
+#### Scenario: ADMIN actualiza estado de la pista
+- **GIVEN** un usuario autenticado con rol ADMIN
+- **WHEN** envía `PATCH /api/admin/sistema/config` con `pistaState=MANTENIMIENTO`
+- **THEN** la configuración se actualiza inmediatamente en BD
+- **AND** posteriores requests ven el nuevo estado reflejado
+- **AND** se registra en auditoría (Fase 2)
 
 #### Scenario: ADMIN deshabilita nuevas reservas poniendo la pista en mantenimiento
 - **GIVEN** existen reservas CONFIRMED para la fecha 2025-07-01
