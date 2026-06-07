@@ -1,0 +1,23 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:padelpro_test;DB_CLOSE_DELAY=-1;MODE=PostgreSQL;DATABASE_TO_LOWER=true
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ''
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+  flyway:
+    enabled: false
+
+app:
+  jwt:
+    secret: test-secret-key-padelpro-256-bits-minimum-length
+    access-token-expiration-ms: 900000
+    refresh-token-expiration-ms: 604800000
+  encryption:
+    key: test-encryption-key-padelpro-256-bits-minimum-length

@@ -14,7 +14,7 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class SystemConfigConfig {
 
-    @Value("${encryption.key}")
+    @Value("${app.encryption.key}")
     private String encryptionKey;
 
     @Bean
