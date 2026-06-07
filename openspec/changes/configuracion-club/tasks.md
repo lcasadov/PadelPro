@@ -79,4 +79,4 @@
 - [x] 12.2 ArchUnit: reglas siguen pasando ✓
 - [x] 12.3 JaCoCo: cobertura ✓
 - [x] 12.4 Verificar que no hay secretos en logs ✓
-- [ ] 12.5 Commit final y push a la rama — EN CURSO
+- [x] 12.5 Commit final y push a la rama ✓

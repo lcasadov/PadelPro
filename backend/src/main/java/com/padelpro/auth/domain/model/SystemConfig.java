@@ -1,6 +1,8 @@
 package com.padelpro.auth.domain.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Positive;
 
 import java.time.OffsetDateTime;
 import java.util.Objects;
@@ -14,6 +16,7 @@ public class SystemConfig {
     private Long id;
 
     @Column(nullable = false)
+    @NotBlank(message = "clubName cannot be blank")
     private String clubName;
 
     @Column(columnDefinition = "TEXT")
@@ -37,6 +40,7 @@ public class SystemConfig {
     private String redsysMerchantKey;
 
     @Column(nullable = false)
+    @Positive(message = "maxParticipantsPerPista must be greater than 0")
     private Integer maxParticipantsPerPista;
 
     @Column(nullable = false, updatable = false)
@@ -187,6 +191,7 @@ public class SystemConfig {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
+        if (id == null) return false;  // Transient entities are not equal
         if (o == null || getClass() != o.getClass()) return false;
         SystemConfig that = (SystemConfig) o;
         return Objects.equals(id, that.id);
@@ -194,7 +199,7 @@ public class SystemConfig {
 
     @Override
     public int hashCode() {
-        return Objects.hash(id);
+        return id != null ? Objects.hash(id) : System.identityHashCode(this);
     }
 
     public enum PaymentGateway {

@@ -38,12 +38,12 @@ services:
       SPRING_FLYWAY_LOCATIONS: classpath:db/migration
 
       # JWT
-      JWT_SECRET: ${JWT_SECRET:-dev-secret-key-change-in-production-12345}
+      JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRATION: 3600
       JWT_REFRESH_EXPIRATION: 604800
 
-      # Encryption (para configuracion-club en el futuro)
-      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-dev-encryption-key-change-in-prod-123456789}
+      # Encryption (configuracion-club)
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
 
       # Spring Boot
       SPRING_PROFILES_ACTIVE: prod
@@ -61,8 +61,6 @@ services:
     networks:
       - padelpro-network
     restart: unless-stopped
-    volumes:
-      - ./backend/target/padelpro-backend-0.0.1-SNAPSHOT.jar:/app/app.jar
 
   # Frontend — React + Vite
   frontend:
@@ -73,10 +71,17 @@ services:
     environment:
       # Vite proxy config: /api → http://backend:8080/api
       VITE_API_BASE_URL: http://backend:8080
+      NODE_ENV: production
     ports:
       - "5173:5173"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:5173 > /dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - padelpro-network
     restart: unless-stopped

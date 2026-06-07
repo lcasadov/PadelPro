@@ -20,6 +20,9 @@ FROM node:20-alpine
 
 WORKDIR /app
 
+# Create non-root user
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
 # Install serve to run the app in dev mode (with HMR support via proxy)
 RUN npm install -g vite
 
@@ -29,7 +32,13 @@ COPY . .
 # Install dependencies again for runtime
 RUN npm ci --quiet
 
+# Set ownership to non-root user
+RUN chown -R appuser:appgroup /app
+
 EXPOSE 5173
+
+# Run as non-root user
+USER appuser
 
 # Run Vite dev server (permite hot reload)
 CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
