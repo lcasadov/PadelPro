@@ -2,7 +2,7 @@ package com.padelpro.auth.application.service;
 
 import com.padelpro.auth.application.dto.SystemConfigResponse;
 import com.padelpro.auth.application.dto.UpdateSystemConfigRequest;
-import com.padelpro.auth.application.exception.ValidationException;
+import com.padelpro.auth.domain.exception.ValidationException;
 import com.padelpro.auth.domain.model.SystemConfig;
 import com.padelpro.auth.domain.model.SystemConfig.PaymentGateway;
 import com.padelpro.auth.domain.model.SystemConfig.PistaState;

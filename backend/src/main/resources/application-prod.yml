@@ -3,9 +3,9 @@ spring:
     name: padelpro-backend
 
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://db:5432/padelpro}
-    username: ${SPRING_DATASOURCE_USERNAME:padelpro}
-    password: ${SPRING_DATASOURCE_PASSWORD:padelpro_dev}
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
     hikari:
       maximum-pool-size: 20
       minimum-idle: 5
@@ -54,8 +54,9 @@ encryption:
 logging:
   level:
     root: INFO
-    com.padelpro: DEBUG
-    org.springframework.security: DEBUG
+    com.padelpro: INFO
+    org.springframework.security: WARN
+    org.springframework: WARN
     org.hibernate.SQL: WARN
   pattern:
     console: "[%d{ISO8601}] [%p] [%c{0}] %m%n"

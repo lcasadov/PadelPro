@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS system_config (
     telegram_bot_token TEXT,
     redsys_merchant_id TEXT,
     redsys_merchant_key TEXT,
-    max_participants_per_pista INTEGER NOT NULL DEFAULT 4,
+    max_participants_per_pista INTEGER NOT NULL DEFAULT 4 CHECK (max_participants_per_pista > 0),
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_by_user_id BIGINT,

@@ -57,6 +57,22 @@
 | Scopes del token | `admin:org`, `project`, `repo`, `workflow` |
 | Permisos en `lcasadov/PadelPro` | `push: true` (collaborator), también ADMIN del Project v2 |
 
+---
+
+## Encryption (configuracion-club)
+
+| Variable | Descripción |
+|---|---|
+| `ENCRYPTION_KEY` | **Obligatoria.** Clave para cifrado AES-256-GCM de secretos (telegram_bot_token, redsys_merchant_id, redsys_merchant_key). Mínimo 32 caracteres. Derivada con PBKDF2-SHA256. |
+| `JWT_SECRET` | Token secreto para JWT. Mínimo 32 caracteres. |
+| `JWT_EXPIRATION` | Expiración de access token en segundos (default: 3600 = 1h). |
+| `JWT_REFRESH_EXPIRATION` | Expiración de refresh token en segundos (default: 604800 = 7d). |
+
+**Requisitos de producción:**
+- Todas las variables (`ENCRYPTION_KEY`, `JWT_SECRET`, `SPRING_DATASOURCE_PASSWORD`) son **OBLIGATORIAS** sin fallbacks
+- Usar Secret Manager (AWS Secrets Manager, Azure Key Vault, etc) en prod
+- Rotar `ENCRYPTION_KEY` requiere desencriptación + re-encriptación de datos existentes (Fase 2)
+
 **Reglas de uso (vinculantes):**
 
 - **Nunca** usar la cuenta personal `lcasadov` para commits, PRs, comentarios u operaciones `gh`. Toda interacción a través de `orquestadoria`.
