@@ -44,7 +44,9 @@
       "Bash(find /mnt/c/proyectos/PadelPro/backend -type f -name \"*Test.java\" 2>/dev/null | head -3 || ls c:/proyectos/PadelPro/backend/src/test/java/)",
       "Read(//mnt/c/proyectos/PadelPro/**)",
       "Bash(mvn -q test -Dtest=EncryptionServiceTest)",
-      "Bash(mvn -q clean test)"
+      "Bash(mvn -q clean test)",
+      "WebFetch(domain:github.com)",
+      "Bash(grep -E '```$|```[^a-z]')"
     ]
   }
 }

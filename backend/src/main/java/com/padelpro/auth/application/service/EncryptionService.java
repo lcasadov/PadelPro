@@ -2,7 +2,9 @@ package com.padelpro.auth.application.service;
 
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
+import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.GCMParameterSpec;
+import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.security.SecureRandom;
 import java.util.Base64;
@@ -78,18 +80,27 @@ public class EncryptionService {
     }
 
     /**
-     * Derive a 256-bit SecretKey from a string.
-     * For production, use a proper KDF (PBKDF2, etc). For testing, pad/truncate to 32 bytes.
+     * Derive a 256-bit SecretKey from a string using PBKDF2-SHA256.
+     * Uses a fixed salt for deterministic key derivation in single-instance deployment.
+     * For Fase 2: Consider per-cluster key rotation with salt versioning.
      */
     private SecretKey deriveKeyFromString(String keyString) {
-        byte[] keyBytes = new byte[32];  // AES-256 = 32 bytes
-        byte[] input = keyString.getBytes();
+        try {
+            // Use a fixed salt for v1.0 (single instance)
+            // In production, consider salting per deployment or cluster
+            byte[] salt = "PadelProSystemConfig".getBytes();
 
-        // Simple padding: repeat string until we have 32 bytes, then truncate
-        for (int i = 0; i < keyBytes.length; i++) {
-            keyBytes[i] = input[i % input.length];
+            SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
+            PBEKeySpec spec = new PBEKeySpec(
+                    keyString.toCharArray(),
+                    salt,
+                    65536,  // iterations
+                    256     // key size in bits
+            );
+            SecretKey tmp = factory.generateSecret(spec);
+            return new SecretKeySpec(tmp.getEncoded(), 0, tmp.getEncoded().length, "AES");
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to derive encryption key", e);
         }
-
-        return new SecretKeySpec(keyBytes, 0, keyBytes.length, "AES");
     }
 }
