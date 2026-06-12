@@ -46,7 +46,24 @@
       "Bash(mvn -q test -Dtest=EncryptionServiceTest)",
       "Bash(mvn -q clean test)",
       "WebFetch(domain:github.com)",
-      "Bash(grep -E '```$|```[^a-z]')"
+      "Bash(grep -E '```$|```[^a-z]')",
+      "Bash(mvn -B test -Dtest=\"AdminConfigE2ETest\" -pl backend)",
+      "Bash(mvn -B test -Dtest=\"AdminConfigE2ETest\")",
+      "Bash([ -f C:\\\\\\\\Users\\\\\\\\Luis\\\\\\\\AppData\\\\\\\\Local\\\\\\\\Temp\\\\\\\\claude\\\\\\\\c--proyectos-PadelPro\\\\\\\\4e882ad7-4678-4454-9937-201523a2c1d3\\\\\\\\tasks\\\\\\\\btg56y1wp.output ])",
+      "Bash(tail -80 C:\\\\\\\\Users\\\\\\\\Luis\\\\\\\\AppData\\\\\\\\Local\\\\\\\\Temp\\\\\\\\claude\\\\\\\\c--proyectos-PadelPro\\\\\\\\4e882ad7-4678-4454-9937-201523a2c1d3\\\\\\\\tasks\\\\\\\\btg56y1wp.output)",
+      "Bash(grep -A 20 \"Tests run:\" C:\\\\\\\\Users\\\\\\\\Luis\\\\\\\\AppData\\\\\\\\Local\\\\\\\\Temp\\\\\\\\claude\\\\\\\\c--proyectos-PadelPro\\\\\\\\4e882ad7-4678-4454-9937-201523a2c1d3\\\\\\\\tasks\\\\\\\\btg56y1wp.output)",
+      "Bash(tail -50 C:\\\\\\\\Users\\\\\\\\Luis\\\\\\\\AppData\\\\\\\\Local\\\\\\\\Temp\\\\\\\\claude\\\\\\\\c--proyectos-PadelPro\\\\\\\\4e882ad7-4678-4454-9937-201523a2c1d3\\\\\\\\tasks\\\\\\\\btg56y1wp.output)",
+      "Bash(mvn help:active-profiles -q)",
+      "Bash(mvn -B clean test -Dtest=\"AdminConfigE2ETest\")",
+      "Bash(xargs head -150)",
+      "Bash(xargs grep -A 20 \"Caused by:\")",
+      "Bash(xargs grep \"Tests run\")",
+      "Bash(git commit -m ' *)",
+      "Bash(mvn -B clean test)",
+      "Bash(mvn -B clean verify)",
+      "Bash(mvn -B test verify -DfailIfNoTests=false)",
+      "Bash(mvn -B test -Dtest=*Test,!*IntegrationTest,!*IT,!*E2ETest -pl auth)",
+      "Bash(cat)"
     ]
   }
 }
