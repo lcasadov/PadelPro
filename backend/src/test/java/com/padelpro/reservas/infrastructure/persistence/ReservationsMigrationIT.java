@@ -5,8 +5,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -16,45 +14,87 @@ import java.sql.Statement;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
  * Migration integration tests for V7 (reservations + participants), tasks 2.1–2.4.
  *
- * <p>Runs the full Flyway chain V1..V7 on a real PostgreSQL 15 (Testcontainers) and verifies the
- * anti-overlap exclusion constraint behaves as designed (D-RES-01). H2 cannot host {@code EXCLUDE
- * USING gist}/{@code btree_gist}, so these checks require a real engine.
+ * <p>Runs the full Flyway chain V1..V7 on a real PostgreSQL 15 and verifies the anti-overlap
+ * exclusion constraint behaves as designed (D-RES-01). H2 cannot host {@code EXCLUDE USING gist}/
+ * {@code btree_gist}, so these checks require a real engine.
  *
- * <p>The class self-disables when Docker is unavailable ({@code disabledWithoutDocker = true}),
- * so the rest of the suite (H2-based) still runs locally without Docker.
+ * <p><b>Two ways to provide that PostgreSQL</b> (Vía A vs Testcontainers):
+ * <ul>
+ *   <li><b>External (default for local runs):</b> pass system properties
+ *       {@code -Dit.postgres.url=jdbc:postgresql://localhost:5433/padelpro_it
+ *       -Dit.postgres.user=padelpro -Dit.postgres.password=padelpro_dev}. The test connects over
+ *       plain JDBC/TCP to a PostgreSQL started via {@code docker compose}/{@code docker run},
+ *       so it does NOT touch docker-java/Testcontainers — useful where the Docker Desktop named
+ *       pipe breaks the Testcontainers client.</li>
+ *   <li><b>Testcontainers (default for CI):</b> if {@code it.postgres.url} is absent, spin an
+ *       ephemeral {@code postgres:15-alpine} container. Requires a reachable Docker daemon; the
+ *       whole class is skipped (assumption) when neither an external URL nor Docker is available.</li>
+ * </ul>
  */
-@Testcontainers(disabledWithoutDocker = true)
-@DisplayName("Migración V7 — reservations + participants (Testcontainers)")
+@DisplayName("Migración V7 — reservations + participants (Postgres real)")
 class ReservationsMigrationIT {
 
-    @Container
-    static final PostgreSQLContainer<?> POSTGRES =
-            new PostgreSQLContainer<>("postgres:15-alpine");
+    private static String jdbcUrl;
+    private static String username;
+    private static String password;
+    private static PostgreSQLContainer<?> container;
 
     @BeforeAll
     static void migrate() {
+        String externalUrl = System.getProperty("it.postgres.url");
+        if (externalUrl != null && !externalUrl.isBlank()) {
+            // Vía A — external PostgreSQL (docker compose / docker run), no Testcontainers.
+            jdbcUrl = externalUrl;
+            username = System.getProperty("it.postgres.user", "padelpro");
+            password = System.getProperty("it.postgres.password", "padelpro_dev");
+        } else {
+            // CI fallback — ephemeral container via Testcontainers (needs a working Docker daemon).
+            boolean dockerAvailable;
+            try {
+                dockerAvailable = org.testcontainers.DockerClientFactory.instance().isDockerAvailable();
+            } catch (Throwable t) {
+                dockerAvailable = false;
+            }
+            assumeTrue(dockerAvailable,
+                    "Skipping migration ITs: no external it.postgres.url and Docker not reachable by Testcontainers");
+            container = new PostgreSQLContainer<>("postgres:15-alpine");
+            container.start();
+            jdbcUrl = container.getJdbcUrl();
+            username = container.getUsername();
+            password = container.getPassword();
+        }
+
         Flyway.configure()
-                .dataSource(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword())
+                .dataSource(jdbcUrl, username, password)
                 .locations("classpath:db/migration")
+                .cleanDisabled(false)
                 .load()
                 .migrate();
     }
 
+    @org.junit.jupiter.api.AfterAll
+    static void stopContainer() {
+        if (container != null) {
+            container.stop();
+        }
+    }
+
     private Connection connection() throws SQLException {
-        return java.sql.DriverManager.getConnection(
-                POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword());
+        return java.sql.DriverManager.getConnection(jdbcUrl, username, password);
     }
 
     /** Inserts the seed user/owner reused by overlap tests. Returns the generated user id. */
     private long insertOwner(Connection c) throws SQLException {
+        // Use RETURNING id with a plain executeQuery(); do NOT combine with RETURN_GENERATED_KEYS,
+        // since the PostgreSQL driver then yields no ResultSet ("query returned no results").
         try (PreparedStatement ps = c.prepareStatement(
                 "INSERT INTO users (login, password_hash, first_name, last_name, phone, email, status, role) " +
-                        "VALUES (?, ?, ?, ?, ?, ?, 'ACTIVE', 'USER') RETURNING id",
-                Statement.RETURN_GENERATED_KEYS)) {
+                        "VALUES (?, ?, ?, ?, ?, ?, 'ACTIVE', 'USER') RETURNING id")) {
             String unique = String.valueOf(System.nanoTime());
             ps.setString(1, "owner" + unique.substring(unique.length() - 6));
             ps.setString(2, "$2a$12$abcdefghijklmnopqrstuv");
