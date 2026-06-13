@@ -1,0 +1,243 @@
+package com.padelpro.reservas.domain.model;
+
+import jakarta.persistence.*;
+
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
+
+/**
+ * Reservation aggregate root (maps table {@code reservations}, data-model §3.3).
+ *
+ * <p>In the capability disponibilidad-pistas this entity is used read-only: the availability
+ * service queries active reservations for a given date together with their participants in
+ * order to compute free slots. Write operations (create/confirm/cancel) belong to Wave 3.
+ *
+ * <p>The Postgres enum columns ({@code reservation_status}, {@code reservation_channel}) are
+ * mapped as {@code EnumType.STRING}; Hibernate sends the text value which Postgres casts to the
+ * enum type. Under the H2 (PostgreSQL mode) test profile the columns are plain varchars, so the
+ * same mapping works for both engines.
+ */
+@Entity
+@Table(name = "reservations")
+public class Reservation {
+
+    @Id
+    @Column(columnDefinition = "uuid")
+    private UUID id;
+
+    @Column(name = "owner_id", nullable = false)
+    private Long ownerId;
+
+    @Column(name = "reservation_date", nullable = false)
+    private LocalDate reservationDate;
+
+    @Column(name = "start_time", nullable = false)
+    private LocalTime startTime;
+
+    @Column(name = "end_time", nullable = false)
+    private LocalTime endTime;
+
+    @Column(name = "duration_minutes", nullable = false)
+    private Integer durationMinutes;
+
+    // NOTE: no columnDefinition — Hibernate maps the enum as varchar, which works on both H2
+    // (test profile, ddl-auto=create-drop) and PostgreSQL. On Postgres the Flyway-created column is
+    // the native reservation_status enum; Hibernate sends the text value which Postgres casts.
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private ReservationStatus status;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private ReservationChannel channel;
+
+    @Column(columnDefinition = "TEXT")
+    private String notes;
+
+    @Column(name = "telegram_message_id")
+    private String telegramMessageId;
+
+    @Column(name = "cancellation_reason")
+    private String cancellationReason;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private OffsetDateTime createdAt;
+
+    @Column(name = "updated_at", nullable = false)
+    private OffsetDateTime updatedAt;
+
+    @OneToMany(mappedBy = "reservation", fetch = FetchType.LAZY)
+    private List<Participant> participants = new ArrayList<>();
+
+    protected Reservation() {
+    }
+
+    @PrePersist
+    protected void onCreate() {
+        if (id == null) {
+            id = UUID.randomUUID();
+        }
+        OffsetDateTime now = OffsetDateTime.now();
+        if (createdAt == null) {
+            createdAt = now;
+        }
+        if (updatedAt == null) {
+            updatedAt = now;
+        }
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = OffsetDateTime.now();
+    }
+
+    /**
+     * Whether this reservation occupies its time slot for availability purposes (RN-RES-01):
+     * {@code PENDING_CONFIRMATION} and {@code CONFIRMED} occupy; {@code CANCELLED}/{@code COMPLETED} do not.
+     */
+    public boolean isActiveOccupant() {
+        return status == ReservationStatus.PENDING_CONFIRMATION
+                || status == ReservationStatus.CONFIRMED;
+    }
+
+    /**
+     * Whether this reservation overlaps the half-open interval {@code [slotStart, slotEnd)} on
+     * its own date. Overlap uses the same {@code '[)'} semantics as the DB exclusion constraint.
+     */
+    public boolean overlaps(LocalTime slotStart, LocalTime slotEnd) {
+        return startTime.isBefore(slotEnd) && endTime.isAfter(slotStart);
+    }
+
+    public UUID getId() {
+        return id;
+    }
+
+    public Long getOwnerId() {
+        return ownerId;
+    }
+
+    public LocalDate getReservationDate() {
+        return reservationDate;
+    }
+
+    public LocalTime getStartTime() {
+        return startTime;
+    }
+
+    public LocalTime getEndTime() {
+        return endTime;
+    }
+
+    public Integer getDurationMinutes() {
+        return durationMinutes;
+    }
+
+    public ReservationStatus getStatus() {
+        return status;
+    }
+
+    public ReservationChannel getChannel() {
+        return channel;
+    }
+
+    public String getNotes() {
+        return notes;
+    }
+
+    public String getTelegramMessageId() {
+        return telegramMessageId;
+    }
+
+    public String getCancellationReason() {
+        return cancellationReason;
+    }
+
+    public OffsetDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public OffsetDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public List<Participant> getParticipants() {
+        return participants;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (id == null) return false;
+        if (o == null || getClass() != o.getClass()) return false;
+        Reservation that = (Reservation) o;
+        return Objects.equals(id, that.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return id != null ? Objects.hash(id) : System.identityHashCode(this);
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    /** Test/factory builder. Production write paths (Wave 3) will replace this. */
+    public static class Builder {
+        private final Reservation r = new Reservation();
+
+        public Builder id(UUID id) {
+            r.id = id;
+            return this;
+        }
+
+        public Builder ownerId(Long ownerId) {
+            r.ownerId = ownerId;
+            return this;
+        }
+
+        public Builder reservationDate(LocalDate date) {
+            r.reservationDate = date;
+            return this;
+        }
+
+        public Builder startTime(LocalTime startTime) {
+            r.startTime = startTime;
+            return this;
+        }
+
+        public Builder endTime(LocalTime endTime) {
+            r.endTime = endTime;
+            return this;
+        }
+
+        public Builder durationMinutes(Integer durationMinutes) {
+            r.durationMinutes = durationMinutes;
+            return this;
+        }
+
+        public Builder status(ReservationStatus status) {
+            r.status = status;
+            return this;
+        }
+
+        public Builder channel(ReservationChannel channel) {
+            r.channel = channel;
+            return this;
+        }
+
+        public Builder participants(List<Participant> participants) {
+            r.participants = participants;
+            return this;
+        }
+
+        public Reservation build() {
+            return r;
+        }
+    }
+}
