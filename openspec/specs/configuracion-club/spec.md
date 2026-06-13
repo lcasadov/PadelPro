@@ -50,7 +50,7 @@ Fase 1
 
 ### Requirement 1: Lectura de configuración del sistema
 
-**El sistema DEBE devolver la configuración global del club al ADMIN, omitiendo los valores en claro de los campos sensibles cifrados.**
+**El sistema DEBE devolver la configuración global del club al ADMIN, omitiendo los valores en claro de los campos sensibles cifrados. El ADMIN accede mediante un punto único de configuración (singleton system_config) con encriptación AES-256-GCM para secretos.**
 
 #### Scenario: ADMIN lee la configuración del sistema
 
@@ -61,17 +61,39 @@ Fase 1
 - **AND** el cuerpo contiene `pricePerHour`, `cancellationDeadlineHours`, `maxParticipants`, `paymentGateway`, `telegramGroupId`, `smtpHost`, `smtpPort`, `smtpUser`
 - **AND** los campos `redsysSecretKey`, `telegramBotToken` y `smtpPassword` no aparecen en el cuerpo o aparecen enmascarados (ej. `"****"`) (RN-SEC-02)
 
+#### Scenario: ADMIN consulta la configuración actual (sistema centralizado)
+
+- **GIVEN** un usuario autenticado con rol ADMIN
+- **AND** la tabla system_config existe con datos iniciales
+- **WHEN** envía `GET /api/admin/sistema/config`
+- **THEN** el sistema responde con HTTP `200`
+- **AND** la respuesta contiene:
+  - `clubName`: nombre del club
+  - `clubDescription`: descripción
+  - `pistaState`: ACTIVA o MANTENIMIENTO
+  - `paymentGateway`: CASH o REDSYS
+  - `maxParticipantsPerPista`: número máximo de participantes
+  - `telegramBotConfigured`: true/false (nunca exponer el token)
+  - `redsysConfigured`: true/false (nunca exponer credenciales)
+  - `updatedAt`: cuándo fue actualizado por última vez
+
 #### Scenario: USER intenta acceder a la configuración
 
 - **GIVEN** un usuario autenticado con `role=USER`
 - **WHEN** se envía `GET /api/admin/sistema/config`
-- **THEN** el sistema responde con código `403`
+- **THEN** el sistema responde con código `403` (ACCESS_DENIED)
+
+#### Scenario: Request no autenticado recibe 401
+
+- **GIVEN** sin autenticación
+- **WHEN** se envía `GET /api/admin/sistema/config` sin cabecera `Authorization`
+- **THEN** el sistema responde con HTTP `401` (AUTH_REQUIRED)
 
 ---
 
 ### Requirement 2: Actualización de configuración del sistema
 
-**El sistema DEBE permitir al ADMIN actualizar uno o más parámetros de la configuración global con semántica PATCH. Solo los campos incluidos en el cuerpo se actualizan.**
+**El sistema DEBE permitir al ADMIN actualizar uno o más parámetros de la configuración global con semántica PATCH. Solo los campos incluidos en el cuerpo se actualizan. Requiere validación de credenciales para pasarelas de pago y encriptación AES-256-GCM de secretos.**
 
 #### Scenario: ADMIN actualiza el máximo de participantes
 
@@ -107,6 +129,42 @@ Fase 1
 - **AND** el valor `nuevo-valor` se cifra con AES-256-GCM antes de persistir en base de datos
 - **AND** la respuesta devuelve el campo enmascarado (ej. `"****"`), nunca en claro
 
+#### Scenario: ADMIN actualiza la configuración (payment gateway a REDSYS)
+
+- **GIVEN** un usuario autenticado con rol ADMIN
+- **AND** la configuración actual tiene `paymentGateway=CASH`
+- **WHEN** envía `PATCH /api/admin/sistema/config` con `paymentGateway=REDSYS`, credenciales válidas
+- **THEN** el sistema valida que todos los campos Redsys estén presentes
+- **AND** cifra los secretos con AES-256-GCM antes de guardar
+- **AND** responde con HTTP `200` sin exponer secretos
+
+#### Scenario: ADMIN intenta cambiar a REDSYS sin credenciales (error)
+
+- **GIVEN** un usuario autenticado con rol ADMIN
+- **WHEN** envía `PATCH /api/admin/sistema/config` con `paymentGateway=REDSYS` pero `redsysMerchantKey` vacío
+- **THEN** el sistema responde con HTTP `400`
+- **AND** cuerpo contiene código error `VALIDATION_ERROR`
+
+#### Scenario: Secretos se cifran en BD y desencriptan automáticamente
+
+- **GIVEN** ENCRYPTION_KEY está configurada en el ambiente
+- **WHEN** el ADMIN actualiza `telegram_bot_token` y guarda vía PATCH
+- **THEN** en la BD, el valor se almacena cifrado con AES-256-GCM + IV aleatorio
+- **AND** cuando internamente el sistema necesita usar el token, lo desencripta en memoria
+- **AND** nunca aparece en plaintext en responses HTTP
+
+#### Scenario: USER intenta actualizar la configuración
+
+- **GIVEN** un usuario autenticado con `role=USER`
+- **WHEN** envía `PATCH /api/admin/sistema/config`
+- **THEN** el sistema responde con código `403` (ACCESS_DENIED)
+
+#### Scenario: Request no autenticado intenta actualizar
+
+- **GIVEN** sin autenticación
+- **WHEN** se envía `PATCH /api/admin/sistema/config` sin cabecera `Authorization`
+- **THEN** el sistema responde con HTTP `401` (AUTH_REQUIRED)
+
 ---
 
 ### Requirement 3: Integridad del singleton de configuración
@@ -119,6 +177,19 @@ Fase 1
 - **WHEN** se ejecuta la migración inicial de datos
 - **THEN** la tabla `system_config` contiene exactamente una fila con `id=1` y valores por defecto sensatos
 - **AND** el constraint `CHECK (id = 1)` de la tabla impide insertar filas adicionales
+
+---
+
+### Requirement 4: Los logs de configuración no contienen secretos
+
+**El sistema DEBE garantizar que ningún log, metric, o error message contiene valores de secretos en plaintext.**
+
+#### Scenario: Cambio de configuración se audita sin exponer secreto
+
+- **GIVEN** el sistema tiene auditoría habilitada
+- **WHEN** el ADMIN actualiza `telegram_bot_token` vía `PATCH /api/admin/sistema/config`
+- **THEN** se inserta una fila en `audit_log` con `action='CONFIG_UPDATED'`
+- **AND** el campo `details` usa mascarado (`***REDACTED***`) en lugar de valores reales
 
 ---
 
