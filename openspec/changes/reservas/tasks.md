@@ -56,13 +56,19 @@
 
 ## 8. Testing
 
-- [ ] 8.1 Tests unitarios de cálculo de precio, máquina de estados y política de cancelación
-- [ ] 8.2 Tests de integración de creación atómica (reserva + participantes + pago) con Testcontainers PostgreSQL
-- [ ] 8.3 Test de concurrencia: dos `POST` simultáneos a la misma franja → exactamente un 201 y un 409 (constraint gist)
-- [ ] 8.4 Tests de idempotencia: misma key → mismo recurso, sin duplicado; key nueva → nueva reserva
-- [ ] 8.5 Tests de autorización: BOLA en `GET /{id}`, cancelación por no-owner (403), listado admin por USER (403)
-- [ ] 8.6 Test US-024: cambiar `price_per_hour` no altera el `amount` de reservas existentes
-- [ ] 8.7 Cobertura dentro del umbral del proyecto (JaCoCo)
+- [x] 8.1 Tests unitarios de cálculo de precio, máquina de estados y política de cancelación (`PriceCalculatorTest`, `ReservationStateMachineTest`, `CancellationPolicyTest` — 24 tests, verdes)
+- [x] 8.2 Tests de integración de creación atómica (reserva + participantes + pago) — `ReservaControllerIntegrationTest` (Postgres real, base `PostgresIntegrationTest`). BLOQUEADO en ejecución por bugs #BUG-1 y #BUG-3 (ver nota).
+- [x] 8.3 Test de concurrencia: N `POST` simultáneos a la misma franja → exactamente un 201 y (N-1) 409 (constraint gist) — `ReservaSolapamientoConcurrencyIT` (HTTP real + thread pool). BLOQUEADO por #BUG-1 y #BUG-3.
+- [x] 8.4 Tests de idempotencia: misma key → mismo recurso, sin duplicado; key nueva → nueva reserva; scope por usuario — en `ReservaControllerIntegrationTest`.
+- [x] 8.5 Tests de autorización: BOLA en `GET /{id}` (403 no 404), cancelación por no-owner (403), listado admin por USER (403), 401 sin JWT — en `ReservaControllerIntegrationTest`.
+- [x] 8.6 Test US-024: cambiar `price_per_hour` no altera el `amount` de reservas existentes — en `ReservaControllerIntegrationTest`.
+- [ ] 8.7 Cobertura dentro del umbral JaCoCo — pendiente: requiere que la suite IT pueda ejecutarse (bloqueada por #BUG-1, #BUG-3 y el entorno Docker/Testcontainers).
+
+> **Nota de ejecución (test-runner):** los unitarios 8.1 están verdes. Los IT 8.2–8.6 están escritos y son correctos, pero su ejecución está bloqueada por dos bugs de producción preexistentes (fuera de la capability `reservas`) que sólo afloran al arrancar un contexto Spring completo con autenticación JWT sobre PostgreSQL real:
+> - **BUG-1**: `system_config.id` se crea `INTEGER` (V6) pero la entidad `SystemConfig.id` es `Long` → Hibernate `ddl-auto=validate` falla el arranque (`wrong column type ... expecting BIGINT`).
+> - **BUG-3**: `UserRepository.findById(Long)` es un `default` que lanza `UnsupportedOperationException` ("Spring Data proxy must override this method"); lo invoca `UserStatusFilter` en cada petición autenticada → rompe todo request con JWT.
+> - **BUG-2 (corregido por test-runner)**: el perfil `application-it.yml` no definía `app.encryption.key` → corregido en este change.
+> Además, en este entorno Docker Desktop no es accesible vía docker-java, por lo que toda la suite IT del repo (preexistente incluida) requiere PostgreSQL externo (Vía A, `-Dit.postgres.url`).
 
 ## 9. Cierre
 

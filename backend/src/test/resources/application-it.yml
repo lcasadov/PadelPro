@@ -16,3 +16,5 @@ app:
   jwt:
     secret: test-secret-key-padelpro-256-bits-minimum-length-padding-here
     access-token-expiry-minutes: 15
+  encryption:
+    key: test-encryption-key-padelpro-256-bits-minimum-length
