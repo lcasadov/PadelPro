@@ -1,9 +1,9 @@
 # Plan de ejecución — PadelPro OpenSpec
 
 **Generado:** 2026-05-31  
-**Última actualización:** 2026-06-07  
+**Última actualización:** 2026-06-18  
 **Base:** dependencias declaradas en `openspec/specs/*/spec.md`  
-**Estado:** 4/14 capabilities implementadas
+**Estado:** 6/14 capabilities implementadas
 
 ---
 
@@ -15,9 +15,9 @@
 | `usuarios` | ✅ Implementada | `archive/2026-05-31-usuarios` |
 | `roles-permisos` | ✅ Implementada | `archive/2026-05-31-roles-permisos` |
 | `auditoria` | ✅ Implementada | `archive/2026-06-07-auditoria` |
-| `configuracion-club` | 📋 Pendiente | — |
-| `pistas` | 📋 Pendiente | — |
-| `disponibilidad-pistas` | 📋 Pendiente | — |
+| `configuracion-club` | ✅ Implementada | `archive/2026-06-07-configuracion-club` |
+| `pistas` | ✅ Implementada | (incluida en `configuracion-club`) |
+| `disponibilidad-pistas` | ✅ Implementada | `archive/2026-06-18-disponibilidad-pistas` |
 | `auth-otp-telegram` | 📋 Pendiente | — |
 | `reservas` | 📋 Pendiente | — |
 | `pagos-redsys` | 📋 Pendiente | — |
@@ -32,25 +32,17 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  DONE                                                           │
-│  auth-local ✅          usuarios ✅                             │
-└──────────────┬──────────────────────┬──────────────────────────┘
-               │                      │
-               ▼                      ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  WAVE 1 — Infraestructura transversal  (paralelo)               │
-│                                                                 │
-│  roles-permisos ──────── (auth-local + usuarios → todos)        │
-│  auditoria ────────────── (auth-local → tabla ya existe)        │
-│  configuracion-club ───── (roles-permisos → system_config)      │
-│  pistas ───────────────── (configuracion-club → estado pista)   │
+│  DONE — Wave 1 + Wave 2A ✅                                      │
+│  auth-local ✅   usuarios ✅   roles-permisos ✅                 │
+│  auditoria ✅    configuracion-club ✅   pistas ✅               │
+│  disponibilidad-pistas ✅                                        │
 └──────────────────────────────────────┬──────────────────────────┘
                                        │
                ┌───────────────────────┤
                │                       │
                ▼                       ▼
 ┌──────────────────────────┐  ┌────────────────────────────────┐
-│  WAVE 2A                 │  │  WAVE 2B                        │
+│  WAVE 2A ✅              │  │  WAVE 2B 📋                     │
 │  disponibilidad-pistas   │  │  auth-otp-telegram              │
 │  (configuracion-club +   │  │  (usuarios + otp_codes tabla)   │
 │   reservations schema)   │  │                                 │
@@ -256,10 +248,10 @@ Wave 6  ────────└──── administracion-club  ← Fase 2
 
 ## Próximas acciones recomendadas
 
-1. **Resolver D-CONF-01** — Confirmar que `ENCRYPTION_KEY` será env var sin fallback (igual que `JWT_SECRET`). Documentar en `docs/security-design.md` si existe.
+> Wave 1 y Wave 2A están completas. D-CONF-01 y D-RES-01 ya resueltas e implementadas.
 
-2. **Resolver D-RES-01** — Decidir el schema de `reservations` antes de empezar Wave 2A. Es la decisión técnica con mayor impacto en la estabilidad futura.
+1. **Resolver D-RES-02 y D-RES-03** — Antes de arrancar `reservas`: soportar `payment_gateway=CASH` como bypass para testing sin Redsys, y confirmación manual por ADMIN sin OTP Telegram. Aclarar vía `/opsx:explore reservas`.
 
-3. **Lanzar Wave 1 en paralelo** — `roles-permisos` y `auditoria` son de bajo riesgo y pueden implementarse rápido. `configuracion-club + pistas` en un único change.
+2. **Siguiente `/opsx:propose`** — Recomendado: **`reservas`** (Wave 3, núcleo del producto, 8 SP). Desbloqueada: solo requiere Wave 1 + Wave 2A, ambas hechas. Bloquea toda la Wave 4.
 
-4. **Siguiente `/opsx:propose`** — Recomendado: `configuracion-club` (incluye `pistas`) como primer change de Wave 1.
+3. **En paralelo / después** — `auth-otp-telegram` (Wave 2B) es independiente y puede arrancarse en paralelo; no bloquea crear/cancelar reservas vía web (confirmación manual del ADMIN cubre el MVP).

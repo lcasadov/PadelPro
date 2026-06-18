@@ -87,6 +87,33 @@ Consulta de franjas horarias libres de la pista para una fecha concreta. Permite
 - **WHEN** envía `GET /api/reservas/disponibles` sin el parámetro `fecha`
 - **THEN** el sistema responde 400 con `code: "VALIDATION_ERROR"`
 
+### Requirement 4: Reservas pendientes de confirmar bloquean franja
+
+**El sistema DEBE contar las reservas en estado `PENDING_CONFIRMATION` igual que las `CONFIRMED` al calcular las plazas libres, y DEBE excluir siempre las reservas en estado `CANCELLED`.**
+
+#### Scenario: Reserva pendiente reduce plazas libres
+- **GIVEN** existe una reserva `PENDING_CONFIRMATION` de 1 participante en el tramo 18:00–19:00
+- **AND** `system_config.max_participants = 4`
+- **WHEN** un usuario autenticado consulta esa fecha
+- **THEN** el tramo 18:00 aparece con `plazasLibres: 3`
+
+#### Scenario: Reserva cancelada no ocupa franja
+- **GIVEN** el único registro en el tramo 12:00–13:00 es una reserva con `status = 'CANCELLED'`
+- **WHEN** un usuario autenticado consulta esa fecha
+- **THEN** el tramo 12:00 aparece con `plazasLibres` igual a `system_config.max_participants`
+
+### Requirement 5: Autenticación obligatoria para consultar disponibilidad
+
+**El sistema DEBE exigir un JWT válido para consultar la disponibilidad; las peticiones no autenticadas DEBEN recibir 401.**
+
+#### Scenario: Petición sin autenticación
+- **WHEN** se envía `GET /api/reservas/disponibles?fecha=2025-08-01` sin cabecera `Authorization`
+- **THEN** el sistema responde 401
+
+#### Scenario: Petición con token expirado
+- **WHEN** se envía la consulta con un JWT expirado
+- **THEN** el sistema responde 401 y no devuelve datos de disponibilidad
+
 ## Casos límite
 - Fecha en el pasado: el sistema puede responder con los tramos (histórico) o con 400; en v1.0 se acepta responder 200 con los tramos históricos para facilitar la consulta del ADMIN, pero no se garantiza exactitud si los datos fueron modificados.
 - Fecha fuera del rango de la ventana de reserva anticipada (`system_config`): el sistema puede devolver tramos pero la creación de reserva para esa fecha fallará; la disponibilidad no filtra por ventana anticipada.
