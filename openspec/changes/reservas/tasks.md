@@ -57,18 +57,19 @@
 ## 8. Testing
 
 - [x] 8.1 Tests unitarios de cálculo de precio, máquina de estados y política de cancelación (`PriceCalculatorTest`, `ReservationStateMachineTest`, `CancellationPolicyTest` — 24 tests, verdes)
-- [x] 8.2 Tests de integración de creación atómica (reserva + participantes + pago) — `ReservaControllerIntegrationTest` (Postgres real, base `PostgresIntegrationTest`). BLOQUEADO en ejecución por bugs #BUG-1 y #BUG-3 (ver nota).
-- [x] 8.3 Test de concurrencia: N `POST` simultáneos a la misma franja → exactamente un 201 y (N-1) 409 (constraint gist) — `ReservaSolapamientoConcurrencyIT` (HTTP real + thread pool). BLOQUEADO por #BUG-1 y #BUG-3.
-- [x] 8.4 Tests de idempotencia: misma key → mismo recurso, sin duplicado; key nueva → nueva reserva; scope por usuario — en `ReservaControllerIntegrationTest`.
-- [x] 8.5 Tests de autorización: BOLA en `GET /{id}` (403 no 404), cancelación por no-owner (403), listado admin por USER (403), 401 sin JWT — en `ReservaControllerIntegrationTest`.
-- [x] 8.6 Test US-024: cambiar `price_per_hour` no altera el `amount` de reservas existentes — en `ReservaControllerIntegrationTest`.
-- [ ] 8.7 Cobertura dentro del umbral JaCoCo — pendiente: requiere que la suite IT pueda ejecutarse (bloqueada por #BUG-1, #BUG-3 y el entorno Docker/Testcontainers).
+- [x] 8.2 Tests de integración de creación atómica (reserva + participantes + pago) — `ReservaControllerIntegrationTest` (Postgres real, base `PostgresIntegrationTest`). ✅ VERDE contra PG :5433 (23/23) tras corregir #159, #160 y el binding de enums nativos.
+- [x] 8.3 Test de concurrencia: N `POST` simultáneos a la misma franja → exactamente un 201 y (N-1) 409 (constraint gist) — `ReservaSolapamientoConcurrencyIT` (HTTP real + thread pool). ✅ VERDE contra PG :5433 (1/1).
+- [x] 8.4 Tests de idempotencia: misma key → mismo recurso, sin duplicado; key nueva → nueva reserva; scope por usuario — en `ReservaControllerIntegrationTest`. ✅ VERDE.
+- [x] 8.5 Tests de autorización: BOLA en `GET /{id}` (403 no 404), cancelación por no-owner (403), listado admin por USER (403), 401 sin JWT — en `ReservaControllerIntegrationTest`. ✅ VERDE.
+- [x] 8.6 Test US-024: cambiar `price_per_hour` no altera el `amount` de reservas existentes — en `ReservaControllerIntegrationTest`. ✅ VERDE.
+- [ ] 8.7 Cobertura dentro del umbral JaCoCo — no medida en esta sesión (no se ejecutó `jacoco:report`). Los IT de reservas ya ejecutan; queda pendiente generar el informe de cobertura.
 
-> **Nota de ejecución (test-runner):** los unitarios 8.1 están verdes. Los IT 8.2–8.6 están escritos y son correctos, pero su ejecución está bloqueada por dos bugs de producción preexistentes (fuera de la capability `reservas`) que sólo afloran al arrancar un contexto Spring completo con autenticación JWT sobre PostgreSQL real:
-> - **BUG-1**: `system_config.id` se crea `INTEGER` (V6) pero la entidad `SystemConfig.id` es `Long` → Hibernate `ddl-auto=validate` falla el arranque (`wrong column type ... expecting BIGINT`).
-> - **BUG-3**: `UserRepository.findById(Long)` es un `default` que lanza `UnsupportedOperationException` ("Spring Data proxy must override this method"); lo invoca `UserStatusFilter` en cada petición autenticada → rompe todo request con JWT.
-> - **BUG-2 (corregido por test-runner)**: el perfil `application-it.yml` no definía `app.encryption.key` → corregido en este change.
-> Además, en este entorno Docker Desktop no es accesible vía docker-java, por lo que toda la suite IT del repo (preexistente incluida) requiere PostgreSQL externo (Vía A, `-Dit.postgres.url`).
+> **Nota de ejecución (actualizada 2026-06-18):** los unitarios 8.1 están verdes. Los IT de reservas 8.2–8.6 **ya ejecutan en VERDE** contra PostgreSQL real (`:5433`, Vía A) tras corregir tres bugs de producción:
+> - **BUG-1 / #159 (CORREGIDO)**: `system_config.id` se creaba `INTEGER` (V6) pero la entidad `SystemConfig.id` es `Long` → arranque fallaba con `ddl-auto=validate`. Corregido con migración `V10__system_config_id_to_bigint.sql` (ALTER a BIGINT; sin tocar V6 ni la entidad). Verificado: V10 aplicada, columna ahora `bigint`.
+> - **BUG-3 / #160 (CORREGIDO)**: `UserRepository.findById(Long)`/`save(User)` eran `default` que lanzaban `UnsupportedOperationException`; Spring Data no respalda métodos `default`, así que `UserStatusFilter` rompía cada request con JWT. Corregido eliminando los `default` (no había ambigüedad real con erasure). Verificado: compila sin ambigüedad; `UserStatusFilterTest` y todos los IT de auth verdes.
+> - **BUG-4 (nuevo, CORREGIDO)**: las columnas enum nativas de Postgres (`reservation_status`, `reservation_channel`, `payment_method`, `payment_status`, `payment_gateway`) fallaban en cada INSERT (`column ... is of type <enum> but expression is of type character varying`) porque Postgres no castea varchar→enum implícitamente. Corregido con `@JdbcTypeCode(SqlTypes.NAMED_ENUM)` + `columnDefinition` en `Reservation`, `Participant` y `Payment`.
+> - **BUG-2 (corregido previamente por test-runner)**: `application-it.yml` no definía `app.encryption.key` → corregido en este change.
+> Limitación de entorno: Docker Desktop no es accesible vía docker-java en este host, por lo que 8 IT preexistentes de **auth/usuarios** (que aún usan `@Testcontainers` directo, no la base portable `PostgresIntegrationTest`) fallan con "Could not find a valid Docker environment". No están relacionados con esta capability ni con los bugs anteriores; requieren migrarse a Vía A en un trabajo aparte.
 
 ## 9. Cierre
 
