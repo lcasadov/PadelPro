@@ -73,7 +73,7 @@
 
 ## 9. Cierre
 
-- [ ] 9.1 `verification-specialist`: build + tests + probes (PASS/FAIL)
-- [ ] 9.2 `reality-checker`: user journey reservar→confirmar(admin)→cancelar end-to-end
-- [ ] 9.3 Commit y push a la rama (reservado al orquestador)
-- [ ] 9.4 Crear PR con `Closes #<id>` y validar CI
+- [x] 9.1 `verification-specialist`: build + tests + probes → **PASS** (8 probes adversariales verdes; anti-overlap a nivel BD + concurrencia, precio backend-only, idempotencia, máquina de estados, BOLA, inmunidad SQLi)
+- [x] 9.2 `reality-checker`: user journey reservar→confirmar(admin)→cancelar end-to-end → **READY** (A-, journey completo por HTTP real; destapó y corrigió #161 login roto antes de certificar)
+- [x] 9.3 Commit y push a la rama (reservado al orquestador)
+- [ ] 9.4 Crear PR con `Closes #14` y validar CI
