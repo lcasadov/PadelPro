@@ -51,6 +51,48 @@ public class Participant {
     protected Participant() {
     }
 
+    /**
+     * Owner participant: slot 1, {@code is_owner=true}, registered user (capability reservas, US-007).
+     */
+    public static Participant owner(Long userId, ReservationChannel joinedVia) {
+        Participant p = new Participant();
+        p.userId = userId;
+        p.slotPosition = 1;
+        p.owner = true;
+        p.joinedVia = joinedVia;
+        return p;
+    }
+
+    /**
+     * External (non-registered) guest at the given slot. The DB XOR constraint requires
+     * {@code external_name != null} and {@code user_id == null}.
+     */
+    public static Participant external(String externalName, String externalPhone,
+                                       int slotPosition, ReservationChannel joinedVia) {
+        Participant p = new Participant();
+        p.externalName = externalName;
+        p.externalPhone = externalPhone;
+        p.slotPosition = slotPosition;
+        p.owner = false;
+        p.joinedVia = joinedVia;
+        return p;
+    }
+
+    /** Registered additional participant (not the owner) at the given slot. */
+    public static Participant registered(Long userId, int slotPosition, ReservationChannel joinedVia) {
+        Participant p = new Participant();
+        p.userId = userId;
+        p.slotPosition = slotPosition;
+        p.owner = false;
+        p.joinedVia = joinedVia;
+        return p;
+    }
+
+    /** Package-internal wiring used by {@link Reservation#addParticipant(Participant)}. */
+    void attachTo(Reservation reservation) {
+        this.reservation = reservation;
+    }
+
     @PrePersist
     protected void onCreate() {
         if (joinedAt == null) {

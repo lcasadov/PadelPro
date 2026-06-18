@@ -71,10 +71,45 @@ public class Reservation {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
-    @OneToMany(mappedBy = "reservation", fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "reservation", fetch = FetchType.LAZY,
+            cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Participant> participants = new ArrayList<>();
 
     protected Reservation() {
+    }
+
+    /**
+     * Factory for the write path (capability reservas, US-007). Creates a brand-new reservation in
+     * {@code PENDING_CONFIRMATION} with its {@code end_time} derived from {@code start + duration} so
+     * that the DB CHECK {@code chk_res_end_time} and the gist exclusion constraint match exactly.
+     */
+    public static Reservation create(Long ownerId, LocalDate reservationDate, LocalTime startTime,
+                                     Integer durationMinutes, ReservationChannel channel, String notes) {
+        Reservation r = new Reservation();
+        r.ownerId = ownerId;
+        r.reservationDate = reservationDate;
+        r.startTime = startTime;
+        r.durationMinutes = durationMinutes;
+        r.endTime = startTime.plusMinutes(durationMinutes);
+        r.status = ReservationStatus.PENDING_CONFIRMATION;
+        r.channel = channel;
+        r.notes = notes;
+        return r;
+    }
+
+    /** Apply a (pre-validated) status transition. Validity is enforced by the state machine. */
+    public void changeStatus(ReservationStatus newStatus) {
+        this.status = newStatus;
+    }
+
+    public void setCancellationReason(String cancellationReason) {
+        this.cancellationReason = cancellationReason;
+    }
+
+    /** Attach a participant to this reservation, keeping both sides of the association in sync. */
+    public void addParticipant(Participant participant) {
+        participant.attachTo(this);
+        this.participants.add(participant);
     }
 
     @PrePersist
