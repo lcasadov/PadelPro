@@ -8,6 +8,10 @@ import com.padelpro.auth.domain.exception.TokenExpiredException;
 import com.padelpro.auth.domain.exception.TokenInvalidException;
 import com.padelpro.auth.domain.exception.ValidationException;
 import com.padelpro.auth.infrastructure.web.dto.ErrorResponse;
+import com.padelpro.reservas.domain.exception.InvalidReservaStateException;
+import com.padelpro.reservas.domain.exception.ReservaForbiddenException;
+import com.padelpro.reservas.domain.exception.ReservaNotFoundException;
+import com.padelpro.reservas.domain.exception.SlotConflictException;
 import com.padelpro.usuarios.domain.exception.AdminSelfDeactivationException;
 import com.padelpro.usuarios.domain.exception.EmailConflictException;
 import com.padelpro.usuarios.domain.exception.UserNotFoundException;
@@ -130,5 +134,43 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .body(new ErrorResponse("VALIDATION_ERROR", ex.getMessage()));
+    }
+
+    // -------------------------------------------------------------------------
+    // reservas capability
+    // -------------------------------------------------------------------------
+
+    @ExceptionHandler(SlotConflictException.class)
+    public ResponseEntity<ErrorResponse> handleSlotConflict(SlotConflictException ex) {
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse("CONFLICT", ex.getMessage()));
+    }
+
+    @ExceptionHandler(ReservaForbiddenException.class)
+    public ResponseEntity<ErrorResponse> handleReservaForbidden(ReservaForbiddenException ex) {
+        return ResponseEntity
+                .status(HttpStatus.FORBIDDEN)
+                .body(new ErrorResponse("FORBIDDEN", ex.getMessage()));
+    }
+
+    @ExceptionHandler(ReservaNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleReservaNotFound(ReservaNotFoundException ex) {
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(new ErrorResponse("RESERVA_NOT_FOUND", ex.getMessage()));
+    }
+
+    /**
+     * Invalid state transitions, cancellations outside the deadline, and the participants-limit
+     * breach all surface as 422 with the exception's own machine-readable code (e.g.
+     * {@code INVALID_STATE_TRANSITION}, {@code CANCELLATION_DEADLINE_PASSED},
+     * {@code PARTICIPANTS_LIMIT_EXCEEDED}).
+     */
+    @ExceptionHandler(InvalidReservaStateException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidReservaState(InvalidReservaStateException ex) {
+        return ResponseEntity
+                .status(HttpStatus.UNPROCESSABLE_ENTITY)
+                .body(new ErrorResponse(ex.getCode(), ex.getMessage()));
     }
 }
