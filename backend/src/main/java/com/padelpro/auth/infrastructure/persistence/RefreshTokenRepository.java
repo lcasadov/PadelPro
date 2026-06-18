@@ -19,14 +19,15 @@ import java.util.Optional;
 @Repository
 public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long>, RefreshTokenRepositoryPort {
 
-    /**
-     * Resolves the ambiguity between {@link RefreshTokenRepositoryPort#save(RefreshToken)} and
-     * the generic {@code <S>save(S)} from {@link JpaRepository}.
+    /*
+     * NOTE: {@code save(RefreshToken)} is declared on both {@link RefreshTokenRepositoryPort}
+     * and {@link JpaRepository}; with type erasure ({@code <S extends RefreshToken> S save(S)}
+     * → {@code save(RefreshToken)}) the signatures coincide, so Spring Data supplies a single
+     * concrete proxy implementation. No bridging {@code default} is needed — and a {@code default}
+     * that throws would shadow the proxy at runtime (Spring Data does not back interface
+     * {@code default} methods), breaking every caller, e.g. AuthService.login (Issue #161,
+     * same antipattern as #160 in UserRepository).
      */
-    @Override
-    default RefreshToken save(RefreshToken refreshToken) {
-        throw new UnsupportedOperationException("Spring Data proxy must override this method");
-    }
 
     /**
      * Look up a refresh token by its SHA-256 hash.
