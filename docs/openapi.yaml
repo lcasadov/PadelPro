@@ -559,6 +559,24 @@ paths:
         como primer participante (titular). Se envía OTP de tipo RESERVATION_CONFIRM
         al creador vía Telegram si la reserva proviene del canal Telegram.
         Requiere ROLE_USER o ROLE_ADMIN.
+
+        **Idempotencia (RN-RES-05):** envíe la cabecera `Idempotency-Key`. Un segundo `POST`
+        con la misma clave y el mismo usuario devuelve la reserva ya creada (201) sin duplicarla.
+
+        **Precio (RN-RES-03):** el importe total se calcula exclusivamente en el backend
+        (`price_per_hour × durationMinutes / 60`) y se congela en el pago asociado; cualquier
+        importe enviado por el cliente se ignora.
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          description: |
+            Clave de idempotencia por usuario (RN-RES-05). Reintentos con la misma clave
+            devuelven la misma reserva sin crear duplicados.
+          schema:
+            type: string
+            maxLength: 255
+            example: "abc-123-e89b-12d3"
       requestBody:
         required: true
         content:
@@ -604,10 +622,22 @@ paths:
           $ref: '#/components/responses/ValidationError'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '409':
-          $ref: '#/components/responses/Conflict'
+          description: |
+            La franja horaria solapa con una reserva activa (RN-RES-01). El constraint
+            `excl_res_no_overlap` (gist) garantiza la exclusión incluso bajo concurrencia.
+            Cuerpo: `code: "CONFLICT"`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '422':
-          description: Número máximo de participantes superado o regla de negocio incumplida
+          description: |
+            Regla de negocio incumplida. Códigos posibles:
+            `PARTICIPANTS_LIMIT_EXCEEDED` (excede `max_participants_per_pista`),
+            `INVALID_STATE_TRANSITION`.
           content:
             application/json:
               schema:
@@ -750,11 +780,11 @@ paths:
               $ref: '#/components/schemas/ReservaEstadoRequest'
       responses:
         '200':
-          description: Estado actualizado correctamente
+          description: Estado actualizado correctamente (devuelve la reserva completa)
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ReservaEstadoResponse'
+                $ref: '#/components/schemas/ReservaResponse'
         '400':
           $ref: '#/components/responses/ValidationError'
         '401':
@@ -764,7 +794,9 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
         '422':
-          description: La transición de estado no está permitida
+          description: |
+            La transición de estado no está permitida (D6, máquina unidireccional).
+            Cuerpo: `code: "INVALID_STATE_TRANSITION"`.
           content:
             application/json:
               schema:
@@ -1833,6 +1865,13 @@ components:
           description: Lista de participantes (incluye el titular como slot 1)
           items:
             $ref: '#/components/schemas/ParticipanteResponse'
+        pago:
+          description: |
+            Pago asociado a la reserva (relación 1:1, creado atómicamente, RN-RES-03/D3).
+            En el MVP (CASH) nace en estado `PENDING` con `amount` congelado.
+          allOf:
+            - $ref: '#/components/schemas/PagoResponse'
+          nullable: true
         telegramMessageId:
           type: string
           description: ID del mensaje publicado en el grupo de Telegram (null si no aplica)
