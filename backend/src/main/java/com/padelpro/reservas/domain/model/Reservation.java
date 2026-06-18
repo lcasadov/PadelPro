@@ -1,6 +1,8 @@
 package com.padelpro.reservas.domain.model;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -45,15 +47,20 @@ public class Reservation {
     @Column(name = "duration_minutes", nullable = false)
     private Integer durationMinutes;
 
-    // NOTE: no columnDefinition — Hibernate maps the enum as varchar, which works on both H2
-    // (test profile, ddl-auto=create-drop) and PostgreSQL. On Postgres the Flyway-created column is
-    // the native reservation_status enum; Hibernate sends the text value which Postgres casts.
+    // The Flyway-created columns are native PostgreSQL enum types (reservation_status,
+    // reservation_channel). PostgreSQL does NOT implicitly cast a bound varchar parameter to a
+    // native enum, so a plain EnumType.STRING mapping fails on INSERT/UPDATE with
+    // "column is of type reservation_channel but expression is of type character varying" (#160-adj).
+    // @JdbcTypeCode(SqlTypes.NAMED_ENUM) makes Hibernate bind the value as the named DB enum type,
+    // which works against native PG enums and is tolerated by H2 (PostgreSQL mode) in tests.
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(nullable = false, columnDefinition = "reservation_status")
     private ReservationStatus status;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(nullable = false, columnDefinition = "reservation_channel")
     private ReservationChannel channel;
 
     @Column(columnDefinition = "TEXT")

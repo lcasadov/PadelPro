@@ -1,6 +1,8 @@
 package com.padelpro.reservas.domain.model;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -14,8 +16,10 @@ import java.util.UUID;
  * time ({@code price_per_hour × duration_minutes / 60}); later changes to {@code price_per_hour}
  * never alter existing payments (US-024).
  *
- * <p>Enum columns are mapped as {@code EnumType.STRING}; Hibernate sends the text value which
- * PostgreSQL casts to the native enum type, and which H2 (PostgreSQL mode) stores as varchar.
+ * <p>The {@code method}, {@code status} and {@code gateway} columns are native PostgreSQL enum
+ * types (payment_method, payment_status, payment_gateway). PostgreSQL does not implicitly cast a
+ * bound varchar to a native enum, so they are bound via {@code @JdbcTypeCode(SqlTypes.NAMED_ENUM)}
+ * with {@code columnDefinition} set to the Flyway-created type name (so ddl-auto=validate matches).
  */
 @Entity
 @Table(name = "payments")
@@ -32,11 +36,13 @@ public class Payment {
     private BigDecimal amount;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "method")
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(name = "method", columnDefinition = "payment_method")
     private PaymentMethod method;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(name = "status", nullable = false, columnDefinition = "payment_status")
     private PaymentStatus status;
 
     @Column(name = "redsys_order_id")
@@ -46,7 +52,8 @@ public class Payment {
     private String paymentUrl;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "gateway")
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(name = "gateway", columnDefinition = "payment_gateway")
     private PaymentGateway gateway;
 
     @Column(name = "transaction_id")

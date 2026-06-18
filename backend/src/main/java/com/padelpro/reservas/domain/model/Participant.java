@@ -1,6 +1,8 @@
 package com.padelpro.reservas.domain.model;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.OffsetDateTime;
 import java.util.Objects;
@@ -41,8 +43,11 @@ public class Participant {
     @Column(name = "is_owner", nullable = false)
     private boolean owner;
 
+    // joined_via is the native PostgreSQL reservation_channel enum; bind it as the named DB enum
+    // type so INSERT/UPDATE does not fail with a varchar→enum cast error (see Reservation.channel).
     @Enumerated(EnumType.STRING)
-    @Column(name = "joined_via", nullable = false)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(name = "joined_via", nullable = false, columnDefinition = "reservation_channel")
     private ReservationChannel joinedVia;
 
     @Column(name = "joined_at", nullable = false)
