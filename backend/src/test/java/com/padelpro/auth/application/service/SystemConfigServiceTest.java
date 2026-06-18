@@ -95,7 +95,9 @@ class SystemConfigServiceTest {
                 null,  // Missing merchant ID
                 "merchant-key",
                 "telegram-token",
-                4
+                4,
+                null,
+                null
         );
 
         // Act & Assert
@@ -131,7 +133,9 @@ class SystemConfigServiceTest {
                 null,
                 null,
                 "new-telegram-token-xyz",
-                4
+                4,
+                null,
+                null
         );
 
         when(repositoryPort.findById(1L)).thenReturn(java.util.Optional.of(existingConfig));

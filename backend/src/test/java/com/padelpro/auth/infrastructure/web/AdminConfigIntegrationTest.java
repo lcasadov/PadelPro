@@ -97,7 +97,7 @@ class AdminConfigIntegrationTest {
                 .thenAnswer(inv -> inv.getArgument(0));
 
         // Act
-        var request = new UpdateSystemConfigRequest("Club", "D", PistaState.ACTIVA, PaymentGateway.CASH, null, null, null, 4);
+        var request = new UpdateSystemConfigRequest("Club", "D", PistaState.ACTIVA, PaymentGateway.CASH, null, null, null, 4, null, null);
         var response = configService.updateConfig(request);
 
         // Assert
@@ -125,7 +125,7 @@ class AdminConfigIntegrationTest {
                 .thenAnswer(inv -> inv.getArgument(0));
 
         // Act
-        var request = new UpdateSystemConfigRequest("Club", "D", PistaState.ACTIVA, PaymentGateway.REDSYS, "merchant-id", "merchant-key", null, 4);
+        var request = new UpdateSystemConfigRequest("Club", "D", PistaState.ACTIVA, PaymentGateway.REDSYS, "merchant-id", "merchant-key", null, 4, null, null);
         var response = configService.updateConfig(request);
 
         // Assert
@@ -141,7 +141,7 @@ class AdminConfigIntegrationTest {
     @DisplayName("3.4: admin_cannot_update_to_redsys_without_merchant_key")
     void admin_cannot_update_to_redsys_without_merchant_key() {
         // Act & Assert — validation happens before DB call
-        var request = new UpdateSystemConfigRequest("Club", "D", PistaState.ACTIVA, PaymentGateway.REDSYS, "id", null, null, 4);
+        var request = new UpdateSystemConfigRequest("Club", "D", PistaState.ACTIVA, PaymentGateway.REDSYS, "id", null, null, 4, null, null);
         assertThatThrownBy(() -> configService.updateConfig(request))
                 .isInstanceOf(ValidationException.class)
                 .hasMessageContaining("merchant_key");
@@ -168,7 +168,7 @@ class AdminConfigIntegrationTest {
                 .thenAnswer(inv -> inv.getArgument(0));
 
         // Act
-        var request = new UpdateSystemConfigRequest("Club", "D", PistaState.MANTENIMIENTO, PaymentGateway.CASH, null, null, null, 4);
+        var request = new UpdateSystemConfigRequest("Club", "D", PistaState.MANTENIMIENTO, PaymentGateway.CASH, null, null, null, 4, null, null);
         var response = configService.updateConfig(request);
 
         // Assert
@@ -232,7 +232,7 @@ class AdminConfigIntegrationTest {
         when(repositoryPort.save(org.mockito.ArgumentMatchers.any()))
                 .thenAnswer(inv -> inv.getArgument(0));
 
-        var request = new UpdateSystemConfigRequest("Club", "D", PistaState.ACTIVA, PaymentGateway.CASH, null, null, null, 4);
+        var request = new UpdateSystemConfigRequest("Club", "D", PistaState.ACTIVA, PaymentGateway.CASH, null, null, null, 4, null, null);
         var response = configService.updateConfig(request);
 
         assertThat(response).isNotNull();
