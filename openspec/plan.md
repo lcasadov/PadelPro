@@ -1,9 +1,9 @@
 # Plan de ejecución — PadelPro OpenSpec
 
 **Generado:** 2026-05-31  
-**Última actualización:** 2026-06-18  
+**Última actualización:** 2026-06-20  
 **Base:** dependencias declaradas en `openspec/specs/*/spec.md`  
-**Estado:** 6/14 capabilities implementadas
+**Estado:** 7/14 capabilities implementadas
 
 ---
 
@@ -19,7 +19,7 @@
 | `pistas` | ✅ Implementada | (incluida en `configuracion-club`) |
 | `disponibilidad-pistas` | ✅ Implementada | `archive/2026-06-18-disponibilidad-pistas` |
 | `auth-otp-telegram` | 📋 Pendiente | — |
-| `reservas` | 📋 Pendiente | — |
+| `reservas` | ✅ Implementada | `archive/2026-06-20-reservas` |
 | `pagos-redsys` | 📋 Pendiente | — |
 | `notificaciones` | 📋 Pendiente | — |
 | `partidas` | 📋 Pendiente | — |
@@ -32,10 +32,10 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  DONE — Wave 1 + Wave 2A ✅                                      │
+│  DONE — Wave 1 + Wave 2A + Wave 3 ✅                             │
 │  auth-local ✅   usuarios ✅   roles-permisos ✅                 │
 │  auditoria ✅    configuracion-club ✅   pistas ✅               │
-│  disponibilidad-pistas ✅                                        │
+│  disponibilidad-pistas ✅   reservas ✅                          │
 └──────────────────────────────────────┬──────────────────────────┘
                                        │
                ┌───────────────────────┤
@@ -52,12 +52,12 @@
                             │
                             ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  WAVE 3 — NÚCLEO (secuencial, mayor complejidad)                │
+│  WAVE 3 — NÚCLEO ✅                                              │
 │                                                                 │
-│  reservas                                                       │
+│  reservas ✅  (archive/2026-06-20-reservas)                     │
 │  (usuarios + configuracion-club + disponibilidad-pistas)        │
-│  → SELECT FOR UPDATE + EXCLUDE USING gist                       │
-│  → crea reservations + payments atómicamente                    │
+│  → EXCLUDE USING gist (anti-overlap) → 409 CONFLICT             │
+│  → crea reservations + payments atómicamente + idempotencia     │
 └──────────────────────────────────────┬──────────────────────────┘
                                        │
          ┌─────────────────────────────┼────────────────────┐
@@ -248,10 +248,13 @@ Wave 6  ────────└──── administracion-club  ← Fase 2
 
 ## Próximas acciones recomendadas
 
-> Wave 1 y Wave 2A están completas. D-CONF-01 y D-RES-01 ya resueltas e implementadas.
+> Wave 1, Wave 2A y Wave 3 (`reservas`) están completas (PR #162, `archive/2026-06-20-reservas`). Con `reservas` mergeada, toda la Wave 4 queda desbloqueada.
 
-1. **Resolver D-RES-02 y D-RES-03** — Antes de arrancar `reservas`: soportar `payment_gateway=CASH` como bypass para testing sin Redsys, y confirmación manual por ADMIN sin OTP Telegram. Aclarar vía `/opsx:explore reservas`.
+1. **Siguiente `/opsx:propose`** — Candidatos desbloqueados (Wave 4, dependen de `reservas`):
+   - **`pagos-redsys`** (4A) — pago online real; activa `payment_gateway=REDSYS` (hoy solo CASH). Alta complejidad de integración externa.
+   - **`notificaciones`** (4B) — requiere también `auth-otp-telegram`.
+   - **`partidas`** (4C) — baja complejidad, reutiliza entidades existentes; requiere `disponibilidad-pistas` (hecha).
 
-2. **Siguiente `/opsx:propose`** — Recomendado: **`reservas`** (Wave 3, núcleo del producto, 8 SP). Desbloqueada: solo requiere Wave 1 + Wave 2A, ambas hechas. Bloquea toda la Wave 4.
+2. **`auth-otp-telegram` (Wave 2B)** — sigue pendiente e independiente; necesario para confirmación/cancelación por bot y para `notificaciones`. Puede arrancarse en paralelo.
 
-3. **En paralelo / después** — `auth-otp-telegram` (Wave 2B) es independiente y puede arrancarse en paralelo; no bloquea crear/cancelar reservas vía web (confirmación manual del ADMIN cubre el MVP).
+3. **Deuda pendiente de `reservas`** (tickets aparte): TTL/purga de `idempotency_keys`; migrar los 8 IT de auth/usuarios de `@Testcontainers` a la base portable; reconciliar `openapi.yaml` (`code`/`errors` vs `error`/`details`); montar workflow de tests en CI.
