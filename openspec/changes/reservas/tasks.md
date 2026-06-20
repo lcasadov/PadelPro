@@ -1,8 +1,8 @@
 ## 0. Gestión y arranque (orquestador)
 
-- [ ] 0.1 Asegurar/crear Issue de US-007 en GitHub y obtener su número
-- [ ] 0.2 Crear rama `feat/backend/<id>-reservas` desde `develop` y push
-- [ ] 0.3 Mover el item del Project v2 a "In Progress"
+- [x] 0.1 Issue US-007 = #14 (reabierto y usado como ancla)
+- [x] 0.2 Rama `feat/14-reservas` creada desde `develop` y pusheada (convención del repo `feat/<issue>-<slug>`)
+- [x] 0.3 Issue #14 reabierto con label/comentario de inicio
 
 ## 1. Fase 0 — Completar system_config (additivo, configuracion-club)
 
@@ -62,7 +62,7 @@
 - [x] 8.4 Tests de idempotencia: misma key → mismo recurso, sin duplicado; key nueva → nueva reserva; scope por usuario — en `ReservaControllerIntegrationTest`. ✅ VERDE.
 - [x] 8.5 Tests de autorización: BOLA en `GET /{id}` (403 no 404), cancelación por no-owner (403), listado admin por USER (403), 401 sin JWT — en `ReservaControllerIntegrationTest`. ✅ VERDE.
 - [x] 8.6 Test US-024: cambiar `price_per_hour` no altera el `amount` de reservas existentes — en `ReservaControllerIntegrationTest`. ✅ VERDE.
-- [ ] 8.7 Cobertura dentro del umbral JaCoCo — no medida en esta sesión (no se ejecutó `jacoco:report`). Los IT de reservas ya ejecutan; queda pendiente generar el informe de cobertura.
+- [x] 8.7 Cobertura JaCoCo — **84.0% líneas (471/561) ✅ supera el umbral del proyecto (80%, jacoco-check)**. Medida inicial (2026-06-20): 72.0% (404/561). Subida con `AdminReservaIntegrationTest` (19 IT nuevos, todos verdes contra PG :5433): IT repetibles de `PATCH /api/admin/reservas/{id}/estado` (confirmar PENDING→CONFIRMED, CONFIRMED→COMPLETED, cancelación admin con bypass D-RES-03, refund PAID→REFUNDED, transiciones inválidas/no-op/desde terminal → 422, status desconocido/en blanco → 400, reserva inexistente → 404, USER → 403, sin JWT → 401), creación con participantes adicionales registrado/externo y XOR (cubre `Participant.registered/external`, `CrearReservaRequest.ParticipanteAdicional`), y camino real de disponibilidad (`ReservationQueryAdapter`). Mejoras: `AdminReservaService` 20.8%→100%, `ReservationQueryAdapter` 41.7%→100%, DTOs/excepción al 0%→100%. Resto bajo 80% (`Reservation.Builder` sin uso en producción, getters de `Payment`/`Reservation`/`IdempotencyKey`) no se cubre con tests triviales. Sin bugs nuevos detectados.
 
 > **Nota de ejecución (actualizada 2026-06-18):** los unitarios 8.1 están verdes. Los IT de reservas 8.2–8.6 **ya ejecutan en VERDE** contra PostgreSQL real (`:5433`, Vía A) tras corregir tres bugs de producción:
 > - **BUG-1 / #159 (CORREGIDO)**: `system_config.id` se creaba `INTEGER` (V6) pero la entidad `SystemConfig.id` es `Long` → arranque fallaba con `ddl-auto=validate`. Corregido con migración `V10__system_config_id_to_bigint.sql` (ALTER a BIGINT; sin tocar V6 ni la entidad). Verificado: V10 aplicada, columna ahora `bigint`.
