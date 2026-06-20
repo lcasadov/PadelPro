@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
   # PostgreSQL 15 — Base de datos
   db:
@@ -8,7 +6,9 @@ services:
     environment:
       POSTGRES_DB: padelpro
       POSTGRES_USER: padelpro
-      POSTGRES_PASSWORD: padelpro_dev
+      # En producción el password se inyecta desde el .env del EC2 (D4).
+      # Fallback solo para desarrollo local.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-padelpro_dev}
     ports:
       - "5432:5432"
     volumes:
@@ -32,7 +32,7 @@ services:
       # Database
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/padelpro
       SPRING_DATASOURCE_USERNAME: padelpro
-      SPRING_DATASOURCE_PASSWORD: padelpro_dev
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-padelpro_dev}
       SPRING_JPA_HIBERNATE_DDL_AUTO: validate
       SPRING_FLYWAY_ENABLED: 'true'
       SPRING_FLYWAY_LOCATIONS: classpath:db/migration
@@ -69,8 +69,9 @@ services:
       dockerfile: Dockerfile
     container_name: padelpro-frontend
     environment:
-      # Vite proxy config: /api → http://backend:8080/api
-      VITE_API_BASE_URL: http://backend:8080
+      # El bundle se sirve como build estático (D6). Las llamadas a /api se
+      # enrutan al backend vía el proxy de `vite preview` (ver vite.config.ts).
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://backend:8080}
       NODE_ENV: production
     ports:
       - "5173:5173"
@@ -85,8 +86,6 @@ services:
     networks:
       - padelpro-network
     restart: unless-stopped
-    volumes:
-      - ./frontend/src:/app/src
 
 networks:
   padelpro-network:
