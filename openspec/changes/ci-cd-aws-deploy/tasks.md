@@ -1,50 +1,56 @@
 ## 0. Gestión y arranque (orquestador)
 
-- [ ] 0.1 Crear/identificar Issue en GitHub y obtener su número
-- [ ] 0.2 Crear rama `feat/<id>-ci-cd-aws-deploy` desde `develop` y push
+- [x] 0.1 Crear/identificar Issue en GitHub y obtener su número (#163)
+- [x] 0.2 Crear rama `feat/163-ci-cd-aws-deploy` desde `develop` y push
 - [ ] 0.3 Mover el item del Project v2 a "In Progress"
 
 ## 1. Workflow de CI — build y test
 
-- [ ] 1.1 Crear `.github/workflows/ci.yml` con triggers `push` a `develop`, `pull_request` y `workflow_dispatch`
-- [ ] 1.2 Job `build-and-test` (ubuntu-latest): checkout
-- [ ] 1.3 Backend: `actions/setup-java@v4` JDK 17 (Temurin) + caché Maven; `mvn -f backend/pom.xml verify` (unit + IT con Testcontainers + gate JaCoCo)
-- [ ] 1.4 Frontend: `actions/setup-node@v4` Node 20 + caché npm; `npm ci` + `npm run lint` + `npm run test` + `npm run build` en `./frontend`
-- [ ] 1.5 (Opcional) Publicar informe de cobertura JaCoCo como artefacto del workflow
+- [x] 1.1 Crear `.github/workflows/ci.yml` con triggers `push` a `develop`, `pull_request` y `workflow_dispatch`
+- [x] 1.2 Job `build-and-test` (ubuntu-latest): checkout
+- [x] 1.3 Backend: `actions/setup-java@v4` JDK 17 (Temurin) + caché Maven; `mvn -f backend/pom.xml verify` (unit + IT con Testcontainers + gate JaCoCo)
+- [x] 1.4 Frontend: `actions/setup-node@v4` Node 20 + caché npm; `npm ci` + `npm run lint` + `npm run test` + `npm run build` en `./frontend`
+- [x] 1.5 (Opcional) Publicar informe de cobertura JaCoCo como artefacto del workflow
 
 ## 2. Workflow de CD — deploy a EC2
 
-- [ ] 2.1 Job `deploy`: `needs: build-and-test`, `if` rama de release (`develop`) y evento `push`
-- [ ] 2.2 Usar `appleboy/ssh-action` con secrets `EC2_HOST` / `EC2_USER` / `EC2_SSH_KEY`
-- [ ] 2.3 Script remoto: `cd <repo>` → `git pull origin develop` → `docker compose down` → `docker compose up -d --build`
-- [ ] 2.4 Verificar que `pull_request` NO dispara `deploy` (solo `build-and-test`)
+- [x] 2.1 Job `deploy`: `needs: build-and-test`, `if` rama de release (`develop`) y evento `push`
+- [x] 2.2 Usar `appleboy/ssh-action` con secrets `EC2_HOST` / `EC2_USER` / `EC2_SSH_KEY`
+- [x] 2.3 Script remoto: `cd <repo>` → `git pull origin develop` → `docker compose down` → `docker compose up -d --build`
+- [x] 2.4 Verificar que `pull_request` NO dispara `deploy` (solo `build-and-test`)
 
 ## 3. Infra deploy-ready (docker)
 
-- [ ] 3.1 Revisar `docker-compose.yml`: inyección de `.env`, `restart: unless-stopped`, healthchecks, volumen persistente del postgres
-- [ ] 3.2 Ajustar `frontend/Dockerfile` para servir el build estático en producción (en vez de `vite dev`), sin romper el compose de desarrollo
-- [ ] 3.3 Confirmar que el backend aplica Flyway al arrancar con `SPRING_PROFILES_ACTIVE=prod` y que `depends_on: db healthy` ordena el arranque
-- [ ] 3.4 Verificar que `.gitignore` cubre `.env` y que no hay secretos commiteados
+- [x] 3.1 Revisar `docker-compose.yml`: inyección de `.env`, `restart: unless-stopped`, healthchecks, volumen persistente del postgres
+- [x] 3.2 Ajustar `frontend/Dockerfile` para servir el build estático en producción (en vez de `vite dev`), sin romper el compose de desarrollo
+- [x] 3.3 Confirmar que el backend aplica Flyway al arrancar con `SPRING_PROFILES_ACTIVE=prod` y que `depends_on: db healthy` ordena el arranque
+- [x] 3.4 Verificar que `.gitignore` cubre `.env` y que no hay secretos commiteados
 
 ## 4. Provisión AWS (manual, documentada)
 
-- [ ] 4.1 Crear instancia EC2 + par de claves SSH + security group (puertos backend/frontend/SSH)
-- [ ] 4.2 Instalar Docker + Docker Compose en el EC2
-- [ ] 4.3 Clonar el repo en el EC2 y crear el `.env` con los secretos de la app (`JWT_SECRET`, `ENCRYPTION_KEY`, `POSTGRES_PASSWORD`, `SPRING_PROFILES_ACTIVE=prod`, `VITE_API_BASE_URL`)
-- [ ] 4.4 Alta de los GitHub repo secrets `EC2_HOST`, `EC2_USER`, `EC2_SSH_KEY`
+> Pendiente — manual. Sin credenciales AWS; documentado paso a paso en `docs/DEPLOYMENT-RUNBOOK.md` §2.
+
+- [ ] 4.1 Crear instancia EC2 + par de claves SSH + security group (puertos backend/frontend/SSH) — pendiente, manual (runbook §2.1–2.3)
+- [ ] 4.2 Instalar Docker + Docker Compose en el EC2 — pendiente, manual (runbook §2.4)
+- [ ] 4.3 Clonar el repo en el EC2 y crear el `.env` con los secretos de la app — pendiente, manual (runbook §2.5–2.6)
+- [ ] 4.4 Alta de los GitHub repo secrets `EC2_HOST`, `EC2_USER`, `EC2_SSH_KEY` — pendiente, manual (runbook §2.7)
 
 ## 5. Documentación
 
-- [ ] 5.1 Runbook de despliegue en `docs/` (provisión EC2, Docker, clonado, `.env`, secrets, primer deploy)
-- [ ] 5.2 Documentar backup del postgres (`pg_dump`) y nota de evolución a RDS
-- [ ] 5.3 Documentar rollback (checkout commit anterior + `docker compose up -d --build`)
+- [x] 5.1 Runbook de despliegue en `docs/` (provisión EC2, Docker, clonado, `.env`, secrets, primer deploy)
+- [x] 5.2 Documentar backup del postgres (`pg_dump`) y nota de evolución a RDS
+- [x] 5.3 Documentar rollback (checkout commit anterior + `docker compose up -d --build`)
 
 ## 6. Verificación
 
-- [ ] 6.1 Abrir un PR de prueba → confirmar que corre `build-and-test` y NO `deploy`
-- [ ] 6.2 Forzar un test rojo → confirmar que el pipeline falla y no despliega
-- [ ] 6.3 Merge a `develop` → confirmar build+test verde y deploy automático
-- [ ] 6.4 Comprobar en el EC2: contenedores arriba, healthchecks verdes, Flyway aplicado, app accesible (backend `/actuator/health`, frontend cargando)
+> Pendiente — manual. No se puede ejecutar el workflow real ni el EC2 desde aquí.
+> Validación local realizada: YAML del workflow OK (PyYAML), `docker compose config` OK.
+> Checklist de verificación en vivo en `docs/DEPLOYMENT-RUNBOOK.md` §5.
+
+- [ ] 6.1 Abrir un PR de prueba → confirmar que corre `build-and-test` y NO `deploy` — pendiente, manual
+- [ ] 6.2 Forzar un test rojo → confirmar que el pipeline falla y no despliega — pendiente, manual
+- [ ] 6.3 Merge a `develop` → confirmar build+test verde y deploy automático — pendiente, manual
+- [ ] 6.4 Comprobar en el EC2: contenedores arriba, healthchecks verdes, Flyway aplicado, app accesible — pendiente, manual (runbook §5)
 
 ## 7. Cierre
 
