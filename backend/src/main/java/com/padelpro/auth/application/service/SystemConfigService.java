@@ -41,6 +41,8 @@ public class SystemConfigService {
                 config.getPistaState(),
                 config.getPaymentGateway(),
                 config.getMaxParticipantsPerPista(),
+                config.getPricePerHour(),
+                config.getCancellationDeadlineHours(),
                 telegramConfigured,
                 redsysConfigured,
                 config.getUpdatedAt()
@@ -62,6 +64,14 @@ public class SystemConfigService {
         config.setPistaState(request.pistaState());
         config.setPaymentGateway(request.paymentGateway());
         config.setMaxParticipantsPerPista(request.maxParticipantsPerPista());
+        // reservas (US-007): pricing fields are optional on PATCH — when omitted (null), keep the
+        // current stored value instead of nulling a NOT NULL column.
+        if (request.pricePerHour() != null) {
+            config.setPricePerHour(request.pricePerHour());
+        }
+        if (request.cancellationDeadlineHours() != null) {
+            config.setCancellationDeadlineHours(request.cancellationDeadlineHours());
+        }
 
         if (request.telegramBotToken() != null && !request.telegramBotToken().isBlank()) {
             config.setTelegramBotToken(encryptionService.encrypt(request.telegramBotToken()));
@@ -86,6 +96,8 @@ public class SystemConfigService {
                 config.getPistaState(),
                 config.getPaymentGateway(),
                 config.getMaxParticipantsPerPista(),
+                config.getPricePerHour(),
+                config.getCancellationDeadlineHours(),
                 telegramConfigured,
                 redsysConfigured,
                 config.getUpdatedAt()
@@ -108,6 +120,16 @@ public class SystemConfigService {
 
         if (request.maxParticipantsPerPista() == null || request.maxParticipantsPerPista() <= 0) {
             throw new ValidationException("maxParticipantsPerPista must be greater than 0");
+        }
+
+        // reservas (US-007): pricing + cancellation policy are optional on PATCH, but when supplied
+        // must stay within the DB CHECK bounds (V8: price_per_hour > 0, deadline >= 0).
+        if (request.pricePerHour() != null
+                && request.pricePerHour().compareTo(java.math.BigDecimal.ZERO) <= 0) {
+            throw new ValidationException("pricePerHour must be greater than 0");
+        }
+        if (request.cancellationDeadlineHours() != null && request.cancellationDeadlineHours() < 0) {
+            throw new ValidationException("cancellationDeadlineHours must be zero or greater");
         }
     }
 }

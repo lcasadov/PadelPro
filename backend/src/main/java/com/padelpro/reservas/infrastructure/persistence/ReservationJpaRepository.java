@@ -29,4 +29,36 @@ public interface ReservationJpaRepository extends JpaRepository<Reservation, UUI
             """)
     List<Reservation> findActiveByDateWithParticipants(@Param("date") LocalDate date,
                                                         @Param("statuses") List<ReservationStatus> statuses);
+
+    /** Single reservation with its participants eagerly fetched (detail / cancel paths). */
+    @Query("""
+            SELECT r FROM Reservation r
+            LEFT JOIN FETCH r.participants
+            WHERE r.id = :id
+            """)
+    java.util.Optional<Reservation> findByIdWithParticipants(@Param("id") UUID id);
+
+    /**
+     * Reservations where the user is owner OR a registered participant (RN-AUTH-01), participants
+     * fetched to avoid N+1. Payments are batch-loaded separately by the query service.
+     */
+    @Query("""
+            SELECT DISTINCT r FROM Reservation r
+            LEFT JOIN FETCH r.participants
+            WHERE r.ownerId = :userId
+               OR EXISTS (
+                    SELECT 1 FROM Participant p
+                    WHERE p.reservation = r AND p.userId = :userId
+               )
+            ORDER BY r.reservationDate DESC, r.startTime DESC
+            """)
+    List<Reservation> findVisibleToUserWithParticipants(@Param("userId") Long userId);
+
+    /** All reservations with participants (ADMIN listing). */
+    @Query("""
+            SELECT DISTINCT r FROM Reservation r
+            LEFT JOIN FETCH r.participants
+            ORDER BY r.reservationDate DESC, r.startTime DESC
+            """)
+    List<Reservation> findAllWithParticipants();
 }

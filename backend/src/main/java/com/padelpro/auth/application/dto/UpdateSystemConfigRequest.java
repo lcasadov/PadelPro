@@ -3,6 +3,8 @@ package com.padelpro.auth.application.dto;
 import com.padelpro.auth.domain.model.SystemConfig.PaymentGateway;
 import com.padelpro.auth.domain.model.SystemConfig.PistaState;
 
+import java.math.BigDecimal;
+
 public record UpdateSystemConfigRequest(
         String clubName,
         String clubDescription,
@@ -11,6 +13,8 @@ public record UpdateSystemConfigRequest(
         String redsysMerchantId,
         String redsysMerchantKey,
         String telegramBotToken,
-        Integer maxParticipantsPerPista
+        Integer maxParticipantsPerPista,
+        BigDecimal pricePerHour,
+        Integer cancellationDeadlineHours
 ) {
 }

@@ -74,6 +74,8 @@ class AdminConfigE2ETest {
                 PistaState.ACTIVA,
                 PaymentGateway.CASH,
                 4,
+                new java.math.BigDecimal("15.00"),
+                2,
                 false,
                 false,
                 OffsetDateTime.now()
@@ -141,6 +143,8 @@ class AdminConfigE2ETest {
                 PistaState.ACTIVA,
                 PaymentGateway.CASH,
                 6,
+                new java.math.BigDecimal("15.00"),
+                2,
                 false,
                 false,
                 OffsetDateTime.now()
@@ -156,7 +160,9 @@ class AdminConfigE2ETest {
                 null,
                 null,
                 null,
-                6
+                6,
+                null,
+                null
         );
 
         // Act
@@ -189,7 +195,9 @@ class AdminConfigE2ETest {
                 null,
                 null,
                 null,
-                4
+                4,
+                null,
+                null
         );
 
         // Act
@@ -218,7 +226,9 @@ class AdminConfigE2ETest {
                 null,
                 null,
                 null,
-                4
+                4,
+                null,
+                null
         );
 
         // Act — sin @WithMockUser
@@ -251,7 +261,9 @@ class AdminConfigE2ETest {
                 "merchant-id",
                 null, // MISSING merchant_key
                 null,
-                4
+                4,
+                null,
+                null
         );
 
         // Act
@@ -279,6 +291,8 @@ class AdminConfigE2ETest {
                 PistaState.ACTIVA,
                 PaymentGateway.CASH,
                 4,
+                new java.math.BigDecimal("15.00"),
+                2,
                 true,
                 true,
                 OffsetDateTime.now()

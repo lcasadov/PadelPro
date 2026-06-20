@@ -1,6 +1,8 @@
 package com.padelpro.reservas.domain.model;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.OffsetDateTime;
 import java.util.Objects;
@@ -41,14 +43,59 @@ public class Participant {
     @Column(name = "is_owner", nullable = false)
     private boolean owner;
 
+    // joined_via is the native PostgreSQL reservation_channel enum; bind it as the named DB enum
+    // type so INSERT/UPDATE does not fail with a varchar→enum cast error (see Reservation.channel).
     @Enumerated(EnumType.STRING)
-    @Column(name = "joined_via", nullable = false)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(name = "joined_via", nullable = false, columnDefinition = "reservation_channel")
     private ReservationChannel joinedVia;
 
     @Column(name = "joined_at", nullable = false)
     private OffsetDateTime joinedAt;
 
     protected Participant() {
+    }
+
+    /**
+     * Owner participant: slot 1, {@code is_owner=true}, registered user (capability reservas, US-007).
+     */
+    public static Participant owner(Long userId, ReservationChannel joinedVia) {
+        Participant p = new Participant();
+        p.userId = userId;
+        p.slotPosition = 1;
+        p.owner = true;
+        p.joinedVia = joinedVia;
+        return p;
+    }
+
+    /**
+     * External (non-registered) guest at the given slot. The DB XOR constraint requires
+     * {@code external_name != null} and {@code user_id == null}.
+     */
+    public static Participant external(String externalName, String externalPhone,
+                                       int slotPosition, ReservationChannel joinedVia) {
+        Participant p = new Participant();
+        p.externalName = externalName;
+        p.externalPhone = externalPhone;
+        p.slotPosition = slotPosition;
+        p.owner = false;
+        p.joinedVia = joinedVia;
+        return p;
+    }
+
+    /** Registered additional participant (not the owner) at the given slot. */
+    public static Participant registered(Long userId, int slotPosition, ReservationChannel joinedVia) {
+        Participant p = new Participant();
+        p.userId = userId;
+        p.slotPosition = slotPosition;
+        p.owner = false;
+        p.joinedVia = joinedVia;
+        return p;
+    }
+
+    /** Package-internal wiring used by {@link Reservation#addParticipant(Participant)}. */
+    void attachTo(Reservation reservation) {
+        this.reservation = reservation;
     }
 
     @PrePersist

@@ -41,6 +41,9 @@ node_modules/
 dist/
 build/
 out/
+# Do not ignore hexagonal outbound-port packages (Java source), only build "out/" dirs.
+!**/domain/port/out/
+!**/domain/port/out/**
 .next/
 .nuxt/
 .svelte-kit/

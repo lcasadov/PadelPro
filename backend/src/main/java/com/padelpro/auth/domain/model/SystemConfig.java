@@ -3,7 +3,9 @@ package com.padelpro.auth.domain.model;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.Objects;
 
@@ -43,6 +45,14 @@ public class SystemConfig {
     @Positive(message = "maxParticipantsPerPista must be greater than 0")
     private Integer maxParticipantsPerPista;
 
+    @Column(name = "price_per_hour", nullable = false)
+    @Positive(message = "pricePerHour must be greater than 0")
+    private BigDecimal pricePerHour;
+
+    @Column(name = "cancellation_deadline_hours", nullable = false)
+    @PositiveOrZero(message = "cancellationDeadlineHours must be zero or greater")
+    private Integer cancellationDeadlineHours;
+
     @Column(nullable = false, updatable = false)
     private OffsetDateTime createdAt;
 
@@ -57,7 +67,8 @@ public class SystemConfig {
 
     public SystemConfig(Long id, String clubName, String clubDescription, PistaState pistaState,
                         PaymentGateway paymentGateway, String telegramBotToken, String redsysMerchantId,
-                        String redsysMerchantKey, Integer maxParticipantsPerPista, OffsetDateTime createdAt,
+                        String redsysMerchantKey, Integer maxParticipantsPerPista, BigDecimal pricePerHour,
+                        Integer cancellationDeadlineHours, OffsetDateTime createdAt,
                         OffsetDateTime updatedAt, Long updatedByUserId) {
         this.id = id;
         this.clubName = clubName;
@@ -68,6 +79,8 @@ public class SystemConfig {
         this.redsysMerchantId = redsysMerchantId;
         this.redsysMerchantKey = redsysMerchantKey;
         this.maxParticipantsPerPista = maxParticipantsPerPista;
+        this.pricePerHour = pricePerHour;
+        this.cancellationDeadlineHours = cancellationDeadlineHours;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
         this.updatedByUserId = updatedByUserId;
@@ -164,6 +177,22 @@ public class SystemConfig {
         this.maxParticipantsPerPista = maxParticipantsPerPista;
     }
 
+    public BigDecimal getPricePerHour() {
+        return pricePerHour;
+    }
+
+    public void setPricePerHour(BigDecimal pricePerHour) {
+        this.pricePerHour = pricePerHour;
+    }
+
+    public Integer getCancellationDeadlineHours() {
+        return cancellationDeadlineHours;
+    }
+
+    public void setCancellationDeadlineHours(Integer cancellationDeadlineHours) {
+        this.cancellationDeadlineHours = cancellationDeadlineHours;
+    }
+
     public OffsetDateTime getCreatedAt() {
         return createdAt;
     }
@@ -222,6 +251,8 @@ public class SystemConfig {
         private String redsysMerchantId;
         private String redsysMerchantKey;
         private Integer maxParticipantsPerPista;
+        private BigDecimal pricePerHour;
+        private Integer cancellationDeadlineHours;
         private OffsetDateTime createdAt;
         private OffsetDateTime updatedAt;
         private Long updatedByUserId;
@@ -271,6 +302,16 @@ public class SystemConfig {
             return this;
         }
 
+        public SystemConfigBuilder pricePerHour(BigDecimal pricePerHour) {
+            this.pricePerHour = pricePerHour;
+            return this;
+        }
+
+        public SystemConfigBuilder cancellationDeadlineHours(Integer cancellationDeadlineHours) {
+            this.cancellationDeadlineHours = cancellationDeadlineHours;
+            return this;
+        }
+
         public SystemConfigBuilder createdAt(OffsetDateTime createdAt) {
             this.createdAt = createdAt;
             return this;
@@ -289,7 +330,7 @@ public class SystemConfig {
         public SystemConfig build() {
             return new SystemConfig(id, clubName, clubDescription, pistaState, paymentGateway,
                     telegramBotToken, redsysMerchantId, redsysMerchantKey, maxParticipantsPerPista,
-                    createdAt, updatedAt, updatedByUserId);
+                    pricePerHour, cancellationDeadlineHours, createdAt, updatedAt, updatedByUserId);
         }
     }
 }
