@@ -114,10 +114,17 @@ Fase 1
 - **AND** `system_config.price_per_hour = 12.50` en base de datos
 - **AND** el precio nuevo se aplica a todas las reservas futuras (no retroactivamente a reservas existentes)
 
+#### Scenario: ADMIN actualiza el plazo de cancelación
+
+- **GIVEN** un administrador autenticado
+- **WHEN** se envía `PATCH /api/admin/sistema/config` con body `{ "cancellationDeadlineHours": 24 }`
+- **THEN** el sistema responde con código `200`
+- **AND** `system_config.cancellation_deadline_hours = 24` en base de datos
+
 #### Scenario: Valores inválidos son rechazados
 
 - **GIVEN** un administrador autenticado
-- **WHEN** se envía `PATCH /api/admin/sistema/config` con `maxParticipants = 0` o `maxParticipants` negativo
+- **WHEN** se envía `PATCH /api/admin/sistema/config` con `maxParticipants = 0` (o negativo), `pricePerHour <= 0`, o `cancellationDeadlineHours` negativo
 - **THEN** el sistema responde con código `400`
 - **AND** el cuerpo sigue el esquema `ErrorResponse` indicando qué campo es inválido
 

@@ -155,6 +155,44 @@ Gestión del ciclo de vida completo de una reserva de pista: creación, consulta
 - **THEN** el sistema responde 201 creando una nueva reserva
 - **AND** la `Idempotency-Key: xyz-999` queda registrada asociada a esa reserva
 
+### Requirement 6: Confirmación y gestión administrativa de reservas
+
+**El sistema DEBE permitir al ADMIN listar todas las reservas y cambiar su estado, aplicando la máquina de estados unidireccional `PENDING_CONFIRMATION → CONFIRMED → COMPLETED` con `→ CANCELLED` desde los dos primeros (D-RES-03, RN-AUTH-01).**
+
+#### Scenario: ADMIN confirma una reserva pendiente (camino CASH/MVP)
+- **GIVEN** un usuario con rol ADMIN autenticado
+- **WHEN** envía `PATCH /api/admin/reservas/{id}/estado` con `status: "CONFIRMED"` sobre una reserva `PENDING_CONFIRMATION`
+- **THEN** el sistema responde 200 con la reserva en `CONFIRMED`
+
+#### Scenario: ADMIN lista todas las reservas
+- **GIVEN** un usuario con rol ADMIN autenticado
+- **WHEN** envía `GET /api/admin/reservas`
+- **THEN** el sistema responde 200 con todas las reservas del club
+
+#### Scenario: USER no autorizado al listado admin
+- **WHEN** un usuario con rol USER envía `GET /api/admin/reservas`
+- **THEN** el sistema responde 403
+
+#### Scenario: Transición de estado inválida
+- **WHEN** un ADMIN intenta una transición no permitida (ej. `COMPLETED → CONFIRMED`)
+- **THEN** el sistema responde 422 (las transiciones son unidireccionales)
+
+### Requirement 7: Consulta de reservas propias con control de acceso
+
+**El sistema DEBE permitir a cada USER ver únicamente las reservas de las que es owner o participante, y DEBE responder 403 (nunca 404) al detalle de una reserva ajena para no revelar su existencia (RN-AUTH-01, prevención BOLA).**
+
+#### Scenario: USER lista sus reservas
+- **WHEN** un USER envía `GET /api/reservas`
+- **THEN** el sistema responde 200 solo con reservas donde es owner o participante
+
+#### Scenario: USER accede al detalle de una reserva ajena
+- **WHEN** un USER que no es owner ni participante envía `GET /api/reservas/{id}`
+- **THEN** el sistema responde 403 (no 404)
+
+#### Scenario: Petición sin autenticación
+- **WHEN** se envía cualquier operación de reservas sin JWT válido
+- **THEN** el sistema responde 401
+
 ## Casos límite
 - Reserva con `durationMinutes` no incluido en `[60, 90, 120, 150, 180]`: el sistema responde 400.
 - Reserva con `startTime` que no es en punto ni en media hora (ej. `09:15`): el sistema responde 400.
