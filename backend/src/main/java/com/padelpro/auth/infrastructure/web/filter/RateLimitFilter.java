@@ -57,7 +57,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
                                     FilterChain filterChain)
             throws ServletException, IOException {
 
-        String path = request.getServletPath();
+        String path = resolvePath(request);
         String method = request.getMethod();
 
         if (!"POST".equalsIgnoreCase(method)) {
@@ -111,6 +111,24 @@ public class RateLimitFilter extends OncePerRequestFilter {
                 .refillGreedy(capacity, REFILL_PERIOD)
                 .build();
         return Bucket.builder().addLimit(limit).build();
+    }
+
+    /**
+     * Resolves the application-relative request path in a way that is robust across both real
+     * servlet containers and Spring MockMvc.
+     *
+     * <p>{@code getServletPath()} returns the empty string under MockMvc (the path lands in the
+     * request URI instead), which silently disabled rate limiting in MockMvc-based tests. Using
+     * {@code getRequestURI()} minus the context path works identically in both environments and
+     * also survives a non-root deployment context path.
+     */
+    private String resolvePath(HttpServletRequest request) {
+        String uri = request.getRequestURI();
+        String contextPath = request.getContextPath();
+        if (contextPath != null && !contextPath.isEmpty() && uri.startsWith(contextPath)) {
+            uri = uri.substring(contextPath.length());
+        }
+        return uri;
     }
 
     private String extractClientIp(HttpServletRequest request) {
