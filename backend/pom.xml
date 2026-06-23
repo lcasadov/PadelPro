@@ -135,6 +135,15 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- Apache HttpClient 5 — gives TestRestTemplate a request factory that supports the HTTP
+             PATCH method (the default SimpleClientHttpRequestFactory does not). Needed by E2E tests
+             that exercise PATCH /api/usuarios/me. Version managed by the Spring Boot BOM. -->
+        <dependency>
+            <groupId>org.apache.httpcomponents.client5</groupId>
+            <artifactId>httpclient5</artifactId>
+            <scope>test</scope>
+        </dependency>
+
         <!-- H2 Database — in-memory database for tests -->
         <dependency>
             <groupId>com.h2database</groupId>

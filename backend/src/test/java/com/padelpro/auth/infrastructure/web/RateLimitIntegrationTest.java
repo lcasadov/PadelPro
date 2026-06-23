@@ -1,25 +1,16 @@
 package com.padelpro.auth.infrastructure.web;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.BeforeEach;
+import com.padelpro.shared.PostgresIntegrationTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.util.Map;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.notNullValue;
@@ -29,32 +20,19 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * T-025 — Integration tests for rate limiting on auth endpoints.
  *
- * <p>TDD RED phase: tests should FAIL because the rate-limiting filter/interceptor
- * is not yet implemented (Wave 3). Requests will return 500 (stub) rather than
- * the expected 429.
+ * <p>Extends {@link PostgresIntegrationTest} so it runs both locally (Vía A external Postgres on
+ * :5433) and in CI (Testcontainers), replacing the previous direct {@code @Testcontainers} setup.
+ *
+ * <p>The {@link com.padelpro.auth.infrastructure.web.filter.RateLimitFilter} keys its buckets by
+ * client IP. Under MockMvc every request reports the same remote address, and the bucket store is a
+ * singleton shared across the cached Spring context — so buckets would leak between test methods.
+ * To keep each scenario independent, every method uses a distinct {@code X-Forwarded-For} IP (the
+ * filter honours that header), giving it a fresh bucket regardless of execution order.
  *
  * <p>Scenarios covered: R-4.2 (login rate limit) and R-4.3 (register rate limit).
  * Thresholds: 5 login attempts / min per IP, 3 register attempts / min per IP.
  */
-@SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
-@AutoConfigureMockMvc
-@Testcontainers
-@ActiveProfiles("it")
-class RateLimitIntegrationTest {
-
-    @Container
-    static final PostgreSQLContainer<?> postgres =
-            new PostgreSQLContainer<>("postgres:15-alpine")
-                    .withDatabaseName("padelpro_test")
-                    .withUsername("padelpro_test")
-                    .withPassword("padelpro_test");
-
-    @DynamicPropertySource
-    static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", postgres::getJdbcUrl);
-        registry.add("spring.datasource.username", postgres::getUsername);
-        registry.add("spring.datasource.password", postgres::getPassword);
-    }
+class RateLimitIntegrationTest extends PostgresIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
@@ -62,10 +40,13 @@ class RateLimitIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @BeforeEach
-    @Sql("/sql/cleanup.sql")
-    void cleanUp() {
-        // @Sql handles cleanup; method body intentionally empty
+    /** A unique client IP per test method so each gets its own rate-limit bucket. */
+    private String clientIp;
+
+    @org.junit.jupiter.api.BeforeEach
+    void assignUniqueClientIp() {
+        clientIp = "10." + (int) (Math.random() * 254 + 1) + "."
+                + (int) (Math.random() * 254 + 1) + "." + (int) (Math.random() * 254 + 1);
     }
 
     // -------------------------------------------------------------------------
@@ -87,14 +68,17 @@ class RateLimitIntegrationTest {
 
     private ResultActions performLogin(String email) throws Exception {
         return mockMvc.perform(post("/api/auth/login")
+                .header("X-Forwarded-For", clientIp)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(loginJson(email, "WrongPassword1")));
     }
 
     private ResultActions performRegister(String emailSuffix) throws Exception {
+        // Unique email per run so a re-run against a non-cleaned DB never hits 409 before 429.
         return mockMvc.perform(post("/api/auth/register")
+                .header("X-Forwarded-For", clientIp)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(registerJson("rate" + emailSuffix + "@example.com")));
+                .content(registerJson("rate-" + UUID.randomUUID() + "-" + emailSuffix + "@example.com")));
     }
 
     // =========================================================================
@@ -140,6 +124,7 @@ class RateLimitIntegrationTest {
 
         // The 6th request must carry Retry-After
         mockMvc.perform(post("/api/auth/login")
+                        .header("X-Forwarded-For", clientIp)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(loginJson("retryafter@example.com", "WrongPassword1")))
                 .andExpect(status().isTooManyRequests())

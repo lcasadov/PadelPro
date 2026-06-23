@@ -6,11 +6,11 @@ import com.padelpro.auth.domain.model.UserRole;
 import com.padelpro.auth.domain.model.UserStatus;
 import com.padelpro.auth.infrastructure.persistence.AuditLogRepository;
 import com.padelpro.auth.infrastructure.persistence.UserRepository;
+import com.padelpro.shared.PostgresIntegrationTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -18,14 +18,8 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.context.jdbc.Sql;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.OffsetDateTime;
 import java.util.Map;
@@ -33,33 +27,22 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * TDD RED — E2E tests for security (TestRestTemplate, full HTTP stack).
- * These tests FAIL until the production components are implemented (GREEN phase).
+ * E2E tests for security across the full HTTP stack (TestRestTemplate + real Tomcat).
+ *
+ * <p>Extends {@link PostgresIntegrationTest} so it runs both locally (Vía A external Postgres on
+ * :5433) and in CI (Testcontainers), replacing the previous direct {@code @Testcontainers} setup.
+ *
+ * <p>The autowired {@link TestRestTemplate} is reconfigured with an Apache HttpClient 5 request
+ * factory in {@link #setUp()} because the default {@code SimpleClientHttpRequestFactory} (JDK
+ * {@code HttpURLConnection}) rejects the HTTP {@code PATCH} method ("Invalid HTTP method: PATCH"),
+ * which the role-escalation test below requires.
  *
  * Tests cover:
  *  - Full cycle: user deactivated mid-session → JWT still valid → 403 with JSON
  *  - Role escalation via PATCH /api/usuarios/me is silently ignored
  *  - Audit log accumulates denied accesses
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Testcontainers
-@ActiveProfiles("it")
-@Sql(scripts = "/sql/cleanup.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
-class SecurityE2ETest {
-
-    @Container
-    static final PostgreSQLContainer<?> postgres =
-            new PostgreSQLContainer<>("postgres:15-alpine")
-                    .withDatabaseName("padelpro_test")
-                    .withUsername("padelpro_test")
-                    .withPassword("padelpro_test");
-
-    @DynamicPropertySource
-    static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", postgres::getJdbcUrl);
-        registry.add("spring.datasource.username", postgres::getUsername);
-        registry.add("spring.datasource.password", postgres::getPassword);
-    }
+class SecurityE2ETest extends PostgresIntegrationTest {
 
     @Autowired private TestRestTemplate restTemplate;
     @Autowired private UserRepository userRepository;
@@ -74,6 +57,10 @@ class SecurityE2ETest {
 
     @BeforeEach
     void setUp() {
+        // Default request factory (HttpURLConnection) cannot send PATCH — swap in HttpClient 5.
+        restTemplate.getRestTemplate()
+                .setRequestFactory(new HttpComponentsClientHttpRequestFactory());
+
         OffsetDateTime now = OffsetDateTime.now();
 
         activeUser = userRepository.saveAndFlush(new User(
