@@ -43,16 +43,16 @@
 
 ## 6. Verificación
 
-> Pendiente — manual. No se puede ejecutar el workflow real ni el EC2 desde aquí.
-> Validación local realizada: YAML del workflow OK (PyYAML), `docker compose config` OK.
-> Checklist de verificación en vivo en `docs/DEPLOYMENT-RUNBOOK.md` §5.
+> Validación REAL en GitHub Actions sobre la PR #164 (runs 27877583908 y 28017208805).
+> El primer run destapó 6 IT preexistentes rotos (auth/usuarios) + 1 bug real de producción
+> (`RateLimitFilter` usaba `getServletPath()`); corregidos. Segundo run: build+test VERDE (2m27s).
 
-- [ ] 6.1 Abrir un PR de prueba → confirmar que corre `build-and-test` y NO `deploy` — pendiente, manual
-- [ ] 6.2 Forzar un test rojo → confirmar que el pipeline falla y no despliega — pendiente, manual
-- [ ] 6.3 Merge a `develop` → confirmar build+test verde y deploy automático — pendiente, manual
+- [x] 6.1 PR #164 → corre `build-and-test` y el job `deploy` aparece como `skipping` (no se ejecuta en PR)
+- [x] 6.2 Tests rojos (primer run) → pipeline en rojo y `deploy` saltado. Confirmado.
+- [ ] 6.3 Merge a `develop` → deploy automático — pendiente, manual (requiere EC2 + secrets)
 - [ ] 6.4 Comprobar en el EC2: contenedores arriba, healthchecks verdes, Flyway aplicado, app accesible — pendiente, manual (runbook §5)
 
 ## 7. Cierre
 
-- [ ] 7.1 PR con `Closes #<id>` y CI en verde sobre sí mismo
-- [ ] 7.2 Merge y verificación del primer despliegue real
+- [x] 7.1 PR #164 con `Closes #163`; CI (`build-and-test`) en VERDE sobre sí mismo
+- [ ] 7.2 Merge y verificación del primer despliegue real — pendiente, manual (tras provisión AWS)
