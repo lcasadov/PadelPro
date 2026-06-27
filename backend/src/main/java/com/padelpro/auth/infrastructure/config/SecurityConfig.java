@@ -4,6 +4,7 @@ import com.padelpro.auth.infrastructure.config.security.CustomAccessDeniedHandle
 import com.padelpro.auth.infrastructure.config.security.CustomAuthenticationEntryPoint;
 import com.padelpro.auth.infrastructure.web.filter.JwtAuthFilter;
 import com.padelpro.auth.infrastructure.web.filter.UserStatusFilter;
+import org.springframework.boot.actuate.autoconfigure.security.servlet.EndpointRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -12,7 +13,6 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 /**
  * Spring Security configuration for the auth module.
@@ -44,7 +44,7 @@ public class SecurityConfig {
                 .sessionManagement(sm ->
                         sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(new AntPathRequestMatcher("/actuator/**")).permitAll()
+                        .requestMatchers(EndpointRequest.to("health", "info")).permitAll()
                         .requestMatchers("/api/bot/telegram", "/api/pagos/webhook").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
