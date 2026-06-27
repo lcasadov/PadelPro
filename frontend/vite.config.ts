@@ -13,4 +13,19 @@ export default defineConfig({
       },
     },
   },
+  // `vite preview` sirve el build estático en producción (D6). Tiene su propia
+  // config de proxy/host independiente del dev server.
+  preview: {
+    port: 5173,
+    host: true,
+    // Permite acceso por IP pública o DNS del EC2 (D5: exposición IP:puerto directa).
+    allowedHosts: true,
+    proxy: {
+      '/api': {
+        // En el contenedor de producción el backend es accesible vía la red del compose.
+        target: 'http://backend:8080',
+        changeOrigin: true,
+      },
+    },
+  },
 });

@@ -1,44 +1,40 @@
-# Multi-stage build: build + serve
+# Multi-stage build: compila el bundle y sirve el BUILD ESTÁTICO (producción).
+# D6 (design.md): en producción NO se usa `vite dev`. Se sirve el contenido de
+# `dist/` con `vite preview` (sin dependencias nuevas; `vite` ya está en devDeps).
+# Para desarrollo con HMR, los desarrolladores usan `npm run dev` en local.
+
 FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
+# Instalar dependencias (capa cacheable)
 COPY package*.json ./
-
-# Install dependencies
 RUN npm ci --quiet
 
-# Copy source
+# Copiar fuentes y construir el bundle estático
 COPY . .
-
-# Build
 RUN npm run build
 
-# Runtime stage
+# ---------- Runtime: sirve el build estático ----------
 FROM node:20-alpine
 
 WORKDIR /app
 
-# Create non-root user
+# Crear usuario no-root
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
-# Install serve to run the app in dev mode (with HMR support via proxy)
-RUN npm install -g vite
+# Solo lo necesario para servir el bundle: dist/, vite y su config
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/vite.config.ts ./vite.config.ts
 
-# Copy everything (for Vite dev server with hot reload)
-COPY . .
-
-# Install dependencies again for runtime
-RUN npm ci --quiet
-
-# Set ownership to non-root user
 RUN chown -R appuser:appgroup /app
 
 EXPOSE 5173
 
-# Run as non-root user
 USER appuser
 
-# Run Vite dev server (permite hot reload)
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+# `vite preview` sirve el contenido estático de dist/ (no es el dev server).
+# Se fuerza host 0.0.0.0 y puerto 5173 para mantener paridad con el compose.
+CMD ["npx", "vite", "preview", "--host", "0.0.0.0", "--port", "5173"]

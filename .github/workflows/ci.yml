@@ -1,0 +1,78 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [develop]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    name: Build y Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      # ---------- Backend: Spring Boot / JDK 17 / Maven ----------
+      - name: Configurar JDK 17 (Temurin) + caché Maven
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Backend — build + tests (unit + IT Testcontainers + gate JaCoCo)
+        run: mvn -B -f backend/pom.xml verify
+
+      - name: Publicar informe de cobertura JaCoCo
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-report
+          path: backend/target/site/jacoco/
+          if-no-files-found: ignore
+
+      # ---------- Frontend: React + Vite / Node 20 ----------
+      - name: Configurar Node 20 + caché npm
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Frontend — instalar dependencias
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Frontend — lint
+        working-directory: ./frontend
+        run: npm run lint
+
+      - name: Frontend — tests (vitest)
+        working-directory: ./frontend
+        run: npm run test
+
+      - name: Frontend — build
+        working-directory: ./frontend
+        run: npm run build
+
+  deploy:
+    name: Desplegar en EC2
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    # Solo despliega en push a develop. Los pull_request NUNCA despliegan.
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    steps:
+      - name: Conectar por SSH y desplegar
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+            cd ~/PadelPro
+            git pull origin develop
+            docker compose down
+            docker compose up -d --build

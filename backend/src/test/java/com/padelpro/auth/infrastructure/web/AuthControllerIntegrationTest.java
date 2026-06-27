@@ -1,22 +1,16 @@
 package com.padelpro.auth.infrastructure.web;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.padelpro.shared.PostgresIntegrationTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.context.jdbc.Sql;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 import java.util.Map;
 
@@ -25,33 +19,16 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
- * T-024 — Integration tests for AuthController using a real PostgreSQL container.
+ * T-024 — Integration tests for AuthController against a real PostgreSQL 15.
  *
- * <p>TDD RED phase: all tests should FAIL with HTTP 500 (UnsupportedOperationException
- * propagated from the stub handlers) until Wave 3 implements the actual logic.
+ * <p>Extends {@link PostgresIntegrationTest} so it runs both locally (Vía A external
+ * Postgres on :5433) and in CI (Testcontainers). Replaces the previous direct
+ * {@code @Testcontainers} setup, which could not run on hosts where the Docker Desktop
+ * named pipe breaks the docker-java client.
  *
  * <p>Scenarios covered: R-1.1 to R-1.4 (register) and R-2.1 to R-2.4 (login).
- * Uses @Testcontainers + PostgreSQL 15 (real DB, not H2).
  */
-@SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
-@AutoConfigureMockMvc
-@Testcontainers
-@ActiveProfiles("it")
-class AuthControllerIntegrationTest {
-
-    @Container
-    static final PostgreSQLContainer<?> postgres =
-            new PostgreSQLContainer<>("postgres:15-alpine")
-                    .withDatabaseName("padelpro_test")
-                    .withUsername("padelpro_test")
-                    .withPassword("padelpro_test");
-
-    @DynamicPropertySource
-    static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", postgres::getJdbcUrl);
-        registry.add("spring.datasource.username", postgres::getUsername);
-        registry.add("spring.datasource.password", postgres::getPassword);
-    }
+class AuthControllerIntegrationTest extends PostgresIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
@@ -59,10 +36,22 @@ class AuthControllerIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    /**
+     * A unique client IP per test method. The RateLimitFilter keys its (singleton, context-cached)
+     * buckets by client IP, so without a fresh IP per method the 5 login / 3 register per-minute
+     * limits would leak between methods (and across IT classes sharing the Spring context),
+     * making register/login return 429 instead of the asserted status. Each method here makes few
+     * enough auth calls to stay under the limit on its own IP.
+     */
+    private String clientIp;
+
     @BeforeEach
-    @Sql("/sql/cleanup.sql")
-    void cleanUp() {
-        // @Sql annotation handles the cleanup; method body intentionally empty
+    void assignUniqueClientIp() {
+        clientIp = "10." + (int) (Math.random() * 254 + 1) + "."
+                + (int) (Math.random() * 254 + 1) + "." + (int) (Math.random() * 254 + 1);
     }
 
     // -------------------------------------------------------------------------
@@ -71,6 +60,14 @@ class AuthControllerIntegrationTest {
 
     private String json(Object obj) throws Exception {
         return objectMapper.writeValueAsString(obj);
+    }
+
+    /** POST builder for an auth endpoint, tagged with this test's unique client IP. */
+    private MockHttpServletRequestBuilder authPost(String path, String body) {
+        return post(path)
+                .header("X-Forwarded-For", clientIp)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body);
     }
 
     private Map<String, String> registerBody(String firstName, String lastName,
@@ -94,9 +91,7 @@ class AuthControllerIntegrationTest {
     @Test
     @DisplayName("R-1.1: register should return 201 with user id, email and role when valid")
     void register_should_return_201_with_user_id_email_and_role_when_valid() throws Exception {
-        mockMvc.perform(post("/api/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(registerBody("Alice", "Smith", "alice@example.com", "Password1"))))
+        mockMvc.perform(authPost("/api/auth/register", json(registerBody("Alice", "Smith", "alice@example.com", "Password1"))))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").isNumber())
                 .andExpect(jsonPath("$.email").value("alice@example.com"))
@@ -107,15 +102,11 @@ class AuthControllerIntegrationTest {
     @DisplayName("R-1.2: register should return 409 when email already exists")
     void register_should_return_409_when_email_already_exists() throws Exception {
         // First registration succeeds
-        mockMvc.perform(post("/api/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(registerBody("Alice", "Smith", "dup@example.com", "Password1"))))
+        mockMvc.perform(authPost("/api/auth/register", json(registerBody("Alice", "Smith", "dup@example.com", "Password1"))))
                 .andExpect(status().isCreated());
 
         // Second registration with same email → 409
-        mockMvc.perform(post("/api/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(registerBody("Alice2", "Smith", "dup@example.com", "Password1"))))
+        mockMvc.perform(authPost("/api/auth/register", json(registerBody("Alice2", "Smith", "dup@example.com", "Password1"))))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error").value("EMAIL_ALREADY_REGISTERED"));
     }
@@ -123,9 +114,7 @@ class AuthControllerIntegrationTest {
     @Test
     @DisplayName("R-1.3a: register should return 400 when password is too short")
     void register_should_return_400_when_password_is_too_short() throws Exception {
-        mockMvc.perform(post("/api/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(registerBody("Bob", "Jones", "bob@example.com", "Pass1"))))
+        mockMvc.perform(authPost("/api/auth/register", json(registerBody("Bob", "Jones", "bob@example.com", "Pass1"))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("INVALID_PASSWORD"))
                 .andExpect(jsonPath("$.details", hasItem("MIN_LENGTH_8")));
@@ -134,9 +123,7 @@ class AuthControllerIntegrationTest {
     @Test
     @DisplayName("R-1.3b: register should return 400 when password has no uppercase")
     void register_should_return_400_when_password_has_no_uppercase() throws Exception {
-        mockMvc.perform(post("/api/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(registerBody("Carol", "White", "carol@example.com", "password1"))))
+        mockMvc.perform(authPost("/api/auth/register", json(registerBody("Carol", "White", "carol@example.com", "password1"))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("INVALID_PASSWORD"))
                 .andExpect(jsonPath("$.details", hasItem("REQUIRES_UPPERCASE")));
@@ -145,9 +132,7 @@ class AuthControllerIntegrationTest {
     @Test
     @DisplayName("R-1.3c: register should return 400 when password has no number")
     void register_should_return_400_when_password_has_no_number() throws Exception {
-        mockMvc.perform(post("/api/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(registerBody("Dave", "Brown", "dave@example.com", "PasswordNoDigit"))))
+        mockMvc.perform(authPost("/api/auth/register", json(registerBody("Dave", "Brown", "dave@example.com", "PasswordNoDigit"))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("INVALID_PASSWORD"))
                 .andExpect(jsonPath("$.details", hasItem("REQUIRES_NUMBER")));
@@ -159,9 +144,7 @@ class AuthControllerIntegrationTest {
         // firstName is absent
         String bodyMissingFirstName = "{\"lastName\":\"Smith\",\"email\":\"frank@example.com\",\"password\":\"Password1\"}";
 
-        mockMvc.perform(post("/api/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(bodyMissingFirstName))
+        mockMvc.perform(authPost("/api/auth/register", bodyMissingFirstName))
                 .andExpect(status().isBadRequest());
     }
 
@@ -170,23 +153,22 @@ class AuthControllerIntegrationTest {
     // =========================================================================
 
     /**
-     * Registers and activates a user, then returns its email.
-     * The activation step is done directly via SQL because the RegistrationService
-     * creates users as PENDING and Wave 3 will add the activation logic.
-     * For the login integration tests we need an ACTIVE user in the DB.
+     * Registers a user (created PENDING by RegistrationService) and then flips its status to
+     * ACTIVE directly via JDBC. Login requires an ACTIVE account (RN-AUTH-08 → 403
+     * {@code ACCOUNT_NOT_ACTIVE} otherwise), and the self-service activation flow is not part
+     * of this suite, so we activate the row out-of-band to set up the login scenarios.
      */
     private void registerAndActivateUser(String email, String password) throws Exception {
         // Register — creates PENDING user
-        mockMvc.perform(post("/api/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(registerBody("Test", "User", email, password))))
+        mockMvc.perform(authPost("/api/auth/register", json(registerBody("Test", "User", email, password))))
                 .andExpect(status().isCreated());
 
-        // Activate via JDBC (bypassing the not-yet-implemented activation flow)
-        // Spring will inject the DataSource; we use @Sql for the setup query
-        // NOTE: This annotation-based approach is used at class level when needed.
-        // Here we accept that login tests may fail with ACCOUNT_NOT_ACTIVE if
-        // the registration service correctly sets PENDING — that is the TDD-red expectation.
+        // Activate via JDBC so the login path sees an ACTIVE account
+        int updated = jdbcTemplate.update(
+                "UPDATE users SET status = 'ACTIVE' WHERE email = ?", email);
+        org.assertj.core.api.Assertions.assertThat(updated)
+                .as("exactly one user row should be activated for %s", email)
+                .isEqualTo(1);
     }
 
     @Test
@@ -196,9 +178,7 @@ class AuthControllerIntegrationTest {
         registerAndActivateUser("user@example.com", "Password1");
 
         // Act & Assert
-        mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(loginBody("user@example.com", "Password1"))))
+        mockMvc.perform(authPost("/api/auth/login", json(loginBody("user@example.com", "Password1"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.access_token").isNotEmpty())
                 .andExpect(jsonPath("$.token_type").value("Bearer"))
@@ -210,9 +190,7 @@ class AuthControllerIntegrationTest {
     @Test
     @DisplayName("R-2.2: login should return 401 when email is not found")
     void login_should_return_401_when_email_not_found() throws Exception {
-        mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(loginBody("nobody@example.com", "Password1"))))
+        mockMvc.perform(authPost("/api/auth/login", json(loginBody("nobody@example.com", "Password1"))))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error").value("AUTH_INVALID_CREDENTIALS"));
     }
@@ -224,9 +202,7 @@ class AuthControllerIntegrationTest {
         registerAndActivateUser("wrongpw@example.com", "Password1");
 
         // Act & Assert — wrong password
-        mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(loginBody("wrongpw@example.com", "WrongPassword1"))))
+        mockMvc.perform(authPost("/api/auth/login", json(loginBody("wrongpw@example.com", "WrongPassword1"))))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error").value("AUTH_INVALID_CREDENTIALS"));
     }
@@ -238,38 +214,39 @@ class AuthControllerIntegrationTest {
         registerAndActivateUser("anti@example.com", "Password1");
 
         // Unknown email
-        var unknownResult = mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(loginBody("unknown@example.com", "Password1"))))
+        var unknownResult = mockMvc.perform(authPost("/api/auth/login", json(loginBody("unknown@example.com", "Password1"))))
                 .andExpect(status().isUnauthorized())
                 .andReturn();
 
         // Wrong password for known email
-        var wrongPwResult = mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(loginBody("anti@example.com", "WrongPassword1"))))
+        var wrongPwResult = mockMvc.perform(authPost("/api/auth/login", json(loginBody("anti@example.com", "WrongPassword1"))))
                 .andExpect(status().isUnauthorized())
                 .andReturn();
 
-        // Response bodies must be identical (anti-enumeration)
-        String bodyUnknown = unknownResult.getResponse().getContentAsString();
-        String bodyWrongPw = wrongPwResult.getResponse().getContentAsString();
-        org.assertj.core.api.Assertions.assertThat(bodyUnknown).isEqualTo(bodyWrongPw);
+        // Response bodies must be identical for anti-enumeration purposes, EXCEPT the
+        // volatile "timestamp" field (which legitimately differs between the two calls).
+        // Compare the JSON trees with "timestamp" removed.
+        ObjectNode unknownJson = (ObjectNode) objectMapper.readTree(
+                unknownResult.getResponse().getContentAsString());
+        ObjectNode wrongPwJson = (ObjectNode) objectMapper.readTree(
+                wrongPwResult.getResponse().getContentAsString());
+        unknownJson.remove("timestamp");
+        wrongPwJson.remove("timestamp");
+
+        org.assertj.core.api.Assertions.assertThat(unknownJson)
+                .as("login error body (ignoring timestamp) must be identical for unknown email and wrong password")
+                .isEqualTo(wrongPwJson);
     }
 
     @Test
     @DisplayName("R-2.4: login should return 403 when account is PENDING")
     void login_should_return_403_when_account_is_pending() throws Exception {
         // Register creates a PENDING user — do NOT activate
-        mockMvc.perform(post("/api/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(registerBody("Pending", "User", "pending@example.com", "Password1"))))
+        mockMvc.perform(authPost("/api/auth/register", json(registerBody("Pending", "User", "pending@example.com", "Password1"))))
                 .andExpect(status().isCreated());
 
         // Login attempt on PENDING account → 403
-        mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(loginBody("pending@example.com", "Password1"))))
+        mockMvc.perform(authPost("/api/auth/login", json(loginBody("pending@example.com", "Password1"))))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error").value("ACCOUNT_NOT_ACTIVE"));
     }
