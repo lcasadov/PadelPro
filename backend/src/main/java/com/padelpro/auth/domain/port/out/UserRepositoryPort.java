@@ -68,4 +68,10 @@ public interface UserRepositoryPort {
      * Return a page of all users (no status filter).
      */
     Page<User> findAll(Pageable pageable);
+
+    /**
+     * Check whether at least one user with the given role exists.
+     * Used by the admin-seed bootstrap (D1) to stay idempotent.
+     */
+    boolean existsByRole(com.padelpro.auth.domain.model.UserRole role);
 }

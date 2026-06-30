@@ -16,11 +16,11 @@
 
 ## 2. Seed del primer admin (auth-local) — TDD
 
-- [ ] 2.1 🔴 Test: con BD sin ADMIN y `ADMIN_EMAIL`/`ADMIN_PASSWORD` definidos, al arrancar se crea un ADMIN `ACTIVE` con hash BCrypt
-- [ ] 2.2 🟢 Implementar el `ApplicationRunner` mínimo que hace pasar 2.1
-- [ ] 2.3 🔴 Test: si ya existe un ADMIN, el arranque no crea otro (idempotente) → 🟢 ajustar
-- [ ] 2.4 🔴 Test: sin variables de entorno, el arranque no falla y no crea admin → 🟢 ajustar
-- [ ] 2.5 ♻️ Refactor (extraer servicio/política) manteniendo verde; documentar `ADMIN_EMAIL`/`ADMIN_PASSWORD` en `.env.example` y runbook
+- [x] 2.1 🔴 Test: con BD sin ADMIN y `ADMIN_EMAIL`/`ADMIN_PASSWORD` definidos, al arrancar se crea un ADMIN `ACTIVE` con hash BCrypt
+- [x] 2.2 🟢 Implementar el `ApplicationRunner` mínimo que hace pasar 2.1
+- [x] 2.3 🔴 Test: si ya existe un ADMIN, el arranque no crea otro (idempotente) → 🟢 ajustar
+- [x] 2.4 🔴 Test: sin variables de entorno, el arranque no falla y no crea admin → 🟢 ajustar
+- [x] 2.5 ♻️ Refactor (extraer servicio/política) manteniendo verde; documentar `ADMIN_EMAIL`/`ADMIN_PASSWORD` en `.env.example` y runbook
 
 ## 3. Acceso provisional de 2 días + bloqueo (auth-local) — TDD
 
