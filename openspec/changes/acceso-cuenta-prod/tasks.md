@@ -12,7 +12,7 @@
 
 ## 1. Esquema base (habilitador de los ciclos)
 
-- [ ] 1.1 Migración: `users.must_change_password BOOLEAN NOT NULL DEFAULT false` (con test de migración que verifica la columna y el default)
+- [x] 1.1 Migración: `users.must_change_password BOOLEAN NOT NULL DEFAULT false` (con test de migración que verifica la columna y el default)
 
 ## 2. Seed del primer admin (auth-local) — TDD
 

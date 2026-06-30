@@ -52,6 +52,9 @@ public class User {
     @Column(name = "last_login_at")
     private OffsetDateTime lastLoginAt;
 
+    @Column(name = "must_change_password", nullable = false)
+    private boolean mustChangePassword = false;
+
     @Column(length = 20)
     private String phone;
 
@@ -118,6 +121,9 @@ public class User {
 
     public OffsetDateTime getLastLoginAt() { return lastLoginAt; }
     public void setLastLoginAt(OffsetDateTime lastLoginAt) { this.lastLoginAt = lastLoginAt; }
+
+    public boolean isMustChangePassword() { return mustChangePassword; }
+    public void setMustChangePassword(boolean mustChangePassword) { this.mustChangePassword = mustChangePassword; }
 
     public String getPhone() { return phone; }
     public void setPhone(String phone) { this.phone = phone; }
