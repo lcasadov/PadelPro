@@ -5,10 +5,10 @@ import com.padelpro.auth.application.dto.TokenPair;
 import com.padelpro.auth.application.port.in.LoginUseCase;
 import com.padelpro.auth.domain.exception.AccountNotActiveException;
 import com.padelpro.auth.domain.exception.AuthenticationException;
+import com.padelpro.auth.domain.model.AccountAccessPolicy;
 import com.padelpro.auth.domain.model.AuditLog;
 import com.padelpro.auth.domain.model.RefreshToken;
 import com.padelpro.auth.domain.model.User;
-import com.padelpro.auth.domain.model.UserStatus;
 import com.padelpro.auth.domain.port.out.AuditLogRepositoryPort;
 import com.padelpro.auth.domain.port.out.RefreshTokenRepositoryPort;
 import com.padelpro.auth.domain.port.out.UserRepositoryPort;
@@ -20,6 +20,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.Base64;
 import java.util.Optional;
@@ -58,6 +59,10 @@ public class AuthService implements LoginUseCase {
     // Optional ports — null in unit-test context (no Spring context).
     private AuditLogRepositoryPort auditLogRepository;
     private RefreshTokenRepositoryPort refreshTokenRepository;
+
+    // Provisional-access policy (D8). Eagerly initialised with the default 48h grace window so
+    // unit tests without a Spring context still apply the rule; Spring overrides via setter.
+    private AccountAccessPolicy accessPolicy = new AccountAccessPolicy(Duration.ofHours(48));
 
     // Real BCrypt(12) hash of "__dummy_anti_timing__" — used when email is not found
     // to keep timing indistinguishable from a real password check (RN-AUTH-06).
@@ -98,6 +103,13 @@ public class AuthService implements LoginUseCase {
         this.refreshTokenRepository = refreshTokenRepository;
     }
 
+    @Autowired(required = false)
+    public void setAccessPolicy(AccountAccessPolicy accessPolicy) {
+        if (accessPolicy != null) {
+            this.accessPolicy = accessPolicy;
+        }
+    }
+
     // -------------------------------------------------------------------------
     // LoginUseCase
     // -------------------------------------------------------------------------
@@ -118,8 +130,9 @@ public class AuthService implements LoginUseCase {
 
         User user = userOpt.get();
 
-        // PENDING / INACTIVE accounts → 403
-        if (user.getStatus() != UserStatus.ACTIVE) {
+        // Provisional-access policy (D8): ACTIVE always; PENDING only within the 48h grace
+        // window from registration; INACTIVE never. Otherwise → 403 ACCOUNT_NOT_ACTIVE.
+        if (!accessPolicy.isAccessAllowed(user.getStatus(), user.getRegisteredAt(), OffsetDateTime.now())) {
             throw new AccountNotActiveException();
         }
 

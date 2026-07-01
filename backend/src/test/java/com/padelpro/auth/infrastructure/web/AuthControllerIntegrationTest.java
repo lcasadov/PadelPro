@@ -238,15 +238,56 @@ class AuthControllerIntegrationTest extends PostgresIntegrationTest {
                 .isEqualTo(wrongPwJson);
     }
 
-    @Test
-    @DisplayName("R-2.4: login should return 403 when account is PENDING")
-    void login_should_return_403_when_account_is_pending() throws Exception {
-        // Register creates a PENDING user — do NOT activate
-        mockMvc.perform(authPost("/api/auth/register", json(registerBody("Pending", "User", "pending@example.com", "Password1"))))
-                .andExpect(status().isCreated());
+    // =========================================================================
+    // PROVISIONAL ACCESS (D8) — PENDING grace window of 48h
+    // =========================================================================
 
-        // Login attempt on PENDING account → 403
-        mockMvc.perform(authPost("/api/auth/login", json(loginBody("pending@example.com", "Password1"))))
+    /**
+     * Sets the registered_at of a user to a specific age (relative to now) via JDBC,
+     * so the 48h grace boundary can be exercised deterministically.
+     */
+    private void setRegisteredAgeHours(String email, long hoursAgo) {
+        int updated = jdbcTemplate.update(
+                "UPDATE users SET registered_at = NOW() - (? * INTERVAL '1 hour') WHERE email = ?",
+                hoursAgo, email);
+        org.assertj.core.api.Assertions.assertThat(updated).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("R-2.4a: PENDING within 48h grace → 200 (provisional access)")
+    void login_should_return_200_when_pending_within_grace() throws Exception {
+        // Register creates a PENDING user — do NOT activate
+        mockMvc.perform(authPost("/api/auth/register", json(registerBody("Fresh", "Pending", "fresh@example.com", "Password1"))))
+                .andExpect(status().isCreated());
+        setRegisteredAgeHours("fresh@example.com", 1); // 1h ago, well within grace
+
+        mockMvc.perform(authPost("/api/auth/login", json(loginBody("fresh@example.com", "Password1"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.access_token").isNotEmpty());
+    }
+
+    @Test
+    @DisplayName("R-2.4b: PENDING past 48h grace → 403 ACCOUNT_NOT_ACTIVE")
+    void login_should_return_403_when_pending_past_grace() throws Exception {
+        mockMvc.perform(authPost("/api/auth/register", json(registerBody("Old", "Pending", "oldpending@example.com", "Password1"))))
+                .andExpect(status().isCreated());
+        setRegisteredAgeHours("oldpending@example.com", 49); // past the 48h window
+
+        mockMvc.perform(authPost("/api/auth/login", json(loginBody("oldpending@example.com", "Password1"))))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error").value("ACCOUNT_NOT_ACTIVE"));
+    }
+
+    @Test
+    @DisplayName("R-2.4c: INACTIVE → 403 ACCOUNT_NOT_ACTIVE regardless of age (no grace)")
+    void login_should_return_403_when_inactive_even_if_recent() throws Exception {
+        mockMvc.perform(authPost("/api/auth/register", json(registerBody("Inact", "User", "inactive@example.com", "Password1"))))
+                .andExpect(status().isCreated());
+        // Recently registered but deactivated → no grace
+        jdbcTemplate.update("UPDATE users SET status = 'INACTIVE' WHERE email = ?", "inactive@example.com");
+        setRegisteredAgeHours("inactive@example.com", 1);
+
+        mockMvc.perform(authPost("/api/auth/login", json(loginBody("inactive@example.com", "Password1"))))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error").value("ACCOUNT_NOT_ACTIVE"));
     }

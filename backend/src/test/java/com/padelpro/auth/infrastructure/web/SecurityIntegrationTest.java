@@ -87,10 +87,11 @@ class SecurityIntegrationTest extends PostgresIntegrationTest {
     }
 
     @Test
-    @DisplayName("user_with_pending_status_receives_403_on_authenticated_endpoint")
-    void user_with_pending_status_receives_403_on_authenticated_endpoint() throws Exception {
-        // Change user to PENDING in DB after token was issued
+    @DisplayName("user_with_pending_status_past_grace_receives_403_on_authenticated_endpoint (D8)")
+    void user_with_pending_status_past_grace_receives_403_on_authenticated_endpoint() throws Exception {
+        // Change user to PENDING and age the registration beyond the 48h provisional grace window.
         activeUser.setStatus(UserStatus.PENDING);
+        activeUser.setRegisteredAt(OffsetDateTime.now().minusHours(49));
         userRepository.saveAndFlush(activeUser);
 
         mockMvc.perform(get("/api/usuarios/me")
@@ -98,6 +99,19 @@ class SecurityIntegrationTest extends PostgresIntegrationTest {
                 .andExpect(status().isForbidden())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.error").value("ACCOUNT_NOT_ACTIVE"));
+    }
+
+    @Test
+    @DisplayName("user_with_pending_status_within_grace_can_access_authenticated_endpoint (D8)")
+    void user_with_pending_status_within_grace_can_access_authenticated_endpoint() throws Exception {
+        // PENDING but registered recently → provisional access within the 48h window.
+        activeUser.setStatus(UserStatus.PENDING);
+        activeUser.setRegisteredAt(OffsetDateTime.now().minusHours(1));
+        userRepository.saveAndFlush(activeUser);
+
+        mockMvc.perform(get("/api/usuarios/me")
+                        .header("Authorization", "Bearer " + activeUserToken))
+                .andExpect(status().isOk());
     }
 
     // =========================================================================

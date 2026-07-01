@@ -24,11 +24,11 @@
 
 ## 3. Acceso provisional de 2 días + bloqueo (auth-local) — TDD
 
-- [ ] 3.1 🔴 Test: usuario `PENDING` con `created_at` < 48 h → login 200
-- [ ] 3.2 🟢 Modificar la regla de login para permitir PENDING dentro de la ventana (mínimo) → verde
-- [ ] 3.3 🔴 Test: `PENDING` con `created_at` > 48 h → 403 `ACCOUNT_NOT_ACTIVE` → 🟢 ajustar
-- [ ] 3.4 🔴 Test: `INACTIVE` → 403 siempre (sin gracia) y `ACTIVE` → 200 → 🟢 ajustar
-- [ ] 3.5 ♻️ Refactor de la política de acceso (objeto de dominio testeado en aislamiento)
+- [x] 3.1 🔴 Test: usuario `PENDING` con `created_at` < 48 h → login 200
+- [x] 3.2 🟢 Modificar la regla de login para permitir PENDING dentro de la ventana (mínimo) → verde
+- [x] 3.3 🔴 Test: `PENDING` con `created_at` > 48 h → 403 `ACCOUNT_NOT_ACTIVE` → 🟢 ajustar
+- [x] 3.4 🔴 Test: `INACTIVE` → 403 siempre (sin gracia) y `ACTIVE` → 200 → 🟢 ajustar
+- [x] 3.5 ♻️ Refactor de la política de acceso (objeto de dominio testeado en aislamiento)
 
 ## 4. Cambio de contraseña forzado (auth-local) — TDD
 

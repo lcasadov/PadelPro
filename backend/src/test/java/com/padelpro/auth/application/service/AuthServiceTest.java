@@ -78,6 +78,10 @@ class AuthServiceTest {
     }
 
     private User buildUserWithStatus(String email, UserStatus status) {
+        return buildUserWithStatus(email, status, OffsetDateTime.now());
+    }
+
+    private User buildUserWithStatus(String email, UserStatus status, OffsetDateTime registeredAt) {
         return new User(
                 email,
                 // BCrypt(12) hash of "Password1" — generated for Wave 3 Green phase
@@ -87,7 +91,7 @@ class AuthServiceTest {
                 email,
                 UserRole.USER,
                 status,
-                OffsetDateTime.now(),
+                registeredAt,
                 OffsetDateTime.now()
         );
     }
@@ -199,15 +203,17 @@ class AuthServiceTest {
     }
 
     // -------------------------------------------------------------------------
-    // R-2.4 — PENDING account is rejected with ACCOUNT_NOT_ACTIVE
+    // R-2.4 / D8 — PENDING beyond the 48h grace window → ACCOUNT_NOT_ACTIVE;
+    // PENDING within the window → provisional access allowed (login succeeds).
     // -------------------------------------------------------------------------
 
     @Test
-    @DisplayName("R-2.4: should throw account not active when status is PENDING")
-    void should_throw_account_not_active_when_status_is_pending() {
-        // Arrange — lenient() for RED phase
+    @DisplayName("D8: should throw account not active when PENDING is past the 48h grace window")
+    void should_throw_account_not_active_when_pending_past_grace() {
+        // Arrange — registered 49h ago → past grace
         String email = "pending@example.com";
-        User pendingUser = buildUserWithStatus(email, UserStatus.PENDING);
+        User pendingUser = buildUserWithStatus(email, UserStatus.PENDING,
+                OffsetDateTime.now().minusHours(49));
         org.mockito.Mockito.lenient()
                 .when(userRepository.findByEmail(email))
                 .thenReturn(Optional.of(pendingUser));
@@ -219,7 +225,26 @@ class AuthServiceTest {
                 .isNotInstanceOf(UnsupportedOperationException.class)
                 .satisfies(ex -> assertThat(ex.getMessage())
                         .containsIgnoringCase("ACCOUNT_NOT_ACTIVE")
-                        .withFailMessage("PENDING account must throw ACCOUNT_NOT_ACTIVE"));
+                        .withFailMessage("PENDING past grace must throw ACCOUNT_NOT_ACTIVE"));
+    }
+
+    @Test
+    @DisplayName("D8: should allow login when PENDING is within the 48h grace window")
+    void should_allow_login_when_pending_within_grace() {
+        // Arrange — registered 1h ago → within grace
+        String email = "fresh-pending@example.com";
+        User pendingUser = buildUserWithStatus(email, UserStatus.PENDING,
+                OffsetDateTime.now().minusHours(1));
+        when(userRepository.findByEmail(email)).thenReturn(Optional.of(pendingUser));
+
+        LoginCommand command = new LoginCommand(email, "Password1");
+
+        // Act — should NOT throw; returns a token pair
+        TokenPair result = authService.login(command);
+
+        // Assert
+        assertThat(result).isNotNull();
+        assertThat(result.accessToken()).isNotBlank();
     }
 
     // -------------------------------------------------------------------------

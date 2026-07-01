@@ -14,7 +14,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -67,7 +66,8 @@ class UserStatusFilterTest {
     @BeforeEach
     void setUp() throws Exception {
         SecurityContextHolder.clearContext();
-        userStatusFilter = new UserStatusFilter(userRepositoryPort, auditLogRepositoryPort, objectMapper);
+        userStatusFilter = new UserStatusFilter(userRepositoryPort, auditLogRepositoryPort, objectMapper,
+                new com.padelpro.auth.domain.model.AccountAccessPolicy(java.time.Duration.ofHours(48)));
         responseWriter = new StringWriter();
     }
 
@@ -77,6 +77,10 @@ class UserStatusFilterTest {
     }
 
     private User buildUser(Long id, UserStatus status) {
+        return buildUser(id, status, OffsetDateTime.now());
+    }
+
+    private User buildUser(Long id, UserStatus status, OffsetDateTime registeredAt) {
         User user = new User(
                 "testuser",
                 "hash",
@@ -85,7 +89,7 @@ class UserStatusFilterTest {
                 "user@example.com",
                 UserRole.USER,
                 status,
-                OffsetDateTime.now(),
+                registeredAt,
                 OffsetDateTime.now()
         );
         // Reflectively set the id since User.id is managed by JPA
@@ -125,10 +129,11 @@ class UserStatusFilterTest {
     }
 
     @Test
-    @DisplayName("should_return_403_when_user_is_pending_despite_valid_jwt")
-    void should_return_403_when_user_is_pending_despite_valid_jwt() throws Exception {
+    @DisplayName("should_return_403_when_user_is_pending_past_grace_window (D8)")
+    void should_return_403_when_user_is_pending_past_grace_window() throws Exception {
         setAuthContext("42");
-        User pendingUser = buildUser(42L, UserStatus.PENDING);
+        // Registered 49h ago → past the 48h provisional grace window
+        User pendingUser = buildUser(42L, UserStatus.PENDING, OffsetDateTime.now().minusHours(49));
         when(userRepositoryPort.findById(42L)).thenReturn(Optional.of(pendingUser));
         when(response.getWriter()).thenReturn(new PrintWriter(responseWriter));
         when(request.getRemoteAddr()).thenReturn("127.0.0.1");
@@ -139,6 +144,20 @@ class UserStatusFilterTest {
         verify(response).setStatus(403);
         verify(filterChain, never()).doFilter(any(), any());
         verify(auditLogRepositoryPort).save(any(AuditLog.class));
+    }
+
+    @Test
+    @DisplayName("should_pass_through_when_user_is_pending_within_grace_window (D8)")
+    void should_pass_through_when_user_is_pending_within_grace_window() throws Exception {
+        setAuthContext("42");
+        // Registered 1h ago → within the 48h provisional grace window
+        User pendingUser = buildUser(42L, UserStatus.PENDING, OffsetDateTime.now().minusHours(1));
+        when(userRepositoryPort.findById(42L)).thenReturn(Optional.of(pendingUser));
+
+        userStatusFilter.doFilterInternal(request, response, filterChain);
+
+        verify(filterChain).doFilter(request, response);
+        verify(response, never()).setStatus(403);
     }
 
     @Test
