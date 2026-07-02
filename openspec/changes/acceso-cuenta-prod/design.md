@@ -52,7 +52,7 @@ La página `/admin/usuarios` consume `GET /api/admin/usuarios` (listar/filtrar),
 ### D8 — Periodo de gracia de 2 días para cuentas PENDING
 Un usuario recién registrado (`PENDING`) SHALL poder iniciar sesión y usar la app durante **48 horas desde su registro**. Pasado ese plazo, si sigue `PENDING` (no aprobado), el login SHALL devolver `403 ACCOUNT_NOT_ACTIVE`. La aprobación del admin lo deja `ACTIVE` de forma permanente.
 - **Alternativa:** bloquear `PENDING` desde el primer momento → la demo no sería "abierta" (nadie probaría sin que un admin apruebe primero).
-- **Razón:** concilia "demo abierta" (acceso inmediato provisional) con "simula control" (el admin debe aprobar para acceso continuado). La ventana se calcula sobre `users.created_at`. La transición a `INACTIVE` (desactivado por admin) no tiene gracia: bloquea siempre.
+- **Razón:** concilia "demo abierta" (acceso inmediato provisional) con "simula control" (el admin debe aprobar para acceso continuado). La ventana se calcula sobre `users.registered_at` (timestamp de registro; no existe columna `created_at`). La transición a `INACTIVE` (desactivado por admin) no tiene gracia: bloquea siempre.
 
 ### D9 — Cambio de contraseña forzado tras un reset
 Una contraseña temporal (generada por el admin en un reset) SHALL marcar la cuenta con `must_change_password = true`. En el siguiente login, el sistema SHALL exigir el cambio de contraseña antes de permitir el uso normal de la app; tras cambiarla, el flag se limpia.

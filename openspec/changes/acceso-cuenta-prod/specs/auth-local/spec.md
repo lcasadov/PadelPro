@@ -22,7 +22,7 @@ El sistema SHALL garantizar que exista al menos un administrador `ACTIVE` tras u
 
 ### Requirement: Acceso provisional de 2 días para cuentas pendientes
 
-El sistema SHALL permitir iniciar sesión a un usuario `PENDING` durante las 48 horas siguientes a su registro (calculadas sobre `created_at`). Pasado ese plazo sin aprobación, el login SHALL devolver `403 ACCOUNT_NOT_ACTIVE`. La aprobación del administrador deja la cuenta `ACTIVE` de forma permanente; una cuenta `INACTIVE` (desactivada por el admin) no tiene periodo de gracia y SHALL bloquearse siempre.
+El sistema SHALL permitir iniciar sesión a un usuario `PENDING` durante las 48 horas siguientes a su registro (calculadas sobre `registered_at`). Pasado ese plazo sin aprobación, el login SHALL devolver `403 ACCOUNT_NOT_ACTIVE`. La aprobación del administrador deja la cuenta `ACTIVE` de forma permanente; una cuenta `INACTIVE` (desactivada por el admin) no tiene periodo de gracia y SHALL bloquearse siempre.
 
 #### Scenario: PENDING dentro de la ventana de gracia
 - **GIVEN** un usuario `PENDING` registrado hace menos de 48 horas
