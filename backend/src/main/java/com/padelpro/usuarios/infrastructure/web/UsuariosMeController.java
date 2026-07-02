@@ -1,13 +1,16 @@
 package com.padelpro.usuarios.infrastructure.web;
 
+import com.padelpro.usuarios.application.dto.ChangeMyPasswordRequest;
 import com.padelpro.usuarios.application.dto.UpdateMyProfileCommand;
 import com.padelpro.usuarios.application.dto.UserProfileResponse;
+import com.padelpro.usuarios.application.service.ChangeMyPasswordService;
 import com.padelpro.usuarios.application.service.UserProfileService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -27,9 +30,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class UsuariosMeController {
 
     private final UserProfileService userProfileService;
+    private final ChangeMyPasswordService changeMyPasswordService;
 
-    public UsuariosMeController(UserProfileService userProfileService) {
+    public UsuariosMeController(UserProfileService userProfileService,
+                                ChangeMyPasswordService changeMyPasswordService) {
         this.userProfileService = userProfileService;
+        this.changeMyPasswordService = changeMyPasswordService;
     }
 
     /**
@@ -53,6 +59,20 @@ public class UsuariosMeController {
             @RequestBody UpdateMyProfileCommand command) {
         Long userId = resolveUserId();
         return ResponseEntity.ok(userProfileService.updateMyProfile(userId, command));
+    }
+
+    /**
+     * POST /api/usuarios/me/password
+     * Changes the authenticated user's own password (D9): validates the current password and the
+     * new-password policy, persists the new BCrypt hash and clears {@code must_change_password}.
+     * Returns 204 on success.
+     */
+    @PostMapping("/me/password")
+    public ResponseEntity<Void> changeMyPassword(@RequestBody ChangeMyPasswordRequest request) {
+        Long userId = resolveUserId();
+        changeMyPasswordService.changePassword(
+                userId, request.currentPassword(), request.newPassword());
+        return ResponseEntity.noContent().build();
     }
 
     // -------------------------------------------------------------------------

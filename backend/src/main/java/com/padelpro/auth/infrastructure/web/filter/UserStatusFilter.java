@@ -1,9 +1,9 @@
 package com.padelpro.auth.infrastructure.web.filter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.padelpro.auth.domain.model.AccountAccessPolicy;
 import com.padelpro.auth.domain.model.AuditLog;
 import com.padelpro.auth.domain.model.User;
-import com.padelpro.auth.domain.model.UserStatus;
 import com.padelpro.auth.domain.port.out.AuditLogRepositoryPort;
 import com.padelpro.auth.domain.port.out.UserRepositoryPort;
 import com.padelpro.auth.infrastructure.web.dto.ErrorResponse;
@@ -40,13 +40,16 @@ public class UserStatusFilter extends OncePerRequestFilter {
     private final UserRepositoryPort userRepositoryPort;
     private final AuditLogRepositoryPort auditLogRepositoryPort;
     private final ObjectMapper objectMapper;
+    private final AccountAccessPolicy accessPolicy;
 
     public UserStatusFilter(UserRepositoryPort userRepositoryPort,
                             AuditLogRepositoryPort auditLogRepositoryPort,
-                            ObjectMapper objectMapper) {
+                            ObjectMapper objectMapper,
+                            AccountAccessPolicy accessPolicy) {
         this.userRepositoryPort = userRepositoryPort;
         this.auditLogRepositoryPort = auditLogRepositoryPort;
         this.objectMapper = objectMapper;
+        this.accessPolicy = accessPolicy;
     }
 
     @Override
@@ -73,7 +76,11 @@ public class UserStatusFilter extends OncePerRequestFilter {
         }
 
         User user = userRepositoryPort.findById(userId).orElse(null);
-        if (user == null || user.getStatus() != UserStatus.ACTIVE) {
+        // Provisional-access policy (D8): allow ACTIVE always and PENDING within the 48h grace
+        // window; block INACTIVE and grace-expired PENDING. Keeps the filter consistent with login.
+        if (user == null
+                || !accessPolicy.isAccessAllowed(
+                        user.getStatus(), user.getRegisteredAt(), OffsetDateTime.now())) {
             SecurityContextHolder.clearContext();
 
             // Record the denied access in the audit log

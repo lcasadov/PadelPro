@@ -16,8 +16,6 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.OffsetDateTime;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Application service implementing the {@link RegisterUseCase} inbound port.
@@ -141,17 +139,12 @@ public class RegistrationService implements RegisterUseCase {
     }
 
     /**
-     * Enforces password policy (RN-AUTH-08):
-     * 8–128 characters, at least one uppercase letter, at least one digit.
+     * Enforces password policy (RN-AUTH-08) via the shared {@link
+     * com.padelpro.auth.domain.model.PasswordPolicy} domain object.
      *
      * @throws InvalidPasswordException listing all violated rule codes
      */
     private void validatePassword(String password) {
-        List<String> violations = new ArrayList<>();
-        if (password.length() < 8)                              violations.add("MIN_LENGTH_8");
-        if (password.length() > 128)                            violations.add("MAX_LENGTH_128");
-        if (password.chars().noneMatch(Character::isUpperCase)) violations.add("REQUIRES_UPPERCASE");
-        if (password.chars().noneMatch(Character::isDigit))     violations.add("REQUIRES_NUMBER");
-        if (!violations.isEmpty()) throw new InvalidPasswordException(violations);
+        com.padelpro.auth.domain.model.PasswordPolicy.validate(password);
     }
 }

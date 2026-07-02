@@ -68,4 +68,15 @@ public class SecurityConfig {
     public BCryptPasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder(12);
     }
+
+    /**
+     * Provisional-access policy (D8). The grace window for PENDING accounts is 48h by default,
+     * configurable via {@code app.access.provisional-grace-hours}.
+     */
+    @Bean
+    public com.padelpro.auth.domain.model.AccountAccessPolicy accountAccessPolicy(
+            @org.springframework.beans.factory.annotation.Value("${app.access.provisional-grace-hours:48}") long graceHours) {
+        return new com.padelpro.auth.domain.model.AccountAccessPolicy(
+                java.time.Duration.ofHours(graceHours));
+    }
 }

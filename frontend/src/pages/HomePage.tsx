@@ -7,7 +7,7 @@ import './pages.css';
 import styles from './HomePage.module.css';
 
 export function HomePage() {
-  const { setAccessToken } = useAuth();
+  const { setAccessToken, role } = useAuth();
 
   function handleLogout() {
     setAccessToken(null);
@@ -63,6 +63,22 @@ export function HomePage() {
           <div className={styles.actionLabel}>Mi perfil</div>
           <div className={styles.actionSub}>Datos y configuración</div>
         </Link>
+
+        {/* Entrada de administración — solo visible para ADMIN (6.5, D6) */}
+        {role === 'ADMIN' && (
+          <Link to="/admin/usuarios" className={styles.action}>
+            <div className={styles.actionIco}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+              </svg>
+            </div>
+            <div className={styles.actionLabel}>Gestionar usuarios</div>
+            <div className={styles.actionSub}>Aprobar, activar y resetear</div>
+          </Link>
+        )}
       </div>
 
       {/* ── Logout ── */}

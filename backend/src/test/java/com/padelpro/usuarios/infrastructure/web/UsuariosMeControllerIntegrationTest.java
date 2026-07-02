@@ -22,6 +22,7 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -131,6 +132,72 @@ class UsuariosMeControllerIntegrationTest extends PostgresIntegrationTest {
                         .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error", is("USUARIOS_EMAIL_CONFLICT")));
+    }
+
+    // -------------------------------------------------------------------------
+    // POST /api/usuarios/me/password (D9 — forced/own password change)
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("POST /api/usuarios/me/password valid → 204, hash changes and flag cleared")
+    void change_password_valid_returns_204_and_clears_flag() throws Exception {
+        // Simulate a prior admin reset
+        testUser.setMustChangePassword(true);
+        userRepository.saveAndFlush(testUser);
+
+        Map<String, String> body = Map.of(
+                "current_password", "Password1",
+                "new_password", "BrandNew2");
+        mockMvc.perform(post("/api/usuarios/me/password")
+                        .header("Authorization", "Bearer " + userToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isNoContent());
+
+        User reloaded = userRepository.findByLogin("me.user").orElseThrow();
+        assert !reloaded.isMustChangePassword();
+        assert passwordEncoder.matches("BrandNew2", reloaded.getPasswordHash());
+        assert !passwordEncoder.matches("Password1", reloaded.getPasswordHash());
+    }
+
+    @Test
+    @DisplayName("POST /api/usuarios/me/password wrong current password → 401")
+    void change_password_wrong_current_returns_401() throws Exception {
+        Map<String, String> body = Map.of(
+                "current_password", "WrongOne1",
+                "new_password", "BrandNew2");
+        mockMvc.perform(post("/api/usuarios/me/password")
+                        .header("Authorization", "Bearer " + userToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error", is("AUTH_INVALID_CREDENTIALS")));
+    }
+
+    @Test
+    @DisplayName("POST /api/usuarios/me/password weak new password → 400 INVALID_PASSWORD")
+    void change_password_weak_new_returns_400() throws Exception {
+        Map<String, String> body = Map.of(
+                "current_password", "Password1",
+                "new_password", "weak");
+        mockMvc.perform(post("/api/usuarios/me/password")
+                        .header("Authorization", "Bearer " + userToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error", is("INVALID_PASSWORD")));
+    }
+
+    @Test
+    @DisplayName("POST /api/usuarios/me/password without JWT → 401")
+    void change_password_without_jwt_returns_401() throws Exception {
+        Map<String, String> body = Map.of(
+                "current_password", "Password1",
+                "new_password", "BrandNew2");
+        mockMvc.perform(post("/api/usuarios/me/password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
