@@ -45,6 +45,10 @@ services:
       # Encryption (configuracion-club)
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
 
+      # Bootstrap del primer admin (acceso-cuenta-prod, D1). Si están vacías, el runner no crea nada.
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+
       # Spring Boot
       SPRING_PROFILES_ACTIVE: prod
       SERVER_PORT: 8080
