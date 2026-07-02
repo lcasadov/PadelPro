@@ -145,6 +145,7 @@ paths:
                     accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
                     refreshToken: "dGhpcyBpcyBhIHJlZnJlc2ggdG9rZW4..."
                     expiresIn: 900
+                    mustChangePassword: false
         '400':
           $ref: '#/components/responses/ValidationError'
         '401':
@@ -328,6 +329,41 @@ paths:
         '409':
           $ref: '#/components/responses/Conflict'
 
+  /usuarios/me/password:
+    post:
+      tags: [Usuarios]
+      operationId: cambiarMiPassword
+      summary: Cambiar la contraseña propia
+      description: |
+        Cambia la contraseña del usuario autenticado. Requiere la contraseña actual.
+        Al completarse, se limpia el flag `mustChangePassword` de la cuenta (usado tras
+        un reset del administrador — ver `resetPasswordUsuario`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [currentPassword, newPassword]
+              properties:
+                currentPassword:
+                  type: string
+                  format: password
+                  description: Contraseña actual (o la temporal recibida del admin)
+                newPassword:
+                  type: string
+                  format: password
+                  description: Nueva contraseña (debe cumplir la política de contraseñas)
+      responses:
+        '204':
+          description: Contraseña cambiada correctamente
+        '400':
+          description: La nueva contraseña no cumple la política (código `INVALID_PASSWORD`, con `details`)
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          description: No autenticado o contraseña actual incorrecta (`AUTH_INVALID_CREDENTIALS`)
+          $ref: '#/components/responses/Unauthorized'
+
   # ─── Usuarios — administración ─────────────────────────────────────────────
 
   /admin/usuarios:
@@ -492,6 +528,52 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           description: El usuario no estaba en estado PENDING
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /admin/usuarios/{id}/reset-password:
+    patch:
+      tags: [Usuarios]
+      operationId: resetPasswordUsuario
+      summary: Restablecer la contraseña de un usuario (ADMIN)
+      description: |
+        Genera una contraseña temporal para el usuario indicado, la persiste cifrada
+        (BCrypt) y marca la cuenta con `mustChangePassword = true`. La contraseña temporal
+        se devuelve en claro **una sola vez** en la respuesta para que el administrador la
+        comunique; nunca se registra en logs ni se vuelve a exponer. Requiere ROLE_ADMIN.
+        Un administrador no puede resetearse a sí mismo (RN-AUTH-05).
+      parameters:
+        - $ref: '#/components/parameters/UserIdParam'
+      responses:
+        '200':
+          description: Contraseña restablecida; contraseña temporal devuelta una sola vez
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [userId, temporaryPassword, mustChangePassword]
+                properties:
+                  userId:
+                    type: integer
+                    format: int64
+                    example: 42
+                  temporaryPassword:
+                    type: string
+                    description: Contraseña temporal en claro (mostrada una sola vez)
+                    example: "Xa7-tR9-Qm2"
+                  mustChangePassword:
+                    type: boolean
+                    example: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: El administrador intentó resetearse a sí mismo (`ADMIN_SELF_DEACTIVATION`)
           content:
             application/json:
               schema:
@@ -1363,6 +1445,13 @@ components:
           type: integer
           description: Segundos hasta la expiración del access token
           example: 900
+        mustChangePassword:
+          type: boolean
+          description: |
+            `true` si la cuenta debe cambiar la contraseña antes de usar la app
+            (p. ej. tras un reset del administrador). El cliente debe redirigir al
+            cambio obligatorio de contraseña.
+          example: false
 
     RefreshRequest:
       type: object

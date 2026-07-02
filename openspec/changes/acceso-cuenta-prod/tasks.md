@@ -64,7 +64,7 @@
 
 ## 8. API spec
 
-- [ ] 8.1 Actualizar `docs/openapi.yaml`: endpoint de reset admin (temporal de un solo uso), flag de cambio requerido en login, códigos
+- [x] 8.1 Actualizar `docs/openapi.yaml`: endpoint de reset admin (temporal de un solo uso), flag de cambio requerido en login, códigos
 
 ## 9. QA (verificación adversarial, sobre código ya cubierto por TDD)
 
