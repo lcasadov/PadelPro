@@ -68,11 +68,11 @@
 
 ## 9. QA (verificación adversarial, sobre código ya cubierto por TDD)
 
-- [ ] 9.1 `test-runner`: suite completa backend + frontend en verde (Postgres real :5433) y cobertura dentro del umbral JaCoCo
-- [ ] 9.2 `verification-specialist`: probes (reset solo ADMIN, temporal fuera de logs, gracia 48h en bordes, guard de rol, cambio forzado)
-- [ ] 9.3 `reality-checker`: journey end-to-end — seed admin → login admin → registro usuario (PENDING) → acceso provisional → admin aprueba en panel → reset admin → login con temporal → cambio forzado → uso normal
+- [x] 9.1 `test-runner`: suite completa backend + frontend en verde (Postgres real :5433) y cobertura dentro del umbral JaCoCo
+- [x] 9.2 `verification-specialist`: probes (reset solo ADMIN, temporal fuera de logs, gracia 48h en bordes, guard de rol, cambio forzado)
+- [x] 9.3 `reality-checker`: journey end-to-end — seed admin → login admin → registro usuario (PENDING) → acceso provisional → admin aprueba en panel → reset admin → login con temporal → cambio forzado → uso normal
 
 ## 10. Cierre
 
-- [ ] 10.1 PR con `Closes #<id>` y CI en verde
+- [x] 10.1 PR con `Closes #<id>` y CI en verde
 - [ ] 10.2 Merge → deploy automático; en el `.env` del EC2 añadir `ADMIN_EMAIL`/`ADMIN_PASSWORD`; verificar login admin y panel en vivo
