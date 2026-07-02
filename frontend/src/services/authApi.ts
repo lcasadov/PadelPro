@@ -20,6 +20,9 @@ export interface LoginResponse {
   access_token: string;
   token_type: string;
   expires_in: number;
+  // acceso-cuenta-prod: el backend incluye el rol y el flag de cambio forzado (D9).
+  role?: string;
+  must_change_password?: boolean;
 }
 
 export interface RegisterResponse {
