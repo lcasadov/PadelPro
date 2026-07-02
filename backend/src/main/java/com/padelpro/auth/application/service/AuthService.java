@@ -155,7 +155,8 @@ public class AuthService implements LoginUseCase {
 
         saveAuditLog("LOGIN_SUCCESS", user, null);
 
-        return new TokenPair(accessToken, "Bearer", jwtService.getExpirySeconds(), rawRefreshToken);
+        return new TokenPair(accessToken, "Bearer", jwtService.getExpirySeconds(),
+                user.isMustChangePassword(), rawRefreshToken);
     }
 
     // -------------------------------------------------------------------------

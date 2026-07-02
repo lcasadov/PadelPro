@@ -183,8 +183,22 @@ class AuthControllerIntegrationTest extends PostgresIntegrationTest {
                 .andExpect(jsonPath("$.access_token").isNotEmpty())
                 .andExpect(jsonPath("$.token_type").value("Bearer"))
                 .andExpect(jsonPath("$.expires_in").value(900))
+                .andExpect(jsonPath("$.must_change_password").value(false))
                 .andExpect(cookie().httpOnly("refresh_token", true))
                 .andExpect(cookie().exists("refresh_token"));
+    }
+
+    @Test
+    @DisplayName("D9: login exposes must_change_password=true when the flag is set")
+    void login_should_expose_must_change_password_flag_when_set() throws Exception {
+        registerAndActivateUser("mcp@example.com", "Password1");
+        // Simulate an admin reset having set the flag
+        jdbcTemplate.update("UPDATE users SET must_change_password = true WHERE email = ?", "mcp@example.com");
+
+        mockMvc.perform(authPost("/api/auth/login", json(loginBody("mcp@example.com", "Password1"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.access_token").isNotEmpty())
+                .andExpect(jsonPath("$.must_change_password").value(true));
     }
 
     @Test

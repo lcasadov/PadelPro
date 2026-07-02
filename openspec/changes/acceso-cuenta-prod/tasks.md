@@ -32,11 +32,11 @@
 
 ## 4. Cambio de contraseña forzado (auth-local) — TDD
 
-- [ ] 4.1 🔴 Test: el login de una cuenta con `must_change_password=true` señala el cambio requerido en la respuesta
-- [ ] 4.2 🟢 Exponer el flag en la respuesta de login (mínimo) → verde
-- [ ] 4.3 🔴 Test: endpoint de cambio de contraseña propio valida política, guarda BCrypt y pone `must_change_password=false`
-- [ ] 4.4 🟢 Implementar/extender el endpoint (`/usuarios/me` o dedicado) → verde
-- [ ] 4.5 🔴 Test de seguridad: contraseña que no cumple política → 400; no se loguea → 🟢 / ♻️
+- [x] 4.1 🔴 Test: el login de una cuenta con `must_change_password=true` señala el cambio requerido en la respuesta
+- [x] 4.2 🟢 Exponer el flag en la respuesta de login (mínimo) → verde
+- [x] 4.3 🔴 Test: endpoint de cambio de contraseña propio valida política, guarda BCrypt y pone `must_change_password=false`
+- [x] 4.4 🟢 Implementar/extender el endpoint (`/usuarios/me` o dedicado) → verde
+- [x] 4.5 🔴 Test de seguridad: contraseña que no cumple política → 400; no se loguea → 🟢 / ♻️
 
 ## 5. Reset de contraseña por el admin (usuarios) — TDD
 
