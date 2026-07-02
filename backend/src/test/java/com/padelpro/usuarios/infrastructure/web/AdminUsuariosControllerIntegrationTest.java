@@ -197,4 +197,64 @@ class AdminUsuariosControllerIntegrationTest extends PostgresIntegrationTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error", is("USUARIO_NOT_FOUND")));
     }
+
+    // -------------------------------------------------------------------------
+    // PATCH /api/admin/usuarios/{id}/reset-password (D3/D4/D9)
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("PATCH /{id}/reset-password by ADMIN → 200, temp password once, BCrypt + flag")
+    void reset_password_by_admin_returns_temp_and_sets_flag() throws Exception {
+        String tempPassword = mockMvc.perform(patch("/api/admin/usuarios/{id}/reset-password", regularUser.getId())
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.user_id", is(regularUser.getId().intValue())))
+                .andExpect(jsonPath("$.temporary_password").isNotEmpty())
+                .andExpect(jsonPath("$.must_change_password", is(true)))
+                .andReturn().getResponse().getContentAsString();
+
+        String temp = objectMapper.readTree(tempPassword).get("temporary_password").asText();
+
+        User reloaded = userRepository.findByLogin(regularUser.getLogin()).orElseThrow();
+        assert reloaded.isMustChangePassword();
+        assert passwordEncoder.matches(temp, reloaded.getPasswordHash());
+        // never persisted in clear
+        assert !reloaded.getPasswordHash().equals(temp);
+    }
+
+    @Test
+    @DisplayName("After reset, login with the temp password succeeds and requires change")
+    void login_with_temp_password_requires_change() throws Exception {
+        String body = mockMvc.perform(patch("/api/admin/usuarios/{id}/reset-password", regularUser.getId())
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        String temp = objectMapper.readTree(body).get("temporary_password").asText();
+
+        // regularUser is ACTIVE, so login is allowed; response must flag must_change_password
+        mockMvc.perform(post("/api/auth/login")
+                        .header("X-Forwarded-For", "10.9.9.9")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                Map.of("email", regularUser.getEmail(), "password", temp))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.must_change_password", is(true)));
+    }
+
+    @Test
+    @DisplayName("PATCH /{id}/reset-password with role USER → 403")
+    void reset_password_with_user_role_returns_403() throws Exception {
+        mockMvc.perform(patch("/api/admin/usuarios/{id}/reset-password", pendingUser.getId())
+                        .header("Authorization", "Bearer " + userToken))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("PATCH /{self}/reset-password → 422 (RN-AUTH-05 identity protection)")
+    void reset_own_password_returns_422() throws Exception {
+        mockMvc.perform(patch("/api/admin/usuarios/{id}/reset-password", adminUser.getId())
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.error", is("ADMIN_SELF_DEACTIVATION")));
+    }
 }

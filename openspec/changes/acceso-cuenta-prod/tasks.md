@@ -40,11 +40,11 @@
 
 ## 5. Reset de contraseña por el admin (usuarios) — TDD
 
-- [ ] 5.1 🔴 Test: ADMIN resetea → 200, devuelve temporal en claro una vez, persiste BCrypt y marca `must_change_password=true`
-- [ ] 5.2 🟢 Implementar `PATCH /api/admin/usuarios/{id}/reset-password` mínimo → verde
-- [ ] 5.3 🔴 Test: login posterior con la temporal funciona y exige cambio → 🟢 ajustar
-- [ ] 5.4 🔴 Test: USER → 403; la temporal no aparece en logs; respeta protección de identidad ADMIN (RN-AUTH-05) → 🟢
-- [ ] 5.5 ♻️ Refactor (generador de contraseña temporal aislado y testeado)
+- [x] 5.1 🔴 Test: ADMIN resetea → 200, devuelve temporal en claro una vez, persiste BCrypt y marca `must_change_password=true`
+- [x] 5.2 🟢 Implementar `PATCH /api/admin/usuarios/{id}/reset-password` mínimo → verde
+- [x] 5.3 🔴 Test: login posterior con la temporal funciona y exige cambio → 🟢 ajustar
+- [x] 5.4 🔴 Test: USER → 403; la temporal no aparece en logs; respeta protección de identidad ADMIN (RN-AUTH-05) → 🟢
+- [x] 5.5 ♻️ Refactor (generador de contraseña temporal aislado y testeado)
 
 ## 6. Panel admin de usuarios (frontend, usuarios) — test-first de componente
 

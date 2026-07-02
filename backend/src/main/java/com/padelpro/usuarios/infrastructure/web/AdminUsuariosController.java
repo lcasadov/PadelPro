@@ -3,6 +3,7 @@ package com.padelpro.usuarios.infrastructure.web;
 import com.padelpro.auth.domain.model.UserStatus;
 import com.padelpro.usuarios.application.dto.CreateUserAdminCommand;
 import com.padelpro.usuarios.application.dto.PagedUsersResponse;
+import com.padelpro.usuarios.application.dto.ResetPasswordResult;
 import com.padelpro.usuarios.application.dto.UpdateUserAdminCommand;
 import com.padelpro.usuarios.application.dto.UserAdminResponse;
 import com.padelpro.usuarios.application.service.UserAdminService;
@@ -108,6 +109,18 @@ public class AdminUsuariosController {
         Long adminId = resolveAdminId();
         userAdminService.deactivateUser(id, adminId);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * PATCH /api/admin/usuarios/{id}/reset-password
+     * Generates a temporary password for the target user, persists it as BCrypt, marks the
+     * account with {@code must_change_password=true}, and returns the temporary password in clear
+     * exactly once (D3/D4). An admin cannot reset their own account (RN-AUTH-05).
+     */
+    @PatchMapping("/{id}/reset-password")
+    public ResponseEntity<ResetPasswordResult> resetPassword(@PathVariable Long id) {
+        Long adminId = resolveAdminId();
+        return ResponseEntity.ok(userAdminService.resetPassword(id, adminId));
     }
 
     // -------------------------------------------------------------------------

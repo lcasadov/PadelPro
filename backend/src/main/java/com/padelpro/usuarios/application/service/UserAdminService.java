@@ -8,6 +8,7 @@ import com.padelpro.auth.domain.port.out.AuditLogRepositoryPort;
 import com.padelpro.auth.domain.port.out.UserRepositoryPort;
 import com.padelpro.usuarios.application.dto.CreateUserAdminCommand;
 import com.padelpro.usuarios.application.dto.PagedUsersResponse;
+import com.padelpro.usuarios.application.dto.ResetPasswordResult;
 import com.padelpro.usuarios.application.dto.UpdateUserAdminCommand;
 import com.padelpro.usuarios.application.dto.UserAdminResponse;
 import com.padelpro.usuarios.domain.audit.AuditActions;
@@ -37,13 +38,16 @@ public class UserAdminService {
     private final UserRepositoryPort userRepositoryPort;
     private final AuditLogRepositoryPort auditLogRepositoryPort;
     private final BCryptPasswordEncoder passwordEncoder;
+    private final TemporaryPasswordGenerator temporaryPasswordGenerator;
 
     public UserAdminService(UserRepositoryPort userRepositoryPort,
                             AuditLogRepositoryPort auditLogRepositoryPort,
-                            BCryptPasswordEncoder passwordEncoder) {
+                            BCryptPasswordEncoder passwordEncoder,
+                            TemporaryPasswordGenerator temporaryPasswordGenerator) {
         this.userRepositoryPort   = userRepositoryPort;
         this.auditLogRepositoryPort = auditLogRepositoryPort;
         this.passwordEncoder      = passwordEncoder;
+        this.temporaryPasswordGenerator = temporaryPasswordGenerator;
     }
 
     /**
@@ -212,6 +216,40 @@ public class UserAdminService {
         auditLogRepositoryPort.save(new AuditLog(
                 AuditActions.USER_DEACTIVATED, saved, null,
                 "deactivatedBy=" + adminId, OffsetDateTime.now()));
+    }
+
+    /**
+     * Reset a user's password (D3/D4/D9): generate a temporary password, persist its BCrypt hash,
+     * mark {@code must_change_password = true}, and return the temporary password in clear exactly
+     * once so the admin can communicate it. The temporary password is never persisted in clear nor
+     * written to the audit log (RN-RGPD-04).
+     *
+     * <p>An admin cannot reset their own account through this flow — protecting the ADMIN identity
+     * (RN-AUTH-05), consistent with the self-deactivation guard.
+     *
+     * @param targetId the id of the user whose password is reset
+     * @param adminId  the id of the requesting admin
+     * @throws AdminSelfDeactivationException if {@code targetId == adminId}
+     * @throws UserNotFoundException          if the target user does not exist
+     */
+    @Transactional
+    public ResetPasswordResult resetPassword(Long targetId, Long adminId) {
+        if (targetId.equals(adminId)) {
+            throw new AdminSelfDeactivationException();
+        }
+        User user = requireUser(targetId);
+
+        String temporaryPassword = temporaryPasswordGenerator.generate();
+        user.setPasswordHash(passwordEncoder.encode(temporaryPassword));
+        user.setMustChangePassword(true);
+        userRepositoryPort.save(user);
+
+        // RN-RGPD-04: never include the temporary password in the audit details.
+        auditLogRepositoryPort.save(new AuditLog(
+                AuditActions.PASSWORD_RESET_BY_ADMIN, user, null,
+                "resetBy=" + adminId, OffsetDateTime.now()));
+
+        return new ResetPasswordResult(user.getId(), temporaryPassword, true);
     }
 
     // -------------------------------------------------------------------------

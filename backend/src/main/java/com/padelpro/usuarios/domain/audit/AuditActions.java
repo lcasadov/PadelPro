@@ -8,10 +8,11 @@ package com.padelpro.usuarios.domain.audit;
  */
 public final class AuditActions {
 
-    public static final String USER_CREATED_BY_ADMIN = "USER_CREATED_BY_ADMIN";
-    public static final String USER_APPROVED         = "USER_APPROVED";
-    public static final String USER_DEACTIVATED      = "USER_DEACTIVATED";
-    public static final String USER_ROLE_CHANGED     = "USER_ROLE_CHANGED";
+    public static final String USER_CREATED_BY_ADMIN   = "USER_CREATED_BY_ADMIN";
+    public static final String USER_APPROVED           = "USER_APPROVED";
+    public static final String USER_DEACTIVATED        = "USER_DEACTIVATED";
+    public static final String USER_ROLE_CHANGED       = "USER_ROLE_CHANGED";
+    public static final String PASSWORD_RESET_BY_ADMIN = "PASSWORD_RESET_BY_ADMIN";
 
     private AuditActions() {
         // Utility class — not instantiable

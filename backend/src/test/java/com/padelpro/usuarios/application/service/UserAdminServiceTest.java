@@ -17,6 +17,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -48,6 +49,9 @@ class UserAdminServiceTest {
 
     @Mock
     private BCryptPasswordEncoder passwordEncoder;
+
+    @Mock
+    private TemporaryPasswordGenerator temporaryPasswordGenerator;
 
     @InjectMocks
     private UserAdminService userAdminService;
@@ -183,6 +187,53 @@ class UserAdminServiceTest {
     void should_throw_admin_self_deactivation_exception() {
         assertThatThrownBy(() -> userAdminService.deactivateUser(3L, 3L))
                 .isInstanceOf(AdminSelfDeactivationException.class);
+    }
+
+    // -------------------------------------------------------------------------
+    // resetPassword (D3/D4/D9)
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("should_reset_password_generate_temp_bcrypt_and_flag")
+    void should_reset_password_generate_temp_bcrypt_and_flag() {
+        when(userRepositoryPort.findById(2L)).thenReturn(Optional.of(activeUser));
+        when(temporaryPasswordGenerator.generate()).thenReturn("Temp0rary9");
+        when(passwordEncoder.encode("Temp0rary9")).thenReturn("$2a$12$tempHash");
+        when(userRepositoryPort.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(auditLogRepositoryPort.save(any(AuditLog.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        var result = userAdminService.resetPassword(2L, 3L);
+
+        // temporary password returned in clear exactly once
+        assertThat(result.temporaryPassword()).isEqualTo("Temp0rary9");
+        // persisted as BCrypt, flag set
+        assertThat(activeUser.getPasswordHash()).isEqualTo("$2a$12$tempHash");
+        assertThat(activeUser.isMustChangePassword()).isTrue();
+        verify(userRepositoryPort).save(activeUser);
+
+        // audit must NOT contain the temporary password (RN-RGPD-04)
+        ArgumentCaptor<AuditLog> captor = ArgumentCaptor.forClass(AuditLog.class);
+        verify(auditLogRepositoryPort).save(captor.capture());
+        AuditLog audit = captor.getValue();
+        String details = audit.getDetails() == null ? "" : audit.getDetails();
+        assertThat(details).doesNotContain("Temp0rary9");
+    }
+
+    @Test
+    @DisplayName("should_reject_admin_resetting_own_password (RN-AUTH-05)")
+    void should_reject_admin_resetting_own_password() {
+        assertThatThrownBy(() -> userAdminService.resetPassword(3L, 3L))
+                .isInstanceOf(AdminSelfDeactivationException.class);
+        verify(userRepositoryPort, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("should_throw_not_found_when_resetting_missing_user")
+    void should_throw_not_found_when_resetting_missing_user() {
+        when(userRepositoryPort.findById(999L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> userAdminService.resetPassword(999L, 3L))
+                .isInstanceOf(UserNotFoundException.class);
     }
 
     // -------------------------------------------------------------------------
