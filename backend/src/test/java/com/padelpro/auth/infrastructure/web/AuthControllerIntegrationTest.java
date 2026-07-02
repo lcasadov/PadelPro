@@ -184,6 +184,7 @@ class AuthControllerIntegrationTest extends PostgresIntegrationTest {
                 .andExpect(jsonPath("$.token_type").value("Bearer"))
                 .andExpect(jsonPath("$.expires_in").value(900))
                 .andExpect(jsonPath("$.must_change_password").value(false))
+                .andExpect(jsonPath("$.role").value("USER"))
                 .andExpect(cookie().httpOnly("refresh_token", true))
                 .andExpect(cookie().exists("refresh_token"));
     }
