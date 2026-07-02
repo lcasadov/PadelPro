@@ -48,19 +48,19 @@
 
 ## 6. Panel admin de usuarios (frontend, usuarios) — test-first de componente
 
-- [ ] 6.1 🔴 Test: `AdminRoute` redirige a un USER y deja pasar a un ADMIN → 🟢 implementar guard
-- [ ] 6.2 🔴 Test: `adminUsuariosApi` (mock) — listar con filtro, aprobar, activar/desactivar, reset → 🟢 implementar servicio
-- [ ] 6.3 🔴 Test de componente: la página `/admin/usuarios` lista, filtra por estado y dispara aprobar → 🟢 implementar
-- [ ] 6.4 🔴 Test: la acción de reset muestra la temporal devuelta una sola vez (con aviso) → 🟢 implementar
-- [ ] 6.5 ♻️ Refactor + entrada de nav condicionada a ADMIN
+- [x] 6.1 🔴 Test: `AdminRoute` redirige a un USER y deja pasar a un ADMIN → 🟢 implementar guard
+- [x] 6.2 🔴 Test: `adminUsuariosApi` (mock) — listar con filtro, aprobar, activar/desactivar, reset → 🟢 implementar servicio
+- [x] 6.3 🔴 Test de componente: la página `/admin/usuarios` lista, filtra por estado y dispara aprobar → 🟢 implementar
+- [x] 6.4 🔴 Test: la acción de reset muestra la temporal devuelta una sola vez (con aviso) → 🟢 implementar
+- [x] 6.5 ♻️ Refactor + entrada de nav condicionada a ADMIN
 
 ## 7. UX de acceso (frontend, auth-local) — test-first de componente
 
-- [ ] 7.1 🔴 Test: el botón "¿Olvidaste la contraseña?" navega a `/forgot-password` → 🟢 enlazar + pantalla "contacta con el administrador"
-- [ ] 7.2 🔴 Test: el login mapea `403 ACCOUNT_NOT_ACTIVE` → mensaje de cuenta pendiente/bloqueada y `401` → credenciales inválidas → 🟢 implementar
-- [ ] 7.3 🔴 Test: tras registro correcto se muestra la confirmación "pendiente de aprobación; acceso provisional 2 días" → 🟢 implementar
-- [ ] 7.4 🔴 Test: si el login indica `must_change_password`, se fuerza la pantalla de cambio antes de entrar → 🟢 implementar
-- [ ] 7.5 ♻️ Refactor de los componentes/estados de error
+- [x] 7.1 🔴 Test: el botón "¿Olvidaste la contraseña?" navega a `/forgot-password` → 🟢 enlazar + pantalla "contacta con el administrador"
+- [x] 7.2 🔴 Test: el login mapea `403 ACCOUNT_NOT_ACTIVE` → mensaje de cuenta pendiente/bloqueada y `401` → credenciales inválidas → 🟢 implementar
+- [x] 7.3 🔴 Test: tras registro correcto se muestra la confirmación "pendiente de aprobación; acceso provisional 2 días" → 🟢 implementar
+- [x] 7.4 🔴 Test: si el login indica `must_change_password`, se fuerza la pantalla de cambio antes de entrar → 🟢 implementar
+- [x] 7.5 ♻️ Refactor de los componentes/estados de error
 
 ## 8. API spec
 

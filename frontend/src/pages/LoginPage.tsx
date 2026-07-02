@@ -12,7 +12,7 @@ export function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const { setAccessToken } = useAuth();
+  const { setSession } = useAuth();
   const navigate = useNavigate();
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -20,15 +20,32 @@ export function LoginPage() {
     setErrorMessage(null);
     try {
       const response = await loginApi({ email, password });
-      setAccessToken(response.access_token);
-      navigate('/home');
+      setSession({
+        accessToken: response.access_token,
+        role: response.role ?? null,
+        mustChangePassword: response.must_change_password ?? false,
+      });
+      // D9 — cambio forzado: si la cuenta debe cambiar la contraseña (tras un
+      // reset del admin), se redirige a la pantalla de cambio antes de entrar.
+      if (response.must_change_password) {
+        navigate('/cambiar-password');
+      } else {
+        navigate('/home');
+      }
     } catch (err) {
       if (axios.isAxiosError(err)) {
         const status = err.response?.status;
+        const body = err.response?.data as { error?: string } | undefined;
         if (status === 401) {
+          // Anti-enumeración: mensaje genérico de credenciales.
           setErrorMessage('Credenciales inválidas');
+        } else if (status === 403 && body?.error === 'ACCOUNT_NOT_ACTIVE') {
+          // D5 — cuenta pendiente de aprobación o desactivada (distinto de credenciales).
+          setErrorMessage(
+            'Tu cuenta aún no está activada. Contacta con el administrador del club.'
+          );
         } else if (status === 403) {
-          setErrorMessage('Tu cuenta aún no está activada. Contacta con el administrador.');
+          setErrorMessage('Tu cuenta aún no está activada. Contacta con el administrador del club.');
         } else if (status === 429) {
           setErrorMessage('Demasiados intentos. Inténtalo más tarde.');
         } else {
@@ -96,13 +113,9 @@ export function LoginPage() {
         </button>
 
         <div className={styles.footer}>
-          <button
-            type="button"
-            className="p-link"
-            onClick={() => {}}
-          >
+          <Link to="/forgot-password" className="p-link">
             ¿Olvidaste la contraseña?
-          </button>
+          </Link>
           <Link to="/register" className="p-link">
             Crear cuenta
           </Link>

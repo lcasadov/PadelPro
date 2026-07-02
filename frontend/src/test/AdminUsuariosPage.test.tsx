@@ -7,7 +7,6 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { http, HttpResponse } from 'msw';
 import { AuthContext } from '../context/AuthContext';
-import type { Session } from '../context/AuthContext';
 import { AdminUsuariosPage } from '../pages/AdminUsuariosPage';
 import { server } from './mocks/server';
 
@@ -17,7 +16,7 @@ const adminValue = {
   mustChangePassword: false,
   isAuthenticated: true,
   setAccessToken: () => {},
-  setSession: (_: Session) => {},
+  setSession: () => {},
   clearMustChangePassword: () => {},
 };
 

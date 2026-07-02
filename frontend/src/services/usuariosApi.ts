@@ -35,3 +35,19 @@ export async function updateMeApi(token: string, req: UpdateMeRequest): Promise<
   });
   return data;
 }
+
+// acceso-cuenta-prod (D9) — cambio de contraseña propio.
+// POST /api/usuarios/me/password → 204; 401 (current mal); 400 INVALID_PASSWORD.
+export interface ChangePasswordRequest {
+  current_password: string;
+  new_password: string;
+}
+
+export async function changeMyPasswordApi(
+  token: string,
+  req: ChangePasswordRequest
+): Promise<void> {
+  await api.post('/usuarios/me/password', req, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}

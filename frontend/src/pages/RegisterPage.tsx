@@ -69,7 +69,12 @@ export function RegisterPage() {
             ¡Cuenta creada!
           </h1>
           <p className={styles.step}>
-            Espera la aprobación del administrador para acceder.
+            Tu cuenta queda <strong>pendiente de aprobación</strong> por el
+            administrador del club.
+          </p>
+          <p className={styles.step}>
+            Mientras tanto, tienes <strong>acceso provisional durante 2 días</strong>{' '}
+            para empezar a usar la app.
           </p>
           <Link to="/login" className="p-link">
             Volver al inicio de sesión

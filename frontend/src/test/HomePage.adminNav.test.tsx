@@ -3,7 +3,6 @@ import { render, screen } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import type { Session } from '../context/AuthContext';
 import { HomePage } from '../pages/HomePage';
 
 function renderHome(role: string | null) {
@@ -13,7 +12,7 @@ function renderHome(role: string | null) {
     mustChangePassword: false,
     isAuthenticated: true,
     setAccessToken: () => {},
-    setSession: (_: Session) => {},
+    setSession: () => {},
     clearMustChangePassword: () => {},
   };
   return render(

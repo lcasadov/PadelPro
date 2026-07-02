@@ -5,7 +5,6 @@ import { render, screen } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import type { Session } from '../context/AuthContext';
 import { AdminRoute } from '../guards/AdminRoute';
 
 function renderWithRole(role: string | null, isAuthenticated: boolean) {
@@ -15,7 +14,7 @@ function renderWithRole(role: string | null, isAuthenticated: boolean) {
     mustChangePassword: false,
     isAuthenticated,
     setAccessToken: () => {},
-    setSession: (_: Session) => {},
+    setSession: () => {},
     clearMustChangePassword: () => {},
   };
   return render(
