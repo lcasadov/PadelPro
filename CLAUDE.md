@@ -22,31 +22,26 @@ You are an expert Orchestrator Agent — a master coordinator and strategic plan
 
 ---
 
-## ⛔ REGLA ABSOLUTA — IDENTIDAD GIT: USAR SIEMPRE EL USUARIO `orquestadoria`
+## ⛔ REGLA ABSOLUTA — IDENTIDAD GIT: USAR EL USUARIO `lcasadov`
 
-**NUNCA uses tu cuenta personal para commits, PRs, aprobaciones ni ninguna operación `gh`.** Toda interacción con GitHub (branches, PRs, commits, Issues, Projects) debe realizarse bajo la identidad del usuario **`orquestadoria`**, cuyas credenciales están en `.claude/agents/.env`.
+> **Actualizado 2026-07-03:** por decisión del usuario, toda operación de git/GitHub se hace bajo la cuenta **`lcasadov`** (dueño del repo `lcasadov/PadelPro`). Esto **reemplaza** el uso previo del bot `orquestadoria`.
 
-**Al inicio de CUALQUIER operación git o gh:**
+Toda interacción con GitHub (branches, PRs, commits, Issues, Projects) debe realizarse bajo la identidad **`lcasadov`**.
+
+**Autenticación:** `gh` ya está logueado como `lcasadov` (keyring) y `gh auth setup-git` está configurado, de modo que git usa esas credenciales para HTTPS github.com. **NO exportes** `GH_TOKEN`/`GITHUB_TOKEN` con el token del bot (`ORCHESTRATORIA_TOKEN`): eso haría que gh/git operen como `orquestadoria` en vez de `lcasadov`. Deja que `gh` use el keyring.
+
+**Autoría:** la identidad de commits está en la config global de git:
 
 ```bash
-# Cargar identidad de orquestadoria desde .claude/agents/.env
-export GH_TOKEN=$(grep ORCHESTRATORIA_TOKEN .claude/agents/.env | cut -d= -f2)
-export GITHUB_TOKEN=$GH_TOKEN
-
-export GIT_AUTHOR_NAME="orquestadoria"
-export GIT_AUTHOR_EMAIL=$(grep GIT_BOT_EMAIL .claude/agents/.env | cut -d= -f2)
-export GIT_COMMITTER_NAME="orquestadoria"
-export GIT_COMMITTER_EMAIL=$GIT_AUTHOR_EMAIL
-
-# Verificar que el token corresponde a orquestadoria — fail-fast si no coincide
-gh auth status 2>&1 | grep -q "orquestadoria" || { echo "❌ ABORT: GH_TOKEN no corresponde a orquestadoria. Revisa .claude/agents/.env." >&2; unset GH_TOKEN GITHUB_TOKEN; exit 1; }
+git config --global user.name  "lcasadov"
+git config --global user.email "lcasadov@gmail.com"
 ```
 
-El fichero `.claude/agents/.env` debe definir: `ORCHESTRATORIA_TOKEN` (token de `orquestadoria`), `GIT_BOT_EMAIL`.
-Leer los valores de `docs/PROJECT.md` sección **Bot Orchestrator**.
+No hace falta forzar `GIT_AUTHOR_*` por variables de entorno.
 
-> **Repositorio actual y gestor de trabajo**: GitHub (código + Issues + Projects v2). `GITHUB_REMOTE`, `GITHUB_ORG`, `GITHUB_REPO`, `GITHUB_PROJECT_NUMBER` se definen en `docs/PROJECT.md`.
-> El token de `orquestadoria` debe tener los scopes `repo`, `project`, `workflow` para poder gestionar Issues, Projects v2 y CI.
+> **Nota histórica:** el flujo antiguo cargaba `ORCHESTRATORIA_TOKEN`/`GIT_BOT_EMAIL` de `.claude/agents/.env` (sección **Bot Orchestrator** de `docs/PROJECT.md`). Ese bot ya no se usa para operar; si en el futuro se reactiva, revertir esta sección.
+
+> **Repositorio y gestor de trabajo**: GitHub (código + Issues + Projects v2). `GITHUB_REMOTE`, `GITHUB_ORG`, `GITHUB_REPO`, `GITHUB_PROJECT_NUMBER` se definen en `docs/PROJECT.md`.
 
 Estas variables deben estar activas en **todos** los comandos `git commit`, `gh pr create`, `gh pr review`, `gh pr merge`, `gh issue ...`, `gh project ...`. No es opcional.
 
