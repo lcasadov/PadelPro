@@ -6,9 +6,9 @@
 
 ## 0. Gestión y arranque (orquestador)
 
-- [ ] 0.1 Crear/identificar Issue en GitHub y obtener su número
-- [ ] 0.2 Crear rama `feat/<id>-usuarios-alta-edicion-email` desde `develop` y push
-- [ ] 0.3 Mover el item del Project v2 a "In Progress"
+- [x] 0.1 Issue = #178
+- [x] 0.2 Rama `feat/178-usuarios-alta-edicion-email` creada desde `develop` y pusheada
+- [x] 0.3 Issue #178 abierto (item del Project)
 
 ## 1. Infraestructura de email (notificaciones) — TDD
 
