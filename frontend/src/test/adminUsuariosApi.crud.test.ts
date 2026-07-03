@@ -120,18 +120,11 @@ describe('editarUsuarioApi', () => {
     expect(updated.firstName).toBe('Editado');
   });
 
-  it('propagates a 400 validation error', async () => {
-    server.use(
-      http.patch('/api/admin/usuarios/5', () =>
-        HttpResponse.json(
-          { error: 'VALIDATION_ERROR', message: 'Email con formato inválido' },
-          { status: 400 }
-        )
-      )
-    );
-
-    await expect(
-      editarUsuarioApi(TOKEN, 5, { firstName: 'A', lastName: 'B', email: 'no-es-email', phone: '' })
-    ).rejects.toMatchObject({ response: { status: 400 } });
-  });
+  // NOTA (#179): el antiguo test "propagates a 400 validation error" era circular —
+  // mockeaba el 400 con MSW y solo comprobaba que axios lo propagaba, sin ejercer
+  // el contrato real de validación de email. Se ha eliminado y sustituido por:
+  //  - Frontend: src/test/UsuarioFormModal.test.tsx (el componente valida el email
+  //    en cliente y NO dispara la request cuando está mal formado).
+  //  - Backend: AdminUsuariosControllerIntegrationTest (email mal formado → 400
+  //    VALIDATION_ERROR real contra Postgres, no mockeado).
 });

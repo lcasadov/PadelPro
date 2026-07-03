@@ -33,6 +33,12 @@ const ROLES = [
   { value: 'ADMIN', label: 'Administrador' },
 ];
 
+// Validación de formato de email en cliente: evita disparar la request cuando
+// el email está mal formado (el backend también lo rechaza con 400
+// VALIDATION_ERROR, ver change usuarios-alta-edicion-email #179). Regex simple
+// y coherente con el @Email de Bean Validation: algo@algo.dominio, sin espacios.
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export function UsuarioFormModal({
   mode,
   initial,
@@ -46,6 +52,7 @@ export function UsuarioFormModal({
   const [email, setEmail] = useState(initial?.email ?? '');
   const [phone, setPhone] = useState(initial?.phone ?? '');
   const [role, setRole] = useState(initial?.role ?? 'USER');
+  const [emailError, setEmailError] = useState<string | null>(null);
 
   const firstFieldRef = useRef<HTMLInputElement>(null);
 
@@ -65,6 +72,11 @@ export function UsuarioFormModal({
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (!EMAIL_RE.test(email.trim())) {
+      setEmailError('El email no tiene un formato válido.');
+      return;
+    }
+    setEmailError(null);
     onSubmit({ firstName, lastName, email, phone, role });
   }
 
@@ -126,9 +138,19 @@ export function UsuarioFormModal({
               className="p-input"
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                if (emailError) setEmailError(null);
+              }}
+              aria-invalid={emailError ? true : undefined}
+              aria-describedby={emailError ? 'usuario-email-error' : undefined}
               required
             />
+            {emailError && (
+              <p id="usuario-email-error" className="p-error" role="alert">
+                {emailError}
+              </p>
+            )}
           </div>
 
           <div className="p-input-group">
