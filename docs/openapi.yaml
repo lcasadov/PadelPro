@@ -400,6 +400,10 @@ paths:
       description: |
         Crea un nuevo usuario directamente sin proceso de aprobación.
         El usuario se crea con estado ACTIVE. Requiere ROLE_ADMIN.
+
+        La contraseña la **genera el sistema** (el campo `password` del cuerpo se ignora):
+        se crea una contraseña temporal, se marca `mustChangePassword=true` y se comunica
+        al usuario mediante un **email de bienvenida**. El fallo del email no impide el alta.
       requestBody:
         required: true
         content:
@@ -1666,7 +1670,6 @@ components:
         - phone
         - firstName
         - lastName
-        - password
         - role
       properties:
         login:
@@ -1696,8 +1699,9 @@ components:
         password:
           type: string
           format: password
-          minLength: 8
-          example: "SecureP4ss!"
+          deprecated: true
+          description: Ignorado — la contraseña la genera el sistema y se envía por email de bienvenida.
+          example: ""
         role:
           $ref: '#/components/schemas/UserRole'
 

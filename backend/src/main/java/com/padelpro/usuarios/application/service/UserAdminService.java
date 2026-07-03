@@ -6,6 +6,8 @@ import com.padelpro.auth.domain.model.UserRole;
 import com.padelpro.auth.domain.model.UserStatus;
 import com.padelpro.auth.domain.port.out.AuditLogRepositoryPort;
 import com.padelpro.auth.domain.port.out.UserRepositoryPort;
+import com.padelpro.notificaciones.domain.model.WelcomeEmail;
+import com.padelpro.notificaciones.domain.port.out.NotificationPort;
 import com.padelpro.usuarios.application.dto.CreateUserAdminCommand;
 import com.padelpro.usuarios.application.dto.PagedUsersResponse;
 import com.padelpro.usuarios.application.dto.ResetPasswordResult;
@@ -16,6 +18,8 @@ import com.padelpro.usuarios.domain.exception.AdminSelfDeactivationException;
 import com.padelpro.usuarios.domain.exception.EmailConflictException;
 import com.padelpro.usuarios.domain.exception.UserNotFoundException;
 import com.padelpro.usuarios.domain.exception.UserNotPendingException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -35,19 +39,24 @@ import java.util.List;
 @Service
 public class UserAdminService {
 
+    private static final Logger log = LoggerFactory.getLogger(UserAdminService.class);
+
     private final UserRepositoryPort userRepositoryPort;
     private final AuditLogRepositoryPort auditLogRepositoryPort;
     private final BCryptPasswordEncoder passwordEncoder;
     private final TemporaryPasswordGenerator temporaryPasswordGenerator;
+    private final NotificationPort notificationPort;
 
     public UserAdminService(UserRepositoryPort userRepositoryPort,
                             AuditLogRepositoryPort auditLogRepositoryPort,
                             BCryptPasswordEncoder passwordEncoder,
-                            TemporaryPasswordGenerator temporaryPasswordGenerator) {
+                            TemporaryPasswordGenerator temporaryPasswordGenerator,
+                            NotificationPort notificationPort) {
         this.userRepositoryPort   = userRepositoryPort;
         this.auditLogRepositoryPort = auditLogRepositoryPort;
         this.passwordEncoder      = passwordEncoder;
         this.temporaryPasswordGenerator = temporaryPasswordGenerator;
+        this.notificationPort     = notificationPort;
     }
 
     /**
@@ -69,10 +78,14 @@ public class UserAdminService {
                 ? UserRole.valueOf(cmd.role().toUpperCase())
                 : UserRole.USER;
 
+        // D2/D3: the system generates the temporary password (the admin does not type it, and any
+        // password in the request is ignored). It is communicated to the user via the welcome email.
+        String temporaryPassword = temporaryPasswordGenerator.generate();
+
         OffsetDateTime now = OffsetDateTime.now();
         User user = new User(
                 cmd.login(),
-                passwordEncoder.encode(cmd.password()),
+                passwordEncoder.encode(temporaryPassword),
                 cmd.firstName(),
                 cmd.lastName(),
                 cmd.email(),
@@ -82,12 +95,19 @@ public class UserAdminService {
                 now
         );
         user.setPhone(cmd.phone());
+        user.setMustChangePassword(true);
 
         User saved = userRepositoryPort.save(user);
 
         auditLogRepositoryPort.save(new AuditLog(
                 AuditActions.USER_CREATED_BY_ADMIN, saved, null,
                 "login=" + cmd.login(), OffsetDateTime.now()));
+
+        // D3 (direct-creation flow): welcome email WITH the temporary password. Best-effort/async;
+        // a failure never breaks the creation (D4). RN-RGPD-04: the password is not logged here.
+        sendWelcomeEmailSafely(
+                WelcomeEmail.withPassword(saved.getEmail(), saved.getFirstName(), temporaryPassword),
+                saved.getEmail());
 
         return toAdminResponse(saved);
     }
@@ -104,12 +124,19 @@ public class UserAdminService {
         if (user.getStatus() != UserStatus.PENDING) {
             throw new UserNotPendingException(targetId);
         }
+        // D3: approval does NOT reset the password — the user keeps the one chosen at registration.
         user.setStatus(UserStatus.ACTIVE);
         User saved = userRepositoryPort.save(user);
 
         auditLogRepositoryPort.save(new AuditLog(
                 AuditActions.USER_APPROVED, saved, null,
                 "userId=" + targetId, OffsetDateTime.now()));
+
+        // D3 (approval flow): welcome email WITHOUT password ("account approved, you can log in").
+        // Best-effort/async; a failure never breaks the approval (D4).
+        sendWelcomeEmailSafely(
+                WelcomeEmail.accountApproved(saved.getEmail(), saved.getFirstName()),
+                saved.getEmail());
 
         return toAdminResponse(saved);
     }
@@ -259,6 +286,22 @@ public class UserAdminService {
     private User requireUser(Long id) {
         return userRepositoryPort.findById(id)
                 .orElseThrow(() -> new UserNotFoundException(id));
+    }
+
+    /**
+     * Fire the welcome email without letting any failure break the activation/creation (D4).
+     *
+     * <p>The SMTP adapter is {@code @Async} and already swallows delivery errors, but this guard
+     * makes the calling flow robust even if the port implementation changes or is invoked
+     * synchronously (e.g. in tests). RN-RGPD-04: only the recipient is logged, never a password.
+     */
+    private void sendWelcomeEmailSafely(WelcomeEmail email, String recipientEmail) {
+        try {
+            notificationPort.sendWelcomeEmail(email);
+        } catch (Exception ex) {
+            log.warn("Welcome email dispatch failed for {} — activation not affected: {}",
+                    recipientEmail, ex.getClass().getSimpleName());
+        }
     }
 
     static UserAdminResponse toAdminResponse(User user) {

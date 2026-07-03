@@ -111,6 +111,83 @@ class AdminUsuariosControllerIntegrationTest extends PostgresIntegrationTest {
                 .andExpect(jsonPath("$.error", is("USUARIOS_EMAIL_CONFLICT")));
     }
 
+    @Test
+    @DisplayName("POST /api/admin/usuarios malformed email → 400 VALIDATION_ERROR")
+    void create_user_malformed_email_returns_400() throws Exception {
+        Map<String, String> body = Map.of(
+                "login", "bad.email.user",
+                "firstName", "Bad",
+                "lastName", "Email",
+                "email", "no-es-email",
+                "password", "Password1"
+        );
+        mockMvc.perform(post("/api/admin/usuarios")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error", is("VALIDATION_ERROR")))
+                .andExpect(jsonPath("$.details[0]", is("email")));
+
+        // must NOT have been persisted
+        assert userRepository.findByLogin("bad.email.user").isEmpty();
+    }
+
+    // -------------------------------------------------------------------------
+    // PATCH /api/admin/usuarios/{id}
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("PATCH /api/admin/usuarios/{id} valid contact data → 200 persists")
+    void update_user_valid_contact_returns_200() throws Exception {
+        Map<String, String> body = Map.of(
+                "firstName", "Reggie",
+                "email", "regular.updated@example.com",
+                "phone", "600999888"
+        );
+        mockMvc.perform(patch("/api/admin/usuarios/{id}", regularUser.getId())
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.firstName", is("Reggie")))
+                .andExpect(jsonPath("$.email", is("regular.updated@example.com")));
+    }
+
+    @Test
+    @DisplayName("PATCH /api/admin/usuarios/{id} malformed email → 400 VALIDATION_ERROR, no change")
+    void update_user_malformed_email_returns_400_no_change() throws Exception {
+        Map<String, String> body = Map.of(
+                "firstName", "Regular",
+                "lastName", "User",
+                "email", "no-es-email",
+                "phone", ""
+        );
+        mockMvc.perform(patch("/api/admin/usuarios/{id}", regularUser.getId())
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error", is("VALIDATION_ERROR")))
+                .andExpect(jsonPath("$.details[0]", is("email")));
+
+        // email must remain unchanged in DB
+        User reloaded = userRepository.findByLogin(regularUser.getLogin()).orElseThrow();
+        assert reloaded.getEmail().equals("regular@example.com");
+    }
+
+    @Test
+    @DisplayName("PATCH /api/admin/usuarios/{id} partial update (only phone) → 200, email untouched")
+    void update_user_partial_only_phone_returns_200() throws Exception {
+        Map<String, String> body = Map.of("phone", "611222333");
+        mockMvc.perform(patch("/api/admin/usuarios/{id}", regularUser.getId())
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email", is("regular@example.com")));
+    }
+
     // -------------------------------------------------------------------------
     // PATCH /api/admin/usuarios/{id}/aprobar
     // -------------------------------------------------------------------------

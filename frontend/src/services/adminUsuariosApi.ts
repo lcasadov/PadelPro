@@ -5,6 +5,8 @@
 //   PATCH  /api/admin/usuarios/{id}                  (cambiar estado)
 //   DELETE /api/admin/usuarios/{id}                  (desactivar)
 //   PATCH  /api/admin/usuarios/{id}/reset-password   (contraseña temporal, D3/D9)
+//   POST   /api/admin/usuarios                       (alta directa ACTIVE — change usuarios-alta-edicion-email D2/D6)
+//   PATCH  /api/admin/usuarios/{id}                  (editar datos de contacto, sin rol — D7)
 import axios from 'axios';
 
 const api = axios.create({ baseURL: '/api', withCredentials: true });
@@ -20,6 +22,26 @@ export interface AdminUsuario {
   lastName: string;
   status: string;
   role: string;
+  phone?: string;
+}
+
+// Alta directa (D2/D6): el admin teclea nombre, email, teléfono y rol.
+// La contraseña NO se pide — la genera el backend (D2/D3) y la comunica por email.
+export interface CrearUsuarioInput {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  role: string;
+}
+
+// Edición (D7): solo datos de contacto. El rol queda fuera para evitar
+// escalada de privilegios; el estado se gestiona con las acciones dedicadas.
+export interface EditarUsuarioInput {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
 }
 
 export interface PagedUsuarios {
@@ -86,6 +108,49 @@ export async function resetPasswordApi(
   const { data } = await api.patch<ResetPasswordResponse>(
     `/admin/usuarios/${id}/reset-password`,
     {},
+    authHeader(token)
+  );
+  return data;
+}
+
+// Alta directa de usuario (status ACTIVE). El backend genera la contraseña
+// temporal e ignora cualquier campo `password`, por eso no lo enviamos (D2/D3).
+// `login` se deriva del email (login inmutable = identificador de la cuenta).
+// Un email duplicado devuelve 409 (USUARIOS_EMAIL_CONFLICT).
+export async function crearUsuarioApi(
+  token: string,
+  input: CrearUsuarioInput
+): Promise<AdminUsuario> {
+  const { data } = await api.post<AdminUsuario>(
+    '/admin/usuarios',
+    {
+      login: input.email,
+      firstName: input.firstName,
+      lastName: input.lastName,
+      email: input.email,
+      phone: input.phone,
+      role: input.role,
+    },
+    authHeader(token)
+  );
+  return data;
+}
+
+// Edición de datos de contacto (sin rol ni estado — D7). Un email mal formado
+// devuelve 400 (VALIDATION_ERROR).
+export async function editarUsuarioApi(
+  token: string,
+  id: number,
+  input: EditarUsuarioInput
+): Promise<AdminUsuario> {
+  const { data } = await api.patch<AdminUsuario>(
+    `/admin/usuarios/${id}`,
+    {
+      firstName: input.firstName,
+      lastName: input.lastName,
+      email: input.email,
+      phone: input.phone,
+    },
     authHeader(token)
   );
   return data;

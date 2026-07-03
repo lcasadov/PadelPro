@@ -6,16 +6,25 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import axios from 'axios';
 import {
   listUsuariosApi,
   aprobarUsuarioApi,
   updateUsuarioEstadoApi,
   desactivarUsuarioApi,
   resetPasswordApi,
+  crearUsuarioApi,
+  editarUsuarioApi,
   AdminUsuario,
 } from '../services/adminUsuariosApi';
+import { UsuarioFormModal, UsuarioFormValues } from '../components/UsuarioFormModal';
 import './pages.css';
 import styles from './AdminUsuariosPage.module.css';
+
+type ModalState =
+  | { mode: 'create' }
+  | { mode: 'edit'; usuario: AdminUsuario }
+  | null;
 
 const STATUS_FILTERS = [
   { value: '', label: 'Todos' },
@@ -23,6 +32,21 @@ const STATUS_FILTERS = [
   { value: 'ACTIVE', label: 'Activos' },
   { value: 'INACTIVE', label: 'Inactivos' },
 ];
+
+// Traduce el error de la API a copy amigable sin exponer el mensaje crudo del
+// backend. 409 = email duplicado (alta); 400 = datos inválidos (edición/alta).
+function resolveModalError(err: unknown, mode: 'create' | 'edit'): string {
+  const status = axios.isAxiosError(err) ? err.response?.status : undefined;
+  if (status === 409) {
+    return 'Ese email ya está registrado por otro usuario.';
+  }
+  if (status === 400) {
+    return 'Revisa los datos: el email debe tener un formato válido.';
+  }
+  return mode === 'create'
+    ? 'No se pudo dar de alta el usuario. Inténtalo de nuevo.'
+    : 'No se pudo guardar los cambios. Inténtalo de nuevo.';
+}
 
 export function AdminUsuariosPage() {
   const { accessToken } = useAuth();
@@ -35,6 +59,11 @@ export function AdminUsuariosPage() {
 
   // Contraseña temporal mostrada una sola vez tras un reset (D4).
   const [tempReset, setTempReset] = useState<{ email: string; password: string } | null>(null);
+
+  // Formulario modal de alta/edición (D6/D7).
+  const [modal, setModal] = useState<ModalState>(null);
+  const [modalSubmitting, setModalSubmitting] = useState(false);
+  const [modalError, setModalError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!accessToken) return;
@@ -114,6 +143,52 @@ export function AdminUsuariosPage() {
     }
   }
 
+  function openCreate() {
+    setModalError(null);
+    setModal({ mode: 'create' });
+  }
+
+  function openEdit(usuario: AdminUsuario) {
+    setModalError(null);
+    setModal({ mode: 'edit', usuario });
+  }
+
+  function closeModal() {
+    if (modalSubmitting) return;
+    setModal(null);
+    setModalError(null);
+  }
+
+  async function handleModalSubmit(values: UsuarioFormValues) {
+    if (!accessToken || !modal) return;
+    setModalSubmitting(true);
+    setModalError(null);
+    try {
+      if (modal.mode === 'create') {
+        await crearUsuarioApi(accessToken, {
+          firstName: values.firstName,
+          lastName: values.lastName,
+          email: values.email,
+          phone: values.phone,
+          role: values.role,
+        });
+      } else {
+        await editarUsuarioApi(accessToken, modal.usuario.id, {
+          firstName: values.firstName,
+          lastName: values.lastName,
+          email: values.email,
+          phone: values.phone,
+        });
+      }
+      setModal(null);
+      await load();
+    } catch (err) {
+      setModalError(resolveModalError(err, modal.mode));
+    } finally {
+      setModalSubmitting(false);
+    }
+  }
+
   return (
     <div className={styles.adminPage}>
       <header className={styles.header}>
@@ -148,6 +223,13 @@ export function AdminUsuariosPage() {
             </option>
           ))}
         </select>
+        <button
+          type="button"
+          className={`p-btn p-btn-primary ${styles.altaBtn}`}
+          onClick={openCreate}
+        >
+          Dar de alta
+        </button>
       </div>
 
       {errorMsg && (
@@ -207,6 +289,14 @@ export function AdminUsuariosPage() {
                 </td>
                 <td>
                   <div className={styles.actions}>
+                    <button
+                      type="button"
+                      className={styles.actionBtn}
+                      onClick={() => openEdit(u)}
+                      disabled={busyId === u.id}
+                    >
+                      Editar
+                    </button>
                     {u.status === 'PENDING' && (
                       <button
                         type="button"
@@ -251,6 +341,17 @@ export function AdminUsuariosPage() {
             ))}
           </tbody>
         </table>
+      )}
+
+      {modal && (
+        <UsuarioFormModal
+          mode={modal.mode}
+          initial={modal.mode === 'edit' ? modal.usuario : null}
+          submitting={modalSubmitting}
+          errorMsg={modalError}
+          onSubmit={handleModalSubmit}
+          onClose={closeModal}
+        />
       )}
     </div>
   );

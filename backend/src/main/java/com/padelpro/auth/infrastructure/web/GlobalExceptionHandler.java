@@ -16,8 +16,11 @@ import com.padelpro.usuarios.domain.exception.AdminSelfDeactivationException;
 import com.padelpro.usuarios.domain.exception.EmailConflictException;
 import com.padelpro.usuarios.domain.exception.UserNotFoundException;
 import com.padelpro.usuarios.domain.exception.UserNotPendingException;
+import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -46,6 +49,27 @@ public class GlobalExceptionHandler {
                         "INVALID_PASSWORD",
                         "Password does not meet policy requirements",
                         ex.getViolations()));
+    }
+
+    /**
+     * Bean-validation failures on {@code @Valid @RequestBody} DTOs (e.g. a malformed
+     * {@code email} on admin user create/edit). Returns 400 with the offending field
+     * names in {@code details}, mirroring the {@code INVALID_PASSWORD} convention of
+     * carrying machine-readable violation identifiers.
+     */
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ErrorResponse> handleMethodArgumentNotValid(MethodArgumentNotValidException ex) {
+        List<String> details = ex.getBindingResult().getFieldErrors().stream()
+                .map(FieldError::getField)
+                .distinct()
+                .sorted()
+                .toList();
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse(
+                        "VALIDATION_ERROR",
+                        "One or more fields have an invalid value",
+                        details));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
