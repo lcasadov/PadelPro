@@ -41,7 +41,7 @@
 
 ## 5. API spec
 
-- [ ] 5.1 Revisar/actualizar `docs/openapi.yaml`: alta (`POST /api/admin/usuarios`) sin contraseña de entrada (generada por el sistema) y nota del email de bienvenida al activar
+- [x] 5.1 Revisar/actualizar `docs/openapi.yaml`: alta (`POST /api/admin/usuarios`) sin contraseña de entrada (generada por el sistema) y nota del email de bienvenida al activar
 
 ## 6. QA
 
