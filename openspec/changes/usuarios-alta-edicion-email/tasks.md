@@ -27,17 +27,17 @@
 
 ## 3. Frontend — alta de usuario (usuarios) — test-first
 
-- [ ] 3.1 🔴 Test: `adminUsuariosApi.crearUsuario` (mock) llama `POST /api/admin/usuarios` con nombre/email/rol → 🟢 implementar
-- [ ] 3.2 🔴 Test de componente: botón "Dar de alta" abre el formulario; enviar crea y refresca la lista → 🟢 implementar formulario de alta (sin campo contraseña)
-- [ ] 3.3 🔴 Test: alta con email duplicado muestra el error de conflicto → 🟢 manejar el 409
-- [ ] 3.4 ♻️ Refactor del formulario/estado
+- [x] 3.1 🔴 Test: `adminUsuariosApi.crearUsuario` (mock) llama `POST /api/admin/usuarios` con nombre/email/rol → 🟢 implementar
+- [x] 3.2 🔴 Test de componente: botón "Dar de alta" abre el formulario; enviar crea y refresca la lista → 🟢 implementar formulario de alta (sin campo contraseña)
+- [x] 3.3 🔴 Test: alta con email duplicado muestra el error de conflicto → 🟢 manejar el 409
+- [x] 3.4 ♻️ Refactor del formulario/estado
 
 ## 4. Frontend — edición de usuario (usuarios) — test-first
 
-- [ ] 4.1 🔴 Test: `adminUsuariosApi.editarUsuario` (mock) llama `PATCH /api/admin/usuarios/{id}` con nombre/email/teléfono (sin rol) → 🟢 implementar
-- [ ] 4.2 🔴 Test de componente: acción "Editar" precarga los datos, el formulario NO ofrece cambiar rol, guardar aplica el `PATCH` y refresca la lista → 🟢 implementar formulario de edición
-- [ ] 4.3 🔴 Test: edición con datos inválidos (email mal formado) muestra el error (400) → 🟢 manejar
-- [ ] 4.4 ♻️ Refactor
+- [x] 4.1 🔴 Test: `adminUsuariosApi.editarUsuario` (mock) llama `PATCH /api/admin/usuarios/{id}` con nombre/email/teléfono (sin rol) → 🟢 implementar
+- [x] 4.2 🔴 Test de componente: acción "Editar" precarga los datos, el formulario NO ofrece cambiar rol, guardar aplica el `PATCH` y refresca la lista → 🟢 implementar formulario de edición
+- [x] 4.3 🔴 Test: edición con datos inválidos (email mal formado) muestra el error (400) → 🟢 manejar
+- [x] 4.4 ♻️ Refactor
 
 ## 5. API spec
 

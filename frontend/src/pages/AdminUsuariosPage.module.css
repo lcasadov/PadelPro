@@ -69,6 +69,10 @@
   padding: 16px 0;
 }
 
+.altaBtn {
+  margin-left: auto;
+}
+
 .filterLabel {
   font-size: 12px;
   font-weight: 600;
