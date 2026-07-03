@@ -1452,6 +1452,10 @@ components:
             (p. ej. tras un reset del administrador). El cliente debe redirigir al
             cambio obligatorio de contraseña.
           example: false
+        role:
+          type: string
+          description: Rol del usuario autenticado (p. ej. `USER`, `ADMIN`). El cliente lo usa para mostrar u ocultar la UI de administración.
+          example: "USER"
 
     RefreshRequest:
       type: object
