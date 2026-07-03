@@ -1,5 +1,8 @@
 package com.padelpro.usuarios.application.dto;
 
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+
 /**
  * Command for admin-created user accounts (POST /api/admin/usuarios).
  *
@@ -19,7 +22,7 @@ public record CreateUserAdminCommand(
         String login,
         String firstName,
         String lastName,
-        String email,
+        @NotBlank(message = "email") @Email(message = "email") String email,
         String password,
         String phone,
         String role

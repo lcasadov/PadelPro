@@ -7,6 +7,7 @@ import com.padelpro.usuarios.application.dto.ResetPasswordResult;
 import com.padelpro.usuarios.application.dto.UpdateUserAdminCommand;
 import com.padelpro.usuarios.application.dto.UserAdminResponse;
 import com.padelpro.usuarios.application.service.UserAdminService;
+import jakarta.validation.Valid;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -65,7 +66,7 @@ public class AdminUsuariosController {
      */
     @PostMapping
     public ResponseEntity<UserAdminResponse> createUser(
-            @RequestBody CreateUserAdminCommand command) {
+            @Valid @RequestBody CreateUserAdminCommand command) {
         UserAdminResponse created = userAdminService.createUser(command);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
@@ -86,7 +87,7 @@ public class AdminUsuariosController {
     @PatchMapping("/{id}")
     public ResponseEntity<UserAdminResponse> updateUser(
             @PathVariable Long id,
-            @RequestBody UpdateUserAdminCommand command) {
+            @Valid @RequestBody UpdateUserAdminCommand command) {
         return ResponseEntity.ok(userAdminService.updateUser(id, command));
     }
 
