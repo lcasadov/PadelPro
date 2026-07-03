@@ -12,11 +12,11 @@
 
 ## 1. Infraestructura de email (notificaciones) — TDD
 
-- [ ] 1.1 Añadir `spring-boot-starter-mail` al `pom.xml`; `@EnableAsync` + executor
-- [ ] 1.2 🔴 Test: puerto `NotificationPort.sendWelcomeEmail(...)` — un fallo del adaptador SMTP no propaga excepción al llamador (se traga/loguea) → 🟢 implementar adaptador SMTP (`JavaMailSender`) tolerante a fallos
-- [ ] 1.3 🔴 Test: la contraseña temporal no aparece en logs al enviar/fallar → 🟢 asegurar
-- [ ] 1.4 Config SMTP por entorno (`MAIL_HOST/PORT/USERNAME/PASSWORD/FROM`); placeholders en `.env.example`; passthrough en `docker-compose.yml` (backend `environment`)
-- [ ] 1.5 ♻️ Refactor: plantilla de email de bienvenida (asunto + cuerpo con contraseña y bienvenida)
+- [x] 1.1 Añadir `spring-boot-starter-mail` al `pom.xml`; `@EnableAsync` + executor
+- [x] 1.2 🔴 Test: puerto `NotificationPort.sendWelcomeEmail(...)` — un fallo del adaptador SMTP no propaga excepción al llamador (se traga/loguea) → 🟢 implementar adaptador SMTP (`JavaMailSender`) tolerante a fallos
+- [x] 1.3 🔴 Test: la contraseña temporal no aparece en logs al enviar/fallar → 🟢 asegurar
+- [x] 1.4 Config SMTP por entorno (`MAIL_HOST/PORT/USERNAME/PASSWORD/FROM`); placeholders en `.env.example`; passthrough en `docker-compose.yml` (backend `environment`)
+- [x] 1.5 ♻️ Refactor: plantilla de email de bienvenida (asunto + cuerpo con contraseña y bienvenida)
 
 ## 2. Backend — email al activar (usuarios + notificaciones) — TDD
 
