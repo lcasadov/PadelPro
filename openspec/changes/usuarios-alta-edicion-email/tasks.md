@@ -20,10 +20,10 @@
 
 ## 2. Backend — email al activar (usuarios + notificaciones) — TDD
 
-- [ ] 2.1 🔴 Test: al **aprobar** una cuenta PENDING NO se resetea la contraseña (conserva la del registro) y se invoca `sendWelcomeEmail` SIN contraseña → 🟢 implementar (enganchar en `approveUser`)
-- [ ] 2.2 🔴 Test: al **dar de alta** un usuario (ACTIVE) el sistema genera la contraseña (no la del request), `must_change_password=true`, y dispara el email CON la temporal → 🟢 implementar (ajustar `createUser`)
-- [ ] 2.3 🔴 Test: si el envío de email falla, la activación/alta se completa igualmente (200/201) → 🟢 verificar el `@Async`/try-catch
-- [ ] 2.4 ♻️ Refactor del disparo del email (bienvenida-con-pw en alta, bienvenida-sin-pw en aprobación — D3)
+- [x] 2.1 🔴 Test: al **aprobar** una cuenta PENDING NO se resetea la contraseña (conserva la del registro) y se invoca `sendWelcomeEmail` SIN contraseña → 🟢 implementar (enganchar en `approveUser`)
+- [x] 2.2 🔴 Test: al **dar de alta** un usuario (ACTIVE) el sistema genera la contraseña (no la del request), `must_change_password=true`, y dispara el email CON la temporal → 🟢 implementar (ajustar `createUser`)
+- [x] 2.3 🔴 Test: si el envío de email falla, la activación/alta se completa igualmente (200/201) → 🟢 verificar el `@Async`/try-catch
+- [x] 2.4 ♻️ Refactor del disparo del email (bienvenida-con-pw en alta, bienvenida-sin-pw en aprobación — D3)
 
 ## 3. Frontend — alta de usuario (usuarios) — test-first
 

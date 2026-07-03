@@ -6,6 +6,8 @@ import com.padelpro.auth.domain.model.UserRole;
 import com.padelpro.auth.domain.model.UserStatus;
 import com.padelpro.auth.domain.port.out.AuditLogRepositoryPort;
 import com.padelpro.auth.domain.port.out.UserRepositoryPort;
+import com.padelpro.notificaciones.domain.model.WelcomeEmail;
+import com.padelpro.notificaciones.domain.port.out.NotificationPort;
 import com.padelpro.usuarios.application.dto.CreateUserAdminCommand;
 import com.padelpro.usuarios.application.dto.PagedUsersResponse;
 import com.padelpro.usuarios.application.dto.UserAdminResponse;
@@ -53,6 +55,9 @@ class UserAdminServiceTest {
     @Mock
     private TemporaryPasswordGenerator temporaryPasswordGenerator;
 
+    @Mock
+    private NotificationPort notificationPort;
+
     @InjectMocks
     private UserAdminService userAdminService;
 
@@ -72,11 +77,13 @@ class UserAdminServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    @DisplayName("should_create_user_with_active_status_and_bcrypt_hash")
+    @DisplayName("should_create_user_active_with_system_generated_password_and_must_change_flag (D2/D3)")
     void should_create_user_with_active_status_and_bcrypt_hash() {
         when(userRepositoryPort.existsByEmail("new@example.com")).thenReturn(false);
         when(userRepositoryPort.existsByLogin("newlogin")).thenReturn(false);
-        when(passwordEncoder.encode("P@ssword1")).thenReturn("$2a$12$hashed");
+        // D3: the system GENERATES the temporary password; the request password is ignored.
+        when(temporaryPasswordGenerator.generate()).thenReturn("Gener4tedX9");
+        when(passwordEncoder.encode("Gener4tedX9")).thenReturn("$2a$12$hashed");
         when(userRepositoryPort.save(any(User.class))).thenAnswer(inv -> {
             User u = inv.getArgument(0);
             setId(u, 10L);
@@ -85,14 +92,49 @@ class UserAdminServiceTest {
         when(auditLogRepositoryPort.save(any(AuditLog.class))).thenAnswer(inv -> inv.getArgument(0));
 
         CreateUserAdminCommand cmd = new CreateUserAdminCommand(
-                "newlogin", "New", "User", "new@example.com", "P@ssword1", null, null);
+                "newlogin", "New", "User", "new@example.com", "IgnoredReqPw1", null, null);
 
         UserAdminResponse response = userAdminService.createUser(cmd);
 
         assertThat(response.status()).isEqualTo("ACTIVE");
         assertThat(response.role()).isEqualTo("USER");
-        verify(passwordEncoder).encode("P@ssword1");
+        // system-generated password is hashed; request password is NOT used
+        verify(temporaryPasswordGenerator).generate();
+        verify(passwordEncoder).encode("Gener4tedX9");
+        verify(passwordEncoder, never()).encode("IgnoredReqPw1");
         verify(auditLogRepositoryPort).save(any(AuditLog.class));
+    }
+
+    @Test
+    @DisplayName("should_persist_must_change_password_true_and_send_welcome_with_generated_password (D3)")
+    void should_send_welcome_email_with_generated_password_on_create() {
+        when(userRepositoryPort.existsByEmail("new@example.com")).thenReturn(false);
+        when(userRepositoryPort.existsByLogin("newlogin")).thenReturn(false);
+        when(temporaryPasswordGenerator.generate()).thenReturn("Gener4tedX9");
+        when(passwordEncoder.encode("Gener4tedX9")).thenReturn("$2a$12$hashed");
+        ArgumentCaptor<User> savedUser = ArgumentCaptor.forClass(User.class);
+        when(userRepositoryPort.save(savedUser.capture())).thenAnswer(inv -> {
+            User u = inv.getArgument(0);
+            setId(u, 10L);
+            return u;
+        });
+        when(auditLogRepositoryPort.save(any(AuditLog.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        CreateUserAdminCommand cmd = new CreateUserAdminCommand(
+                "newlogin", "New", "User", "new@example.com", null, null, null);
+
+        userAdminService.createUser(cmd);
+
+        // must_change_password = true on the persisted user
+        assertThat(savedUser.getValue().isMustChangePassword()).isTrue();
+
+        // welcome email carries the generated temporary password (D3 direct-creation flow)
+        ArgumentCaptor<WelcomeEmail> emailCaptor = ArgumentCaptor.forClass(WelcomeEmail.class);
+        verify(notificationPort).sendWelcomeEmail(emailCaptor.capture());
+        WelcomeEmail email = emailCaptor.getValue();
+        assertThat(email.recipientEmail()).isEqualTo("new@example.com");
+        assertThat(email.hasPassword()).isTrue();
+        assertThat(email.temporaryPassword()).isEqualTo("Gener4tedX9");
     }
 
     @Test
@@ -122,6 +164,46 @@ class UserAdminServiceTest {
 
         assertThat(response.status()).isEqualTo("ACTIVE");
         verify(auditLogRepositoryPort).save(any(AuditLog.class));
+    }
+
+    @Test
+    @DisplayName("should_send_welcome_email_without_password_and_not_reset_on_approve (D3)")
+    void should_send_welcome_email_without_password_on_approve() {
+        String originalHash = pendingUser.getPasswordHash();
+        when(userRepositoryPort.findById(1L)).thenReturn(Optional.of(pendingUser));
+        when(userRepositoryPort.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(auditLogRepositoryPort.save(any(AuditLog.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        userAdminService.approveUser(1L);
+
+        // approval MUST NOT reset the password: the user keeps the one chosen at registration
+        assertThat(pendingUser.getPasswordHash()).isEqualTo(originalHash);
+        assertThat(pendingUser.isMustChangePassword()).isFalse();
+        verify(temporaryPasswordGenerator, never()).generate();
+
+        // welcome email WITHOUT password (approval flow)
+        ArgumentCaptor<WelcomeEmail> emailCaptor = ArgumentCaptor.forClass(WelcomeEmail.class);
+        verify(notificationPort).sendWelcomeEmail(emailCaptor.capture());
+        WelcomeEmail email = emailCaptor.getValue();
+        assertThat(email.recipientEmail()).isEqualTo(pendingUser.getEmail());
+        assertThat(email.hasPassword()).isFalse();
+        assertThat(email.temporaryPassword()).isNull();
+    }
+
+    @Test
+    @DisplayName("should_complete_approve_even_when_email_send_fails (D4)")
+    void should_complete_approve_even_when_email_fails() {
+        when(userRepositoryPort.findById(1L)).thenReturn(Optional.of(pendingUser));
+        when(userRepositoryPort.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(auditLogRepositoryPort.save(any(AuditLog.class))).thenAnswer(inv -> inv.getArgument(0));
+        doThrow(new RuntimeException("SMTP down"))
+                .when(notificationPort).sendWelcomeEmail(any(WelcomeEmail.class));
+
+        UserAdminResponse response = userAdminService.approveUser(1L);
+
+        // activation completes despite the email failure (the port is best-effort/async)
+        assertThat(response.status()).isEqualTo("ACTIVE");
+        assertThat(pendingUser.getStatus()).isEqualTo(UserStatus.ACTIVE);
     }
 
     @Test
