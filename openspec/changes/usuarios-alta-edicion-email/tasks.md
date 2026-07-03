@@ -46,11 +46,11 @@
 
 ## 6. QA
 
-- [ ] 6.1 `test-runner`: suite backend + frontend en verde (Postgres real :5433) y cobertura dentro del umbral JaCoCo
-- [ ] 6.2 `verification-specialist`: probes (email no bloquea activación, contraseña fuera de logs, alta/edición solo ADMIN, conflicto/validación)
-- [ ] 6.3 `reality-checker`: journey — admin da de alta usuario → llega email de bienvenida (Ethereal) con contraseña → login con esa contraseña → cambio forzado; admin edita un usuario; admin aprueba PENDING → email
+- [x] 6.1 `test-runner`: suite backend + frontend en verde (Postgres real :5433) y cobertura dentro del umbral JaCoCo
+- [x] 6.2 `verification-specialist`: probes (email no bloquea activación, contraseña fuera de logs, alta/edición solo ADMIN, conflicto/validación)
+- [x] 6.3 `reality-checker`: journey — admin da de alta usuario → llega email de bienvenida (Ethereal) con contraseña → login con esa contraseña → cambio forzado; admin edita un usuario; admin aprueba PENDING → email
 
 ## 7. Cierre
 
-- [ ] 7.1 PR con `Closes #<id>` y CI en verde
+- [x] 7.1 PR con `Closes #<id>` y CI en verde
 - [ ] 7.2 Merge → deploy; en el `.env` del EC2 añadir `MAIL_HOST/PORT/USERNAME/PASSWORD/FROM` (Ethereal); verificar en vivo el alta + email en el buzón de Ethereal
