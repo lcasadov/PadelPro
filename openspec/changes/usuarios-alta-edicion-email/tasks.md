@@ -38,6 +38,7 @@
 - [x] 4.2 🔴 Test de componente: acción "Editar" precarga los datos, el formulario NO ofrece cambiar rol, guardar aplica el `PATCH` y refresca la lista → 🟢 implementar formulario de edición
 - [x] 4.3 🔴 Test: edición con datos inválidos (email mal formado) muestra el error (400) → 🟢 manejar
 - [x] 4.4 ♻️ Refactor
+- [x] 4.5 (#179) 🔴 Fix del bug de validación de email real: backend `@NotBlank/@Email` + `@Valid` + handler `MethodArgumentNotValidException` → 400 `VALIDATION_ERROR` (IT reales POST/PATCH); frontend valida email en `UsuarioFormModal` (no dispara request) y sustituye el test circular de `adminUsuariosApi.crud.test.ts` por `UsuarioFormModal.test.tsx`
 
 ## 5. API spec
 
