@@ -49,7 +49,7 @@ class ReservaDisponibilidadE2ETest {
     void user_authenticated_gets_200_with_slots() throws Exception {
         when(disponibilidadService.getDisponibilidad(any(LocalDate.class)))
                 .thenReturn(new DisponibilidadResponse("2025-08-01",
-                        List.of(new TramoDisponible("09:00", 60, 3))));
+                        List.of(new TramoDisponible("09:00", 60, 3, false))));
 
         mockMvc.perform(get("/api/reservas/disponibles").param("fecha", "2025-08-01"))
                 .andExpect(status().isOk())

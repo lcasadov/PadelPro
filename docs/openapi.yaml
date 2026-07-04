@@ -2039,6 +2039,7 @@ components:
         - horaInicio
         - duracionMinutos
         - plazasLibres
+        - creable
       properties:
         horaInicio:
           type: string
@@ -2054,6 +2055,13 @@ components:
           minimum: 1
           maximum: 4
           example: 3
+        creable:
+          type: boolean
+          description: >-
+            true si el tramo está totalmente vacío (plazasLibres == max_participants)
+            y por tanto se puede crear una nueva reserva; false si ya existe una
+            reserva incompleta en la franja (solo admite unirse, no crear).
+          example: true
 
     UnirseResponse:
       type: object

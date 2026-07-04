@@ -87,6 +87,8 @@ class DisponibilidadServiceTest {
                 .allSatisfy(t -> {
                     assertThat(t.plazasLibres()).isEqualTo(4);
                     assertThat(t.duracionMinutos()).isEqualTo(60);
+                    // creable == true when the slot is fully empty (plazasLibres == max_participants)
+                    assertThat(t.creable()).isTrue();
                 });
         assertThat(slotAt(resp, "08:00")).isNotNull();
         assertThat(slotAt(resp, "22:00")).isNotNull();
@@ -108,9 +110,32 @@ class DisponibilidadServiceTest {
         assertThat(t10).isNotNull();
         assertThat(t10.plazasLibres()).isEqualTo(2);
         assertThat(t10.duracionMinutos()).isEqualTo(60);
-        // Neighbouring slots remain fully free
+        // Partial slot (plazasLibres < max_participants) is NOT creable, only joinable
+        assertThat(t10.creable()).isFalse();
+        // Neighbouring slots remain fully free (and therefore creable)
         assertThat(slotAt(resp, "09:00").plazasLibres()).isEqualTo(4);
+        assertThat(slotAt(resp, "09:00").creable()).isTrue();
         assertThat(slotAt(resp, "11:00").plazasLibres()).isEqualTo(4);
+        assertThat(slotAt(resp, "11:00").creable()).isTrue();
+    }
+
+    // creable — flag aditivo (D7): true sii el tramo está totalmente vacío; false si hay reserva incompleta
+    @Test
+    @DisplayName("creable: true en tramo vacío, false en tramo con reserva incompleta")
+    void should_set_creable_flag_from_full_emptiness() {
+        configWith(PistaState.ACTIVA, 4);
+        when(reservationQueryPort.findActiveOccupanciesByDate(FECHA)).thenReturn(List.of(
+                new ReservationOccupancy(LocalTime.of(9, 0), LocalTime.of(10, 0), 1),  // 09:00 -> 3 libres, incompleto
+                new ReservationOccupancy(LocalTime.of(15, 0), LocalTime.of(16, 0), 3)   // 15:00 -> 1 libre, incompleto
+        ));
+
+        DisponibilidadResponse resp = service.getDisponibilidad(FECHA);
+
+        // Tramo vacío -> creable true
+        assertThat(slotAt(resp, "08:00").creable()).isTrue();
+        // Tramos con reserva incompleta (con plazas libres) -> creable false
+        assertThat(slotAt(resp, "09:00").creable()).isFalse();
+        assertThat(slotAt(resp, "15:00").creable()).isFalse();
     }
 
     // 3.3 — PENDING_CONFIRMATION ocupa igual que CONFIRMED
