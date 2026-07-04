@@ -53,4 +53,4 @@
 ## 7. Cierre
 
 - [x] 7.1 PR con `Closes #<id>` y CI en verde
-- [ ] 7.2 Merge → deploy; en el `.env` del EC2 añadir `MAIL_HOST/PORT/USERNAME/PASSWORD/FROM` (Ethereal); verificar en vivo el alta + email en el buzón de Ethereal
+- [x] 7.2 Merge (PR #180) → deploy SUCCESS; `MAIL_*` (Ethereal) añadidas al `.env` del EC2; prod healthy con el nuevo código (endpoint de alta activo). Email verificado end-to-end por IMAP en el reality-check

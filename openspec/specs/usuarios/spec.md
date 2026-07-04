@@ -197,6 +197,63 @@ Fase 1
 - **AND** la cuenta con `id=99` pasa a `status=INACTIVE`
 - **AND** la cuenta del ADMIN con `id=42` no se ve afectada
 
+### Requirement 4: Panel de administración de usuarios en la interfaz web *(añadido — acceso-cuenta-prod)*
+
+**La interfaz web DEBE ofrecer a los administradores un panel (`/admin/usuarios`) para gobernar el acceso: listar usuarios con filtro por estado, aprobar cuentas pendientes y activar/desactivar cuentas. Accesible solo con rol ADMIN (guard de frontend como defensa en profundidad; la autorización efectiva la impone el backend en `/api/admin/**`).**
+
+#### Scenario: ADMIN gestiona desde el panel
+- **GIVEN** un ADMIN autenticado en el panel
+- **WHEN** filtra por `PENDING` y pulsa aprobar sobre un usuario
+- **THEN** el usuario pasa a `ACTIVE` (vía `PATCH /api/admin/usuarios/{id}/aprobar`) y puede iniciar sesión
+
+#### Scenario: USER no accede al panel
+- **WHEN** un USER intenta la ruta del panel
+- **THEN** el frontend lo redirige y el backend rechazaría cualquier operación admin con 403
+
+### Requirement 5: Restablecimiento de contraseña por el administrador *(añadido — acceso-cuenta-prod)*
+
+**El sistema DEBE permitir a un administrador restablecer la contraseña de un usuario generando una contraseña temporal: se devuelve en claro exactamente una vez en la respuesta, se persiste cifrada con BCrypt, marca `must_change_password = true` y nunca aparece en logs (RN-RGPD-04, RN-AUTH-07). Un administrador no puede resetearse a sí mismo (RN-AUTH-05).**
+
+#### Scenario: ADMIN restablece una contraseña
+- **WHEN** el ADMIN dispara `PATCH /api/admin/usuarios/{id}/reset-password`
+- **THEN** recibe la temporal una sola vez; el usuario puede entrar con ella y se le exige cambiarla
+
+#### Scenario: USER no puede resetear
+- **WHEN** un USER invoca el endpoint de restablecimiento
+- **THEN** el sistema responde 403
+
+### Requirement 6: Alta de usuarios desde el panel de administración *(añadido — usuarios-alta-edicion-email)*
+
+**La interfaz web DEBE permitir al administrador dar de alta un usuario (nombre, email, rol) que queda `ACTIVE`. La contraseña la genera el sistema (no la teclea el admin), se marca `must_change_password = true` y se comunica al usuario por email de bienvenida (capability `notificaciones`).**
+
+#### Scenario: ADMIN da de alta un usuario
+- **WHEN** completa el formulario de alta y confirma
+- **THEN** se crea un usuario `ACTIVE` con contraseña generada y se dispara el email de bienvenida con ella
+
+#### Scenario: Email duplicado
+- **WHEN** el alta usa un email ya registrado
+- **THEN** el sistema responde 409 y no crea duplicado
+
+### Requirement 7: Edición de datos de contacto desde el panel *(añadido — usuarios-alta-edicion-email)*
+
+**La interfaz web DEBE permitir al administrador editar los datos de contacto (nombre, email, teléfono) vía `PATCH /api/admin/usuarios/{id}`. El formulario NO permite cambiar el rol (previene escalada de privilegios). Un email mal formado DEBE rechazarse con 400 `VALIDATION_ERROR` (backend con `@Email`/`@Valid`).**
+
+#### Scenario: Edición válida
+- **WHEN** el ADMIN modifica nombre/email/teléfono y guarda
+- **THEN** los cambios persisten y el listado se actualiza
+
+#### Scenario: Email inválido
+- **WHEN** guarda con un email mal formado
+- **THEN** el sistema responde 400 `VALIDATION_ERROR` y no aplica el cambio
+
+### Requirement 8: Email de bienvenida al aprobar o activar *(añadido — usuarios-alta-edicion-email)*
+
+**El sistema DEBE disparar el email de bienvenida (capability `notificaciones`) cuando una cuenta pasa a `ACTIVE`: en el alta directa con la contraseña generada; en la aprobación de una cuenta pendiente sin contraseña (el usuario conserva la que eligió al registrarse — no se resetea).**
+
+#### Scenario: Aprobación sin reset
+- **WHEN** el ADMIN aprueba una cuenta `PENDING`
+- **THEN** la cuenta pasa a `ACTIVE` conservando su contraseña y se envía la bienvenida sin contraseña
+
 ---
 
 ## Casos límite

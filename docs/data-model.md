@@ -199,6 +199,7 @@ erDiagram
 | `email` | `VARCHAR(150)` | NO | — | UK | Correo electrónico |
 | `status` | `user_status` | NO | `'PENDING'` | — | Estado de la cuenta |
 | `role` | `user_role` | NO | `'USER'` | — | Rol en la plataforma |
+| `must_change_password` | `BOOLEAN` | NO | `false` | — | Obliga a cambiar la contraseña en el siguiente acceso (tras reset del admin o alta directa). Migración V11 (change acceso-cuenta-prod). |
 | `telegram_chat_id` | `VARCHAR(50)` | SÍ | NULL | UK | ID de chat de Telegram. Se rellena cuando el usuario inicia conversación con el bot. |
 | `telegram_linked_at` | `TIMESTAMPTZ` | SÍ | NULL | — | Instante en que se vinculó Telegram |
 | `registered_at` | `TIMESTAMPTZ` | NO | `now()` | — | Fecha de alta |
