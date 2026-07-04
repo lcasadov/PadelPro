@@ -1,0 +1,161 @@
+/* DisponibilidadPage — buscar disponibilidad (mockup 03) */
+
+.page {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--cream);
+  max-width: 480px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 20px 24px 48px;
+  gap: 4px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.titleBlock {
+  padding: 24px 0 8px;
+}
+
+.eyebrow {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.titleBlock h1 {
+  font-family: var(--font-display);
+  font-size: 40px;
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+  margin: 4px 0 0;
+  color: var(--ink);
+}
+
+.titleBlock em {
+  font-style: italic;
+  color: var(--olive);
+}
+
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px 0;
+}
+
+.fieldLabel {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.dateInput {
+  border: 1.5px solid rgba(13, 13, 13, 0.2);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 15px;
+  font-family: var(--font-body);
+  color: var(--ink);
+  background: var(--white);
+  cursor: pointer;
+  width: 100%;
+}
+
+.dateInput:focus {
+  outline: none;
+  border-color: var(--ink);
+}
+
+.tramoList {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.tramoItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: var(--white);
+  border: 1px solid var(--line, #e5e3d8);
+  border-radius: 16px;
+  padding: 16px 18px;
+}
+
+.tramoInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tramoHora {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.tramoDur {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.reservarBtn {
+  width: auto;
+  padding: 10px 18px;
+  border-radius: 10px;
+}
+
+.noDisponible {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted-light);
+}
+
+.empty {
+  padding: 40px 0;
+  text-align: center;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.loadingWrapper {
+  display: flex;
+  justify-content: center;
+  padding: 48px 0;
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(13, 13, 13, 0.15);
+  border-top-color: var(--olive);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
