@@ -74,7 +74,7 @@ describe('ConfirmarReservaPage (Grupo 5)', () => {
   });
 
   it('5.2 — añadir participantes adicionales los incluye en el payload', async () => {
-    let capturedBody: any = null;
+    let capturedBody: Record<string, unknown> | null = null;
     server.use(
       http.post('/api/reservas', async ({ request }) => {
         capturedBody = await request.json();
@@ -90,10 +90,10 @@ describe('ConfirmarReservaPage (Grupo 5)', () => {
     await userEvent.click(screen.getByRole('button', { name: /confirmar|reservar/i }));
 
     await waitFor(() => expect(capturedBody).not.toBeNull());
-    expect(capturedBody.participantesAdicionales).toEqual([{ externalName: 'Marcos R.' }]);
+    expect(capturedBody!.participantesAdicionales).toEqual([{ externalName: 'Marcos R.' }]);
     // Nunca se envía importe desde el cliente (RN-RES-03).
-    expect(capturedBody.priceTotal).toBeUndefined();
-    expect(capturedBody.price).toBeUndefined();
+    expect(capturedBody!.priceTotal).toBeUndefined();
+    expect(capturedBody!.price).toBeUndefined();
   });
 
   it('5.3 — éxito (201 PENDING_CONFIRMATION) muestra pendiente de confirmación sin pago', async () => {
