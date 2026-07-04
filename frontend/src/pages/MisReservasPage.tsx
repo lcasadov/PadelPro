@@ -23,8 +23,8 @@ export function MisReservasPage() {
     setLoading(true);
     setErrorMsg(null);
     try {
-      const page = await getMisReservas(accessToken);
-      setReservas(page.data ?? []);
+      const lista = await getMisReservas(accessToken);
+      setReservas(lista);
     } catch {
       setErrorMsg('No se pudieron cargar tus reservas. Inténtalo de nuevo.');
     } finally {

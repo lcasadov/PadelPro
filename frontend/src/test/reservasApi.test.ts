@@ -1,7 +1,12 @@
-// reservas-ui-jugador (Grupo 2) — reservasApi (TDD RED) — validado contra MSW.
-// Cubre: disponibilidad (con flag `creable`), crear reserva (Idempotency-Key +
-// ausencia de importe, RN-RES-03), listar, detalle, cancelar (204) y el mapeo
-// del error shape real { code, message, errors[] } a errores tipados por `code`.
+// reservas-ui-jugador (Grupo 2) — reservasApi — validado contra MSW usando el
+// CONTRATO REAL del backend (verificado en vivo):
+//  - GET /api/reservas devuelve un ARRAY JSON plano (no `{ data: [...] }`).
+//  - Cuerpo de error `{ error: "<CODE>", message, timestamp }` (clave `error`, no `code`).
+//  - Errores de negocio con HTTP 422 (PARTICIPANTS_LIMIT_EXCEEDED,
+//    INVALID_STATE_TRANSITION, CANCELLATION_DEADLINE_PASSED).
+//  - Participante `{ userId, externalName, externalPhone, slotPosition, owner }`.
+// Cubre: disponibilidad (flag `creable`), crear (Idempotency-Key + ausencia de
+// importe, RN-RES-03), listar, detalle, cancelar (204) y el mapeo de errores.
 import { describe, it, expect, afterEach } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from './mocks/server';
@@ -72,15 +77,15 @@ describe('reservasApi — crear reserva', () => {
           {
             id: '550e8400-e29b-41d4-a716-446655440000',
             reservationDate: '2025-06-15',
-            startTime: '09:00',
+            startTime: '09:00:00',
+            endTime: '10:00:00',
             durationMinutes: 60,
             status: 'PENDING_CONFIRMATION',
             channel: 'WEB',
             ownerId: 5,
-            ownerName: 'John Doe',
             priceTotal: 15.0,
             participants: [
-              { id: 1, userId: 5, nombre: 'John Doe', statusPago: 'PENDING', isOwner: true, joinedAt: '2025-06-14T18:00:00Z' },
+              { userId: 5, externalName: null, externalPhone: null, slotPosition: 1, owner: true },
             ],
             pago: null,
             createdAt: '2025-06-14T18:00:00Z',
@@ -107,14 +112,14 @@ describe('reservasApi — crear reserva', () => {
     expect(created.id).toBe('550e8400-e29b-41d4-a716-446655440000');
     expect(created.status).toBe('PENDING_CONFIRMATION');
     expect(created.priceTotal).toBe(15.0);
-    expect(created.participants[0].isOwner).toBe(true);
+    expect(created.participants[0].owner).toBe(true);
   });
 
   it('crearReserva mapea 409 CONFLICT', async () => {
     server.use(
       http.post('/api/reservas', () =>
         HttpResponse.json(
-          { code: 'CONFLICT', message: 'La franja horaria ya está reservada.', errors: [] },
+          { error: 'CONFLICT', message: 'La franja horaria ya está reservada.', timestamp: '2026-07-04T10:00:00Z' },
           { status: 409 }
         )
       )
@@ -127,14 +132,14 @@ describe('reservasApi — crear reserva', () => {
     expect(err.status).toBe(409);
   });
 
-  it('crearReserva mapea 400 VALIDATION_ERROR con errors[] de campo', async () => {
+  it('crearReserva mapea 400 VALIDATION_ERROR (cuerpo real { error, message }, sin errors[])', async () => {
     server.use(
       http.post('/api/reservas', () =>
         HttpResponse.json(
           {
-            code: 'VALIDATION_ERROR',
-            message: 'Los datos de la solicitud no son válidos.',
-            errors: [{ field: 'startTime', message: 'La hora debe ser en punto o en media hora.' }],
+            error: 'VALIDATION_ERROR',
+            message: 'reservationDate es obligatorio (formato YYYY-MM-DD)',
+            timestamp: '2026-07-04T10:00:00Z',
           },
           { status: 400 }
         )
@@ -143,15 +148,15 @@ describe('reservasApi — crear reserva', () => {
 
     const err = await crearReserva(TOKEN, payload, 'k').catch((e) => e);
     expect(err.code).toBe('VALIDATION_ERROR');
-    expect(err.fieldErrors).toHaveLength(1);
-    expect(err.fieldErrors[0]).toMatchObject({ field: 'startTime' });
+    expect(err.status).toBe(400);
+    expect(err.message).toContain('reservationDate');
   });
 
-  it('crearReserva mapea 422 PARTICIPANTS_LIMIT_EXCEEDED', async () => {
+  it('crearReserva mapea 422 PARTICIPANTS_LIMIT_EXCEEDED (por el valor de `error`, no por status)', async () => {
     server.use(
       http.post('/api/reservas', () =>
         HttpResponse.json(
-          { code: 'PARTICIPANTS_LIMIT_EXCEEDED', message: 'Se ha superado el número máximo de participantes.', errors: [] },
+          { error: 'PARTICIPANTS_LIMIT_EXCEEDED', message: 'Se ha superado el número máximo de participantes.', timestamp: '2026-07-04T10:00:00Z' },
           { status: 422 }
         )
       )
@@ -162,11 +167,11 @@ describe('reservasApi — crear reserva', () => {
     expect(err.status).toBe(422);
   });
 
-  it('crearReserva mapea 422 INVALID_STATE_TRANSITION', async () => {
+  it('crearReserva mapea 422 INVALID_STATE_TRANSITION (por el valor de `error`, no por status)', async () => {
     server.use(
       http.post('/api/reservas', () =>
         HttpResponse.json(
-          { code: 'INVALID_STATE_TRANSITION', message: 'Operación no válida para el estado actual.', errors: [] },
+          { error: 'INVALID_STATE_TRANSITION', message: 'La reserva ya se encuentra en estado CANCELLED', timestamp: '2026-07-04T10:00:00Z' },
           { status: 422 }
         )
       )
@@ -174,23 +179,52 @@ describe('reservasApi — crear reserva', () => {
 
     const err = await crearReserva(TOKEN, payload, 'k').catch((e) => e);
     expect(err.code).toBe('INVALID_STATE_TRANSITION');
+    expect(err.status).toBe(422);
   });
 });
 
 describe('reservasApi — listar y detalle', () => {
-  it('getMisReservas hace GET /reservas y devuelve la lista paginada', async () => {
+  it('getMisReservas hace GET /reservas y devuelve un ARRAY JSON plano (contrato real)', async () => {
     let capturedAuth = '';
     server.use(
       http.get('/api/reservas', ({ request }) => {
         capturedAuth = request.headers.get('Authorization') ?? '';
-        return HttpResponse.json({
+        return HttpResponse.json([
+          {
+            id: '550e8400-e29b-41d4-a716-446655440000',
+            reservationDate: '2025-06-15',
+            startTime: '09:00:00',
+            endTime: '10:00:00',
+            durationMinutes: 60,
+            status: 'CONFIRMED',
+            channel: 'WEB',
+            ownerId: 5,
+            priceTotal: 15.0,
+            participants: [],
+            createdAt: '2025-06-14T18:00:00Z',
+          },
+        ]);
+      })
+    );
+
+    const result = await getMisReservas(TOKEN);
+    expect(capturedAuth).toBe(`Bearer ${TOKEN}`);
+    expect(Array.isArray(result)).toBe(true);
+    expect(result).toHaveLength(1);
+    expect(result[0].status).toBe('CONFIRMED');
+  });
+
+  it('getMisReservas normaliza también un cuerpo paginado { data: [...] } (fail-safe)', async () => {
+    server.use(
+      http.get('/api/reservas', () =>
+        HttpResponse.json({
           data: [
             {
-              id: '550e8400-e29b-41d4-a716-446655440000',
+              id: 'r-x',
               reservationDate: '2025-06-15',
-              startTime: '09:00',
+              startTime: '11:00:00',
               durationMinutes: 60,
-              status: 'CONFIRMED',
+              status: 'PENDING_CONFIRMATION',
               channel: 'WEB',
               ownerId: 5,
               priceTotal: 15.0,
@@ -198,33 +232,29 @@ describe('reservasApi — listar y detalle', () => {
               createdAt: '2025-06-14T18:00:00Z',
             },
           ],
-          totalElements: 1,
-          totalPages: 1,
-          page: 0,
-          size: 20,
-        });
-      })
+        })
+      )
     );
 
     const result = await getMisReservas(TOKEN);
-    expect(capturedAuth).toBe(`Bearer ${TOKEN}`);
-    expect(result.data).toHaveLength(1);
-    expect(result.data[0].status).toBe('CONFIRMED');
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe('r-x');
   });
 
-  it('getReserva hace GET /reservas/{id}', async () => {
+  it('getReserva hace GET /reservas/{id} (participante con `owner`/`externalName`)', async () => {
     server.use(
       http.get('/api/reservas/abc-1', () =>
         HttpResponse.json({
           id: 'abc-1',
           reservationDate: '2025-06-15',
-          startTime: '09:00',
+          startTime: '09:00:00',
+          endTime: '10:00:00',
           durationMinutes: 60,
           status: 'CONFIRMED',
           channel: 'WEB',
           ownerId: 5,
           priceTotal: 15.0,
-          participants: [{ id: 1, userId: 5, nombre: 'John', statusPago: 'PAID', isOwner: true, joinedAt: '2025-06-14T18:00:00Z' }],
+          participants: [{ userId: 5, externalName: null, externalPhone: null, slotPosition: 1, owner: true }],
           createdAt: '2025-06-14T18:00:00Z',
         })
       )
@@ -232,13 +262,13 @@ describe('reservasApi — listar y detalle', () => {
 
     const result = await getReserva(TOKEN, 'abc-1');
     expect(result.id).toBe('abc-1');
-    expect(result.participants[0].isOwner).toBe(true);
+    expect(result.participants[0].owner).toBe(true);
   });
 
   it('getReserva mapea 403 (reserva ajena, RN-RGPD-03)', async () => {
     server.use(
       http.get('/api/reservas/ajena', () =>
-        HttpResponse.json({ code: 'FORBIDDEN', message: 'No tiene permisos.', errors: [] }, { status: 403 })
+        HttpResponse.json({ error: 'FORBIDDEN', message: 'No tiene acceso a esta reserva', timestamp: '2026-07-04T10:00:00Z' }, { status: 403 })
       )
     );
 
@@ -250,7 +280,7 @@ describe('reservasApi — listar y detalle', () => {
   it('getReserva mapea 404 (inexistente)', async () => {
     server.use(
       http.get('/api/reservas/nope', () =>
-        HttpResponse.json({ code: 'NOT_FOUND', message: 'No existe.', errors: [] }, { status: 404 })
+        HttpResponse.json({ error: 'NOT_FOUND', message: 'No existe.', timestamp: '2026-07-04T10:00:00Z' }, { status: 404 })
       )
     );
 
@@ -277,11 +307,11 @@ describe('reservasApi — cancelar', () => {
     expect(capturedAuth).toBe(`Bearer ${TOKEN}`);
   });
 
-  it('cancelarReserva mapea 422 CANCELLATION_DEADLINE_PASSED', async () => {
+  it('cancelarReserva mapea 422 CANCELLATION_DEADLINE_PASSED (por el valor de `error`, no por status)', async () => {
     server.use(
       http.delete('/api/reservas/tarde', () =>
         HttpResponse.json(
-          { code: 'CANCELLATION_DEADLINE_PASSED', message: 'Fuera de plazo, no aplica reembolso.', errors: [] },
+          { error: 'CANCELLATION_DEADLINE_PASSED', message: 'Fuera de plazo, no aplica reembolso.', timestamp: '2026-07-04T10:00:00Z' },
           { status: 422 }
         )
       )
@@ -295,7 +325,7 @@ describe('reservasApi — cancelar', () => {
   it('cancelarReserva mapea 403 (no owner)', async () => {
     server.use(
       http.delete('/api/reservas/ajena', () =>
-        HttpResponse.json({ code: 'FORBIDDEN', message: 'No tiene permisos.', errors: [] }, { status: 403 })
+        HttpResponse.json({ error: 'FORBIDDEN', message: 'No tiene acceso a esta reserva', timestamp: '2026-07-04T10:00:00Z' }, { status: 403 })
       )
     );
 

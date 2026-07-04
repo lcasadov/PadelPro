@@ -68,10 +68,9 @@ const reservas = [
 ];
 
 describe('MisReservasPage (Grupo 6)', () => {
-  it('6.1 — lista reservas con estado de reserva y estado de pago', async () => {
-    server.use(
-      http.get('/api/reservas', () => HttpResponse.json({ data: reservas, totalElements: 2 }))
-    );
+  it('6.1 — lista reservas (array plano del backend) con estado de reserva y estado de pago', async () => {
+    // Contrato real: GET /api/reservas devuelve un ARRAY JSON plano, no `{ data: [...] }`.
+    server.use(http.get('/api/reservas', () => HttpResponse.json(reservas)));
     renderPage();
 
     // Reservas listadas (hora de cada tramo).
@@ -88,7 +87,7 @@ describe('MisReservasPage (Grupo 6)', () => {
   });
 
   it('6.2 — estado vacío con acceso a buscar disponibilidad', async () => {
-    server.use(http.get('/api/reservas', () => HttpResponse.json({ data: [], totalElements: 0 })));
+    server.use(http.get('/api/reservas', () => HttpResponse.json([])));
     renderPage();
 
     expect(await screen.findByText(/no tienes reservas|sin reservas|todavía no/i)).toBeInTheDocument();

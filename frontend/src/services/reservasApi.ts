@@ -4,10 +4,12 @@
 //   axios.create({ baseURL: '/api', withCredentials: true }) y `token` explícito
 //   por llamada vía header Authorization: Bearer. No hay interceptor global.
 //
-// Centraliza (D6) el mapeo del error shape real del backend
-//   { code, message, errors[] }  (errors = FieldError[])
-// a un error tipado `ReservaApiError` con `.code` para que las páginas
-// rendericen mensajes específicos sin duplicar strings.
+// Centraliza (D6) el mapeo del error shape real del backend (verificado en vivo)
+//   { error: "<CODE>", message, timestamp }
+// donde la clave del código es `error` (no `code`) y los errores de negocio
+// (PARTICIPANTS_LIMIT_EXCEEDED, INVALID_STATE_TRANSITION, CANCELLATION_DEADLINE_PASSED)
+// llegan con HTTP 422. Se traduce a un error tipado `ReservaApiError` con `.code`
+// para que las páginas rendericen mensajes específicos sin duplicar strings.
 //
 // Tipos derivados de docs/openapi.yaml (Reservas). El flag `creable` de
 // `Tramo` es el delta aditivo del backend (D7): true sii el tramo no tiene
@@ -67,14 +69,14 @@ export interface PagoResponse {
   updatedAt?: string;
 }
 
+/** Participante real (contrato backend en vivo): usa `owner` (no `isOwner`) y
+ *  `externalName` (no `nombre`); NO trae `id` ni `joinedAt`. */
 export interface ParticipanteResponse {
-  id: number;
   userId?: number | null;
-  nombre: string;
-  statusPago: PaymentStatus;
-  isOwner: boolean;
+  externalName?: string | null;
+  externalPhone?: string | null;
   slotPosition?: number;
-  joinedAt: string;
+  owner: boolean;
 }
 
 export interface ReservaResponse {
@@ -86,7 +88,6 @@ export interface ReservaResponse {
   status: ReservationStatus;
   channel: ReservationChannel;
   ownerId?: number;
-  ownerName?: string;
   priceTotal: number;
   notes?: string | null;
   participants: ParticipanteResponse[];
@@ -94,14 +95,6 @@ export interface ReservaResponse {
   telegramMessageId?: string | null;
   createdAt: string;
   updatedAt?: string;
-}
-
-export interface PaginatedReservasResponse {
-  data: ReservaResponse[];
-  totalElements?: number;
-  totalPages?: number;
-  page?: number;
-  size?: number;
 }
 
 /** Participante adicional (v1: solo `externalName`, D4). */
@@ -158,6 +151,9 @@ export function isReservaApiError(err: unknown): err is ReservaApiError {
 }
 
 interface BackendErrorBody {
+  /** El backend en vivo usa la clave `error` para el código; `code` se acepta por
+   *  compatibilidad. */
+  error?: string;
   code?: string;
   message?: string;
   errors?: FieldError[];
@@ -189,14 +185,19 @@ function codeFromStatus(status: number): ReservaErrorCode {
   }
 }
 
-/** Convierte cualquier fallo axios en un ReservaApiError tipado, prefiriendo el
- *  `code` del cuerpo `{ code, message, errors[] }` (D6). Re-lanza. */
+/** Convierte cualquier fallo axios en un ReservaApiError tipado. El backend en vivo
+ *  responde `{ error, message, timestamp }` (la clave del código es `error`, no `code`)
+ *  y usa HTTP 422 para los tres errores de negocio (PARTICIPANTS_LIMIT_EXCEEDED,
+ *  INVALID_STATE_TRANSITION, CANCELLATION_DEADLINE_PASSED), que comparten status.
+ *  Por eso el código se toma SIEMPRE del valor textual del cuerpo cuando es un
+ *  `ReservaErrorCode` conocido; solo se cae a `codeFromStatus` si el cuerpo no lo
+ *  trae. Re-lanza. */
 function toReservaApiError(error: unknown): never {
   const axErr = error as AxiosError<BackendErrorBody>;
   const status = axErr.response?.status ?? 0;
   const body = axErr.response?.data;
 
-  const bodyCode = body?.code;
+  const bodyCode = body?.error ?? body?.code;
   const code: ReservaErrorCode =
     bodyCode && (KNOWN_CODES as string[]).includes(bodyCode)
       ? (bodyCode as ReservaErrorCode)
@@ -242,13 +243,16 @@ export async function crearReserva(
   }
 }
 
-/** GET /api/reservas — reservas del usuario autenticado (owner o participante). */
-export async function getMisReservas(token: string): Promise<PaginatedReservasResponse> {
+/** GET /api/reservas — reservas del usuario autenticado (owner o participante).
+ *  El backend en vivo devuelve un ARRAY JSON plano `[ {reserva}, ... ]`. Se normaliza
+ *  de forma robusta por si llegara envuelto en un objeto paginado `{ data: [...] }`. */
+export async function getMisReservas(token: string): Promise<ReservaResponse[]> {
   try {
-    const { data } = await api.get<PaginatedReservasResponse>('/reservas', {
+    const { data } = await api.get<ReservaResponse[] | { data?: ReservaResponse[] }>('/reservas', {
       headers: authHeader(token),
     });
-    return data;
+    if (Array.isArray(data)) return data;
+    return Array.isArray(data?.data) ? data.data : [];
   } catch (err) {
     toReservaApiError(err);
   }

@@ -158,16 +158,22 @@ export function DetalleReservaPage() {
       <section className={styles.section}>
         <h3 className={styles.sectionTitle}>Jugadores</h3>
         <ul className={styles.players}>
-          {reserva.ownerName && (
-            <li className={styles.player}>{reserva.ownerName} · Organizador</li>
-          )}
-          {reserva.participants
-            .filter((p) => !p.isOwner)
-            .map((p) => (
-              <li key={p.id} className={styles.player}>
-                {p.nombre}
+          {reserva.participants.map((p, index) => {
+            const key = p.userId ?? p.slotPosition ?? index;
+            if (p.owner) {
+              const esYo = userId != null && p.userId === userId;
+              return (
+                <li key={key} className={styles.player}>
+                  {`Organizador${esYo ? ' · Tú' : ''}`}
+                </li>
+              );
+            }
+            return (
+              <li key={key} className={styles.player}>
+                {p.externalName}
               </li>
-            ))}
+            );
+          })}
         </ul>
       </section>
 

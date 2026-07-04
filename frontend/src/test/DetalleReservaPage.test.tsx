@@ -40,6 +40,8 @@ function renderPage(userId: number | null = 42, id = 'r-1') {
   );
 }
 
+// Contrato real: la reserva trae `ownerId` (no `ownerName`) y los participantes
+// usan `owner` (no `isOwner`) y `externalName` (no `nombre`), sin `id`/`joinedAt`.
 function reserva(overrides: Record<string, unknown> = {}) {
   return {
     id: 'r-1',
@@ -50,12 +52,12 @@ function reserva(overrides: Record<string, unknown> = {}) {
     status: 'CONFIRMED',
     channel: 'WEB',
     ownerId: 42,
-    ownerName: 'Laura Casado',
     priceTotal: 16,
     participants: [
-      { id: 1, nombre: 'Laura Casado', statusPago: 'PAID', isOwner: true, joinedAt: '2026-07-04T10:00:00Z' },
+      { userId: 42, externalName: null, externalPhone: null, slotPosition: 1, owner: true },
+      { userId: null, externalName: 'Marcos R.', externalPhone: null, slotPosition: 2, owner: false },
     ],
-    pago: { id: 'p-1', reservaId: 'r-1', amount: 16, status: 'PAID', createdAt: '2026-07-04T10:00:00Z' },
+    pago: { id: 'p-1', amount: 16, method: 'REDSYS', status: 'PAID', paidAt: '2026-07-04T10:00:00Z' },
     createdAt: '2026-07-04T10:00:00Z',
     ...overrides,
   };
@@ -66,14 +68,26 @@ function mockGetReserva(body: unknown, status = 200) {
 }
 
 describe('DetalleReservaPage (Grupo 7)', () => {
-  it('7.1 — muestra los datos completos de la reserva', async () => {
+  it('7.1 — muestra los datos completos, el organizador y los participantes adicionales', async () => {
     mockGetReserva(reserva());
-    renderPage();
+    renderPage(42);
 
     expect(await screen.findByText('20:00')).toBeInTheDocument();
     expect(screen.getByText('2026-07-10')).toBeInTheDocument();
     expect(screen.getByText(/16/)).toBeInTheDocument();
-    expect(screen.getByText(/Laura Casado/)).toBeInTheDocument();
+    // Organizador = participante con owner===true; "· Tú" porque userId (42) coincide.
+    expect(screen.getByText(/Organizador · Tú/)).toBeInTheDocument();
+    // Participante adicional (owner===false) por su externalName.
+    expect(screen.getByText('Marcos R.')).toBeInTheDocument();
+  });
+
+  it('7.1b — organizador sin "· Tú" cuando el userId autenticado no coincide con el del owner', async () => {
+    mockGetReserva(reserva());
+    renderPage(99);
+
+    await screen.findByText('20:00');
+    expect(screen.getByText('Organizador')).toBeInTheDocument();
+    expect(screen.queryByText(/Organizador · Tú/)).toBeNull();
   });
 
   it('7.2a — botón cancelar visible si owner y estado cancelable', async () => {
@@ -115,7 +129,7 @@ describe('DetalleReservaPage (Grupo 7)', () => {
     server.use(
       http.delete('/api/reservas/r-1', () =>
         HttpResponse.json(
-          { code: 'CANCELLATION_DEADLINE_PASSED', message: 'tarde', errors: [] },
+          { error: 'CANCELLATION_DEADLINE_PASSED', message: 'tarde', timestamp: '2026-07-04T10:00:00Z' },
           { status: 422 }
         )
       )
@@ -131,17 +145,17 @@ describe('DetalleReservaPage (Grupo 7)', () => {
   });
 
   it('7.5a — 403 (ajena) muestra acceso denegado sin exponer datos', async () => {
-    mockGetReserva({ code: 'FORBIDDEN', message: 'ajena', errors: [] }, 403);
+    mockGetReserva({ error: 'FORBIDDEN', message: 'No tiene acceso a esta reserva', timestamp: '2026-07-04T10:00:00Z' }, 403);
     renderPage(42);
 
     expect(await screen.findByText(/acceso denegado|no tienes acceso|no autorizado/i)).toBeInTheDocument();
     // No se filtran datos de la reserva ajena.
     expect(screen.queryByText('20:00')).toBeNull();
-    expect(screen.queryByText(/Laura Casado/)).toBeNull();
+    expect(screen.queryByText('Marcos R.')).toBeNull();
   });
 
   it('7.5b — 404 (inexistente) muestra reserva no encontrada', async () => {
-    mockGetReserva({ code: 'NOT_FOUND', message: 'no existe', errors: [] }, 404);
+    mockGetReserva({ error: 'NOT_FOUND', message: 'no existe', timestamp: '2026-07-04T10:00:00Z' }, 404);
     renderPage(42);
 
     expect(await screen.findByText(/no encontrada|no existe|no se encontr/i)).toBeInTheDocument();

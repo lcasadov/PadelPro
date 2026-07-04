@@ -109,7 +109,7 @@ describe('ConfirmarReservaPage (Grupo 5)', () => {
   it('5.4 — 409 CONFLICT muestra "la franja se acaba de ocupar" + botón volver/refrescar', async () => {
     server.use(
       http.post('/api/reservas', () =>
-        HttpResponse.json({ code: 'CONFLICT', message: 'ocupado', errors: [] }, { status: 409 })
+        HttpResponse.json({ error: 'CONFLICT', message: 'ocupado', timestamp: '2026-07-04T10:00:00Z' }, { status: 409 })
       )
     );
     renderPage();
@@ -126,7 +126,7 @@ describe('ConfirmarReservaPage (Grupo 5)', () => {
     server.use(
       http.post('/api/reservas', () =>
         HttpResponse.json(
-          { code: 'PARTICIPANTS_LIMIT_EXCEEDED', message: 'demasiados', errors: [] },
+          { error: 'PARTICIPANTS_LIMIT_EXCEEDED', message: 'demasiados', timestamp: '2026-07-04T10:00:00Z' },
           { status: 422 }
         )
       )
@@ -136,14 +136,14 @@ describe('ConfirmarReservaPage (Grupo 5)', () => {
     expect(await screen.findByText(/máximo.*participante|participante.*máximo|superado/i)).toBeInTheDocument();
   });
 
-  it('5.5b — 400 VALIDATION_ERROR muestra mensaje específico', async () => {
+  it('5.5b — 400 VALIDATION_ERROR (cuerpo real { error, message } sin errors[]) muestra aviso de datos', async () => {
     server.use(
       http.post('/api/reservas', () =>
         HttpResponse.json(
           {
-            code: 'VALIDATION_ERROR',
-            message: 'inválido',
-            errors: [{ field: 'startTime', message: 'La hora no es válida' }],
+            error: 'VALIDATION_ERROR',
+            message: 'reservationDate es obligatorio (formato YYYY-MM-DD)',
+            timestamp: '2026-07-04T10:00:00Z',
           },
           { status: 400 }
         )
@@ -158,7 +158,7 @@ describe('ConfirmarReservaPage (Grupo 5)', () => {
     server.use(
       http.post('/api/reservas', () =>
         HttpResponse.json(
-          { code: 'INVALID_STATE_TRANSITION', message: 'estado', errors: [] },
+          { error: 'INVALID_STATE_TRANSITION', message: 'estado', timestamp: '2026-07-04T10:00:00Z' },
           { status: 422 }
         )
       )
@@ -176,7 +176,7 @@ describe('ConfirmarReservaPage (Grupo 5)', () => {
         keys.push(request.headers.get('Idempotency-Key') ?? '');
         if (failNext) {
           failNext = false;
-          return HttpResponse.json({ code: 'UNKNOWN', message: 'boom', errors: [] }, { status: 500 });
+          return HttpResponse.json({ error: 'UNKNOWN', message: 'boom', timestamp: '2026-07-04T10:00:00Z' }, { status: 500 });
         }
         return HttpResponse.json(reservaResponse(), { status: 201 });
       })
