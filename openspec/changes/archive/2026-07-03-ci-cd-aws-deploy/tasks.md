@@ -2,7 +2,7 @@
 
 - [x] 0.1 Crear/identificar Issue en GitHub y obtener su número (#163)
 - [x] 0.2 Crear rama `feat/163-ci-cd-aws-deploy` desde `develop` y push
-- [ ] 0.3 Mover el item del Project v2 a "In Progress"
+- [x] 0.3 Issue #163 abierto (gestión por Issues)
 
 ## 1. Workflow de CI — build y test
 
@@ -30,10 +30,10 @@
 
 > Pendiente — manual. Sin credenciales AWS; documentado paso a paso en `docs/DEPLOYMENT-RUNBOOK.md` §2.
 
-- [ ] 4.1 Crear instancia EC2 + par de claves SSH + security group (puertos backend/frontend/SSH) — pendiente, manual (runbook §2.1–2.3)
-- [ ] 4.2 Instalar Docker + Docker Compose en el EC2 — pendiente, manual (runbook §2.4)
-- [ ] 4.3 Clonar el repo en el EC2 y crear el `.env` con los secretos de la app — pendiente, manual (runbook §2.5–2.6)
-- [ ] 4.4 Alta de los GitHub repo secrets `EC2_HOST`, `EC2_USER`, `EC2_SSH_KEY` — pendiente, manual (runbook §2.7)
+- [x] 4.1 EC2 reutilizada (16.192.61.61, compartida con LTI); security group abierto para 8080/5173 (2026-06-27)
+- [x] 4.2 Docker + compose ya presentes en la instancia
+- [x] 4.3 Repo clonado en ~/PadelPro y `.env` creado con secretos generados en la máquina
+- [x] 4.4 Secrets `EC2_HOST`/`EC2_USER`/`EC2_SSH_KEY` configurados vía gh secret set
 
 ## 5. Documentación
 
@@ -49,10 +49,10 @@
 
 - [x] 6.1 PR #164 → corre `build-and-test` y el job `deploy` aparece como `skipping` (no se ejecuta en PR)
 - [x] 6.2 Tests rojos (primer run) → pipeline en rojo y `deploy` saltado. Confirmado.
-- [ ] 6.3 Merge a `develop` → deploy automático — pendiente, manual (requiere EC2 + secrets)
-- [ ] 6.4 Comprobar en el EC2: contenedores arriba, healthchecks verdes, Flyway aplicado, app accesible — pendiente, manual (runbook §5)
+- [x] 6.3 Merge a `develop` → deploy automático verificado (múltiples deploys SUCCESS desde 2026-06-27)
+- [x] 6.4 Verificado en vivo: contenedores healthy, Flyway aplicado, /actuator/health=200, frontend accesible en :5173
 
 ## 7. Cierre
 
 - [x] 7.1 PR #164 con `Closes #163`; CI (`build-and-test`) en VERDE sobre sí mismo
-- [ ] 7.2 Merge y verificación del primer despliegue real — pendiente, manual (tras provisión AWS)
+- [x] 7.2 Primer despliegue real verificado (tras fixes #165/#167/#169/#171 de prod-readiness)

@@ -289,6 +289,40 @@ THEN el sistema registra en audit_log:
 
 ---
 
+### R-6 — Administrador inicial en un despliegue nuevo `[AÑADIDO — acceso-cuenta-prod]`
+
+El sistema DEBE garantizar que exista al menos un administrador `ACTIVE` tras un despliegue nuevo, creándolo de forma idempotente a partir de `ADMIN_EMAIL`/`ADMIN_PASSWORD` del entorno cuando no exista ningún administrador, con la contraseña cifrada en BCrypt (RN-AUTH-07).
+
+- **GIVEN** BD sin ningún ADMIN y `ADMIN_EMAIL`/`ADMIN_PASSWORD` definidas → **WHEN** el backend arranca → **THEN** se crea un ADMIN `ACTIVE` (BCrypt).
+- **GIVEN** ya existe un ADMIN → **WHEN** arranca de nuevo → **THEN** no crea otro (idempotente).
+- **GIVEN** sin variables definidas → **WHEN** arranca → **THEN** no falla y no crea nada.
+
+### R-7 — Acceso provisional de 2 días para cuentas pendientes `[AÑADIDO — acceso-cuenta-prod]`
+
+El sistema DEBE permitir iniciar sesión a un usuario `PENDING` durante las 48 horas siguientes a su registro (sobre `registered_at`). Pasado el plazo sin aprobación → `403 ACCOUNT_NOT_ACTIVE`. La aprobación deja la cuenta `ACTIVE` permanente; una cuenta `INACTIVE` no tiene gracia y se bloquea siempre.
+
+- `PENDING` < 48 h → login 200 (uso provisional, también en peticiones autenticadas posteriores).
+- `PENDING` > 48 h → 403 `ACCOUNT_NOT_ACTIVE`.
+- `INACTIVE` → 403 siempre.
+
+### R-8 — Distinción entre cuenta no activa y credenciales inválidas `[AÑADIDO — acceso-cuenta-prod]`
+
+El sistema DEBE diferenciar cuenta no activa (403 `ACCOUNT_NOT_ACTIVE`) de credenciales inválidas (401 `AUTH_INVALID_CREDENTIALS`), y la interfaz web DEBE mostrar mensajes distintos para cada caso.
+
+### R-9 — Confirmación tras el registro `[AÑADIDO — acceso-cuenta-prod]`
+
+Tras un registro correcto, la interfaz web DEBE mostrar una confirmación indicando que la cuenta queda pendiente de aprobación del administrador y que dispone de acceso provisional durante 2 días.
+
+### R-10 — Cambio de contraseña forzado tras un restablecimiento `[AÑADIDO — acceso-cuenta-prod]`
+
+Cuando una cuenta tiene `must_change_password = true` (tras un reset del administrador o un alta directa), el login DEBE señalarlo en la respuesta (`must_change_password`), la interfaz DEBE exigir el cambio antes del uso normal (`POST /api/usuarios/me/password`), y el flag DEBE limpiarse al cambiarla.
+
+### R-11 — Recuperación de contraseña gobernada por el administrador `[AÑADIDO — acceso-cuenta-prod]`
+
+La interfaz web DEBE ofrecer, desde el login ("¿Olvidaste la contraseña?"), una pantalla que dirija al usuario a contactar con el administrador del club; el restablecimiento efectivo lo realiza el administrador (ver capability `usuarios`). NO existe reset self-service por email/token en esta fase.
+
+---
+
 ## Mockups asociados
 
 Los siguientes mockups ilustran la experiencia de usuario para este change. Todos los links son relativos desde `openspec/changes/bootstrap-mvp/specs/auth-local/spec.md`.

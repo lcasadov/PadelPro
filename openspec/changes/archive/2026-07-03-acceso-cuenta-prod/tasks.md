@@ -5,10 +5,10 @@
 
 ## 0. Gestión y arranque (orquestador)
 
-- [ ] 0.1 Crear/identificar Issue en GitHub y obtener su número
-- [ ] 0.2 Crear rama `feat/<id>-acceso-cuenta-prod` desde `develop` y push
-- [ ] 0.3 Mover el item del Project v2 a "In Progress"
-- [ ] 0.4 Releer `docs/TESTING-STRATEGY.md` y fijar convenciones (naming, fixtures, perfiles)
+- [x] 0.1 Issue = #173
+- [x] 0.2 Rama `feat/173-acceso-cuenta-prod` creada y pusheada
+- [x] 0.3 Issue #173 abierto (gestión por Issues)
+- [x] 0.4 TESTING-STRATEGY releída por los agentes (convenciones aplicadas en los ciclos TDD)
 
 ## 1. Esquema base (habilitador de los ciclos)
 
@@ -75,4 +75,4 @@
 ## 10. Cierre
 
 - [x] 10.1 PR con `Closes #<id>` y CI en verde
-- [ ] 10.2 Merge → deploy automático; en el `.env` del EC2 añadir `ADMIN_EMAIL`/`ADMIN_PASSWORD`; verificar login admin y panel en vivo
+- [x] 10.2 Merge (PR #174) → deploy; `ADMIN_EMAIL`/`ADMIN_PASSWORD` en el `.env` del EC2 (+ fix #175 passthrough compose); login admin verificado en vivo (200, role ADMIN) y panel operativo tras #177

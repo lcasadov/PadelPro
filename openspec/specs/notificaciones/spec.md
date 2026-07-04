@@ -98,6 +98,35 @@ a través del puerto de salida `MensajeriaPort`. El job de recordatorios usa `@S
 - **WHEN** `ReservaApplicationService` completa la transición a `CONFIRMED`
 - **THEN** el bot publica un mensaje en el grupo con los datos de la reserva y las plazas libres, Y el `reservations.telegram_message_id` se actualiza con el ID del mensaje publicado, Y se registra en `notification_log` con `type=TELEGRAM_GROUP` y `status=SENT`
 
+### Requirement 7: Envío de emails transaccionales por SMTP *(✅ implementado — usuarios-alta-edicion-email)*
+
+**El sistema DEBE poder enviar emails transaccionales a través de un proveedor SMTP configurable por entorno (`MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM`). Las credenciales NO deben estar en el repositorio (solo placeholders en `.env.example`). Implementado con puerto de dominio `NotificationPort` + adaptador `JavaMailSender` asíncrono; con `MAIL_HOST` vacío el envío falla de forma tolerante.**
+
+#### Scenario: Configuración SMTP presente
+- **WHEN** el sistema necesita enviar un email y las variables `MAIL_*` están definidas
+- **THEN** lo envía por el servidor SMTP configurado con remitente `MAIL_FROM`
+
+#### Scenario: Credenciales fuera del control de versiones
+- **WHEN** se inspecciona el repositorio
+- **THEN** no hay credenciales SMTP reales commiteadas
+
+### Requirement 8: Email de bienvenida al activar una cuenta *(✅ implementado — usuarios-alta-edicion-email)*
+
+**El sistema DEBE enviar un email de bienvenida cuando una cuenta se activa: en el alta directa por el administrador incluye la contraseña temporal generada; en la aprobación de una cuenta pendiente da la bienvenida SIN contraseña (el usuario conserva la suya). El envío es asíncrono, NO bloquea ni revierte la activación si falla, y ninguna contraseña se registra en logs (RN-RGPD-04).**
+
+#### Scenario: Bienvenida tras el alta directa (con contraseña)
+- **WHEN** el administrador da de alta un usuario que queda `ACTIVE`
+- **THEN** el usuario recibe un email de bienvenida con la contraseña temporal generada por el sistema
+
+#### Scenario: Bienvenida tras aprobar una cuenta pendiente (sin contraseña)
+- **WHEN** el administrador aprueba una cuenta `PENDING`
+- **THEN** el usuario recibe un email de bienvenida indicándole que su cuenta está aprobada, sin contraseña
+
+#### Scenario: Un fallo de envío no rompe la activación
+- **GIVEN** el servidor SMTP no está disponible
+- **WHEN** el administrador activa una cuenta
+- **THEN** la cuenta queda activada correctamente y el fallo se registra sin exponer contraseñas ni propagar error
+
 ## Casos límite
 - Si `system_config.telegram_bot_token IS NULL`, no se intentan envíos Telegram; solo email.
 - Si `system_config.telegram_group_id IS NULL`, no se publica en el grupo; solo mensajes directos.

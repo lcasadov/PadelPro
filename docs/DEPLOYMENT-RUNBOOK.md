@@ -136,6 +136,21 @@ SPRING_PROFILES_ACTIVE=prod
 
 # IP/DNS público del EC2 con el puerto del backend
 VITE_API_BASE_URL=http://<EC2_PUBLIC_IP>:8080
+
+# Bootstrap del primer admin (acceso-cuenta-prod): el runner crea un ADMIN ACTIVE
+# en el primer arranque si no existe ninguno. Sin estas variables no falla, pero no habrá admin.
+ADMIN_EMAIL=<email del admin>
+ADMIN_PASSWORD=<password fuerte ≥12>
+
+# SMTP / Email de bienvenida (notificaciones). Proveedor inicial: Ethereal (pruebas).
+# Con MAIL_HOST vacío el envío falla de forma tolerante (no bloquea la gestión de usuarios).
+MAIL_HOST=smtp.ethereal.email
+MAIL_PORT=587
+MAIL_USERNAME=<usuario ethereal>
+MAIL_PASSWORD=<password ethereal>
+MAIL_FROM=no-reply@padelpro.local
+MAIL_SMTP_AUTH=true
+MAIL_SMTP_STARTTLS=true
 ```
 
 Genera secretos con `openssl rand -base64 48`. El `.env` está cubierto por `.gitignore`.
