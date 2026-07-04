@@ -64,7 +64,9 @@ export function ConfirmarReservaPage() {
   const duracion = params.get('duracion') ?? '';
 
   const [participantes, setParticipantes] = useState<ParticipanteInput[]>([]);
-  const [notes, setNotes] = useState('');
+  // El campo de notas aún no tiene UI (pendiente en Grupo 5); se mantiene el valor
+  // por defecto vacío para que el payload lo omita (notes.trim() === '').
+  const [notes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [reserva, setReserva] = useState<ReservaResponse | null>(null);
   const [conflict, setConflict] = useState(false);

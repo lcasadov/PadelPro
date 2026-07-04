@@ -1,16 +1,22 @@
 // T-144 — HomePage — pantalla principal post-login
 // Ref visual: docs/ux/mockups/02-home-jugador.html
 // Incluye enlace a /perfil (Mi perfil)
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { reservasPaths } from './reservasPaths';
 import './pages.css';
 import styles from './HomePage.module.css';
 
 export function HomePage() {
   const { setAccessToken, role } = useAuth();
+  const navigate = useNavigate();
 
   function handleLogout() {
     setAccessToken(null);
+  }
+
+  function handleReservar() {
+    navigate(reservasPaths.disponibilidad);
   }
 
   return (
@@ -40,9 +46,13 @@ export function HomePage() {
 
       {/* ── Quick actions ── */}
       <div className={styles.actions}>
-        <div className={`${styles.action} ${styles.actionPrimary}`}>
+        <button
+          type="button"
+          className={`${styles.action} ${styles.actionPrimary}`}
+          onClick={handleReservar}
+        >
           <div className={styles.actionIco}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
               <rect x="3" y="4" width="18" height="18" rx="2"/>
               <line x1="16" y1="2" x2="16" y2="6"/>
               <line x1="8" y1="2" x2="8" y2="6"/>
@@ -51,7 +61,18 @@ export function HomePage() {
           </div>
           <div className={styles.actionLabel}>Reservar pista</div>
           <div className={styles.actionSub}>Encuentra una franja libre</div>
-        </div>
+        </button>
+
+        <Link to={reservasPaths.mias} className={styles.action}>
+          <div className={styles.actionIco}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              <path d="M9 11l3 3L22 4"/>
+              <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+            </svg>
+          </div>
+          <div className={styles.actionLabel}>Mis reservas</div>
+          <div className={styles.actionSub}>Consulta y gestiona tus pistas</div>
+        </Link>
 
         <Link to="/perfil" className={styles.action}>
           <div className={styles.actionIco}>
