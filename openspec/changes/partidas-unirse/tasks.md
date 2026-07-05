@@ -31,6 +31,24 @@
 
 - [ ] 5.1 **[Refactor]** Limpieza manteniendo verde
 - [ ] 5.2 `verification-specialist`: build + tests (backend maven, frontend vitest) + lint; probes de concurrencia y validaciones
-- [ ] 5.3 `security-auditor`: acceso al listado (no PII), autorización de unirse/abandonar, no exponer datos de otros socios (RN-RGPD-03)
+- [x] 5.3 `security-auditor`: acceso al listado (no PII), autorización de unirse/abandonar, no exponer datos de otros socios (RN-RGPD-03)
 - [ ] 5.4 `reality-checker`: journey end-to-end (ver partidas abiertas → unirse → aparece en mis reservas → abandonar) — live E2E puede diferirse si requiere despliegue
-- [ ] 5.5 Actualizar `docs/openapi.yaml` y verificar coherencia del contrato de `/unirse`, listado y abandono
+- [x] 5.5 Actualizar `docs/openapi.yaml` y verificar coherencia del contrato de `/unirse`, listado y abandono
+
+### Notas de correcciones (pasada de fixes backend, 2026-07-05)
+
+- **[MEDIO — RGPD] Minimización de PII en el detalle/listado para co-participantes (RN-RGPD-03).**
+  `ReservaMapper.toResponse` ahora recibe `includePii`; `ReservaQueryService.getForUser`/`listForUser`
+  lo calculan como `admin || solicitante==owner`. Un co-jugador que se unió a la partida recibe
+  `externalPhone` de los invitados y `notes` de la reserva en `null`; owner y ADMIN siguen viéndolo
+  todo. La regla de acceso 403 para no-participantes NO cambia. Documentado en `docs/openapi.yaml`
+  (`ReservaResponse.notes`, `ParticipanteResponse.externalPhone`).
+  Tests IT nuevos en `ReservaControllerIntegrationTest` (owner ve / ADMIN ve / co-participante null /
+  no-participante 403 / listado minimizado).
+- **[BAJO — backstop] Índice único parcial `uq_part_user_reservation (reservation_id, user_id) WHERE user_id IS NOT NULL`.**
+  Migración `V12__unique_participant_per_reservation.sql`. Defensa en profundidad de RN-AUTH-03 a
+  nivel BD (el anti-duplicado en memoria bajo el lock sigue siendo la primera línea). Flyway aplica
+  V1..V12 limpio sobre el PG de test.
+- **[Gaps de test] Estados terminales.** IT nuevos: unirse a reserva `COMPLETED` → 422
+  `RESERVA_NOT_JOINABLE`; abandonar reserva `CANCELLED` y `COMPLETED` → 422 `RESERVA_NOT_JOINABLE`.
+- Resultado: `ReservaControllerIntegrationTest` 31/31, `UnirseAbandonarIntegrationTest` 14/14 — 45 verdes contra Postgres real.

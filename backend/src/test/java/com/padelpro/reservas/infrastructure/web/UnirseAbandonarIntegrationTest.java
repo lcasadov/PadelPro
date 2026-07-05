@@ -185,6 +185,21 @@ class UnirseAbandonarIntegrationTest extends PostgresIntegrationTest {
     }
 
     @Test
+    @DisplayName("2.1 reserva COMPLETED → 422 RESERVA_NOT_JOINABLE")
+    void should_return_422_when_completed() throws Exception {
+        String id = createReserva("18:00", null);
+        // Move the reservation to a terminal, non-active state directly (no ADMIN endpoint here).
+        Reservation r = reservationRepository.findByIdWithParticipants(UUID.fromString(id)).orElseThrow();
+        r.changeStatus(ReservationStatus.COMPLETED);
+        reservationRepository.saveAndFlush(r);
+
+        mockMvc.perform(post("/api/reservas/{id}/unirse", id)
+                        .header("Authorization", "Bearer " + joinerToken))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.error", is("RESERVA_NOT_JOINABLE")));
+    }
+
+    @Test
     @DisplayName("2.1 sin JWT → 401")
     void should_return_401_when_anonymous_join() throws Exception {
         String id = createReserva("18:00", null);
@@ -244,5 +259,41 @@ class UnirseAbandonarIntegrationTest extends PostgresIntegrationTest {
         mockMvc.perform(delete("/api/reservas/{id}/participacion", UUID.randomUUID())
                         .header("Authorization", "Bearer " + joinerToken))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("3.1 abandonar reserva CANCELLED → 422 RESERVA_NOT_JOINABLE")
+    void should_reject_leaving_cancelled_reservation() throws Exception {
+        String id = createReserva("18:00", null);
+        // The joiner becomes a participant, then the owner cancels the reservation.
+        mockMvc.perform(post("/api/reservas/{id}/unirse", id)
+                        .header("Authorization", "Bearer " + joinerToken))
+                .andExpect(status().isOk());
+        mockMvc.perform(delete("/api/reservas/{id}", id)
+                        .header("Authorization", "Bearer " + ownerToken))
+                .andExpect(status().isNoContent());
+
+        // Abandoning a non-active reservation is rejected before the participant check.
+        mockMvc.perform(delete("/api/reservas/{id}/participacion", id)
+                        .header("Authorization", "Bearer " + joinerToken))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.error", is("RESERVA_NOT_JOINABLE")));
+    }
+
+    @Test
+    @DisplayName("3.1 abandonar reserva COMPLETED → 422 RESERVA_NOT_JOINABLE")
+    void should_reject_leaving_completed_reservation() throws Exception {
+        String id = createReserva("18:00", null);
+        mockMvc.perform(post("/api/reservas/{id}/unirse", id)
+                        .header("Authorization", "Bearer " + joinerToken))
+                .andExpect(status().isOk());
+        Reservation r = reservationRepository.findByIdWithParticipants(UUID.fromString(id)).orElseThrow();
+        r.changeStatus(ReservationStatus.COMPLETED);
+        reservationRepository.saveAndFlush(r);
+
+        mockMvc.perform(delete("/api/reservas/{id}/participacion", id)
+                        .header("Authorization", "Bearer " + joinerToken))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.error", is("RESERVA_NOT_JOINABLE")));
     }
 }
