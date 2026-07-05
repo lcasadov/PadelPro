@@ -1,0 +1,157 @@
+/* ParticipanteSelector — fila de participante (socio / externo) */
+
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--line, #e5e3d8);
+  border-radius: 14px;
+  background: var(--white);
+}
+
+.rowHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.rowTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.removeBtn {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(13, 13, 13, 0.2);
+  background: transparent;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.removeBtn:hover {
+  border-color: var(--error);
+  color: var(--error);
+}
+
+/* --- Conmutador de tipo --- */
+.toggle {
+  display: flex;
+  gap: 6px;
+  background: rgba(13, 13, 13, 0.04);
+  border-radius: 10px;
+  padding: 4px;
+}
+
+.toggleBtn {
+  flex: 1;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.toggleOn {
+  background: var(--ink);
+  color: var(--cream);
+}
+
+/* --- Bloques socio / externo --- */
+.socioBlock,
+.externoBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fieldLabel {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.textInput {
+  border: none;
+  border-bottom: 1.5px solid rgba(13, 13, 13, 0.2);
+  padding: 8px 0;
+  font-size: 15px;
+  color: var(--ink);
+  background: transparent;
+  outline: none;
+}
+
+.textInput:focus {
+  border-bottom-color: var(--ink);
+}
+
+.hint {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.resultList {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border: 1px solid var(--line, #e5e3d8);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.resultBtn {
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  border: none;
+  background: var(--white);
+  color: var(--ink);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.resultBtn:hover {
+  background: rgba(13, 13, 13, 0.04);
+}
+
+.socioSelected {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line, #e5e3d8);
+  border-radius: 10px;
+}
+
+.socioName {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.linkBtn {
+  background: transparent;
+  border: none;
+  color: var(--ink);
+  text-decoration: underline;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
