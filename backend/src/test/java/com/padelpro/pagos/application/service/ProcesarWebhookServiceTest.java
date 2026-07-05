@@ -211,4 +211,60 @@ class ProcesarWebhookServiceTest {
         verify(paymentCommandPort, times(1)).save(any());
         verify(auditRecorder, times(1)).record(eq(PagoAuditActions.PAYMENT_CONFIRMED), isNull(), any());
     }
+
+    // =========================================================================
+    // MEDIO-3 — sanitizar Ds_Order en auditoría (log-injection / XSS)
+    // =========================================================================
+
+    @Test
+    @DisplayName("MEDIO-3: Ds_Order malicioso con firma inválida → audita <invalid-format>, no el payload")
+    void malicious_order_sanitised_in_audit() {
+        credsAvailable();
+        String malicious = "<script>alert(1)</script>";
+        String p = params(malicious, "0000", "ABC123");
+
+        service.procesar("HMAC_SHA256_V1", p, "not-a-valid-signature");
+
+        ArgumentCaptor<String> details = ArgumentCaptor.forClass(String.class);
+        verify(auditRecorder).record(eq(PagoAuditActions.PAYMENT_WEBHOOK_INVALID_SIGNATURE),
+                isNull(), details.capture());
+        assertThat(details.getValue()).contains("<invalid-format>");
+        assertThat(details.getValue()).doesNotContain("<script>");
+        assertThat(details.getValue()).doesNotContain("alert");
+        verify(paymentCommandPort, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("MEDIO-3: Ds_Order con salto de línea → audita <invalid-format> (no inyecta líneas de log)")
+    void newline_order_sanitised_in_audit() {
+        credsAvailable();
+        // Salto de línea escapado dentro del JSON de parámetros → valor real con '\n'.
+        String withNewline = "0009\\nINJECTED";
+        String p = params(withNewline, "0000", "ABC123");
+
+        service.procesar("HMAC_SHA256_V1", p, "not-a-valid-signature");
+
+        ArgumentCaptor<String> details = ArgumentCaptor.forClass(String.class);
+        verify(auditRecorder).record(eq(PagoAuditActions.PAYMENT_WEBHOOK_INVALID_SIGNATURE),
+                isNull(), details.capture());
+        assertThat(details.getValue()).contains("<invalid-format>");
+        assertThat(details.getValue()).doesNotContain("INJECTED");
+    }
+
+    // =========================================================================
+    // BAJO-2 — validar Ds_SignatureVersion
+    // =========================================================================
+
+    @Test
+    @DisplayName("BAJO-2: signatureVersion != HMAC_SHA256_V1 → INVALID_SIGNATURE, sin tocar el pago")
+    void unsupported_signature_version_rejected() {
+        String p = params(ORDER, "0000", "ABC123");
+
+        // Firma correcta pero versión no soportada: se rechaza igualmente.
+        service.procesar("HMAC_SHA1_V1", p, sign(p));
+
+        verify(paymentCommandPort, never()).findByRedsysOrderIdForUpdate(any());
+        verify(paymentCommandPort, never()).save(any());
+        verify(auditRecorder).record(eq(PagoAuditActions.PAYMENT_WEBHOOK_INVALID_SIGNATURE), isNull(), any());
+    }
 }

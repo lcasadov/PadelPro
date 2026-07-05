@@ -13,6 +13,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
 import java.util.Base64;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 /**
  * Process a Redsys notification webhook (pagos-redsys-online, D3).
@@ -31,6 +32,16 @@ import java.util.Optional;
  * <p>The caller always responds HTTP 200. The raw body and card data are never persisted or logged.
  */
 public class ProcesarWebhookService {
+
+    /** The only signature version Redsys emits for this integration (BAJO-2). */
+    private static final String SUPPORTED_SIGNATURE_VERSION = "HMAC_SHA256_V1";
+
+    /**
+     * Allowed shape of a {@code Ds_Order} (Redsys: 4–12 chars, accept up to 32 defensively). Anything
+     * outside this alphabet is treated as attacker-controlled and never written verbatim to the audit
+     * log (MEDIO-3, log-injection / stored-XSS defence).
+     */
+    private static final Pattern ORDER_PATTERN = Pattern.compile("^[0-9A-Za-z]{1,32}$");
 
     private final PaymentCommandPort paymentCommandPort;
     private final RedsysConfigService redsysConfigService;
@@ -58,45 +69,63 @@ public class ProcesarWebhookService {
         }
         String order = text(params, "Ds_Order");
 
-        // 2. Verify signature BEFORE touching anything (RN-PAY-01, constant time inside verify()).
+        // 2. Reject any unsupported signature version outright — a valid Redsys notification is always
+        //    HMAC_SHA256_V1 (BAJO-2). Anything else is audited as an invalid signature and dropped.
+        if (!SUPPORTED_SIGNATURE_VERSION.equals(signatureVersion)) {
+            auditRecorder.record(PagoAuditActions.PAYMENT_WEBHOOK_INVALID_SIGNATURE, null,
+                    "orderId=" + safeOrder(order) + ", reason=unsupported-signature-version");
+            return;
+        }
+
+        // 3. Verify signature BEFORE touching anything (RN-PAY-01, constant time inside verify()).
         String merchantKey = redsysConfigService.loadCredentials().merchantKey();
         boolean valid = order != null
                 && RedsysSignature.verify(merchantParameters, order, signature, merchantKey);
         if (!valid) {
             auditRecorder.record(PagoAuditActions.PAYMENT_WEBHOOK_INVALID_SIGNATURE, null,
-                    "orderId=" + order);
+                    "orderId=" + safeOrder(order));
             return;
         }
 
-        // 3. Locate the payment under a pessimistic write lock so concurrent notifications for the same
+        // 4. Locate the payment under a pessimistic write lock so concurrent notifications for the same
         //    order serialise (MEDIO-2): the second waits, re-reads PAID below, and skips reprocessing.
         Optional<Payment> found = paymentCommandPort.findByRedsysOrderIdForUpdate(order);
         if (found.isEmpty()) {
             auditRecorder.record(PagoAuditActions.PAYMENT_WEBHOOK_ORDER_NOT_FOUND, null,
-                    "orderId=" + order);
+                    "orderId=" + safeOrder(order));
             return;
         }
         Payment payment = found.get();
 
-        // 4. Idempotent: an already-PAID payment is never reprocessed (RN-PAY-02). Under the lock
+        // 5. Idempotent: an already-PAID payment is never reprocessed (RN-PAY-02). Under the lock
         //    above, a concurrent duplicate reaches this branch and no-ops.
         if (payment.getStatus() == PaymentStatus.PAID) {
             return;
         }
 
-        // 5. Apply outcome by Ds_Response (0000..0099 = approved).
+        // 6. Apply outcome by Ds_Response (0000..0099 = approved).
         Integer response = parseResponse(text(params, "Ds_Response"));
         if (response != null && response >= 0 && response <= 99) {
             payment.markPaid(text(params, "Ds_AuthorisationCode"), OffsetDateTime.now());
             paymentCommandPort.save(payment);
             auditRecorder.record(PagoAuditActions.PAYMENT_CONFIRMED, null,
-                    "orderId=" + order + ", reservationId=" + payment.getReservationId());
+                    "orderId=" + safeOrder(order) + ", reservationId=" + payment.getReservationId());
         } else {
             payment.markFailed();
             paymentCommandPort.save(payment);
             auditRecorder.record(PagoAuditActions.PAYMENT_REJECTED, null,
-                    "orderId=" + order + ", dsResponse=" + response);
+                    "orderId=" + safeOrder(order) + ", dsResponse=" + response);
         }
+    }
+
+    /**
+     * Sanitise a {@code Ds_Order} value before it is written to the audit log (MEDIO-3). Returns the
+     * order unchanged only when it matches the strict alphanumeric shape; any attacker-controlled
+     * payload (newlines, {@code <script>…}, over-length) collapses to {@code <invalid-format>} so it
+     * can never inject log lines or be stored/rendered verbatim.
+     */
+    private String safeOrder(String order) {
+        return (order != null && ORDER_PATTERN.matcher(order).matches()) ? order : "<invalid-format>";
     }
 
     private JsonNode decodeParameters(String merchantParameters) {
