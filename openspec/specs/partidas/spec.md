@@ -101,6 +101,58 @@ Permite a los usuarios ver las reservas con plazas libres (partidas abiertas) y 
 - **WHEN** envía `POST /api/reservas/UUID-P/unirse`
 - **THEN** el sistema responde 401 con `code: "UNAUTHORIZED"`
 
+### Requirement 4: Listado de partidas abiertas con identificador *(añadido — partidas-unirse)*
+
+**El sistema DEBE exponer a un usuario autenticado, vía `GET /api/partidas?fecha=YYYY-MM-DD`, las partidas abiertas (reservas activas `PENDING_CONFIRMATION`/`CONFIRMED` con plazas libres) de la fecha, cada una identificable por `reservaId` y con hora, duración, plazas libres, participantes (nombre de display) e importe total (informativo). NO DEBE exponer datos sensibles (email/teléfono).**
+
+#### Scenario: Ver partidas abiertas de una fecha
+- **WHEN** un usuario autenticado consulta `GET /api/partidas?fecha=...` con reservas incompletas ese día
+- **THEN** el sistema responde 200 con una lista de partidas, cada una con `reservaId`, hora, duración y plazas libres
+
+#### Scenario: Reserva completa no aparece
+- **WHEN** una reserva ya tiene `max_participants` participantes
+- **THEN** no aparece en el listado de partidas abiertas
+
+#### Scenario: Requiere autenticación
+- **WHEN** se consulta el listado sin credenciales válidas
+- **THEN** el sistema responde 401
+
+### Requirement 5: Unión atómica de plaza bajo concurrencia *(añadido — partidas-unirse)*
+
+**Al unirse vía `POST /api/reservas/{id}/unirse`, la comprobación de plazas y la inserción del participante DEBEN ser atómicas (bloqueo de la reserva, `SELECT ... FOR UPDATE`) para que uniones concurrentes no superen `max_participants`. El usuario que se une es siempre el sujeto del JWT (no un `userId` del cuerpo).**
+
+#### Scenario: Última plaza en concurrencia
+- **GIVEN** una reserva con una sola plaza libre
+- **WHEN** varios usuarios envían `POST /api/reservas/{id}/unirse` simultáneamente
+- **THEN** exactamente uno recibe 200 y el resto 422 `PARTICIPANTS_LIMIT_EXCEEDED`
+- **AND** la reserva nunca supera `max_participants`
+
+### Requirement 6: Abandonar una partida *(añadido — partidas-unirse)*
+
+**El sistema DEBE permitir a un participante no-owner abandonar una reserva a la que se unió, vía `DELETE /api/reservas/{id}/participacion`, liberando su plaza. El owner NO DEBE poder abandonar (debe cancelar la reserva).**
+
+#### Scenario: Participante no-owner abandona
+- **GIVEN** un usuario autenticado participa (no-owner) en una reserva activa
+- **WHEN** envía `DELETE /api/reservas/{id}/participacion`
+- **THEN** el sistema responde 204, lo elimina de `participants` y libera la plaza
+
+#### Scenario: El owner no puede abandonar
+- **WHEN** el owner intenta `DELETE /api/reservas/{id}/participacion` sobre su propia reserva
+- **THEN** el sistema responde 422 `OWNER_CANNOT_ABANDON` indicando que debe cancelar la reserva
+
+### Requirement 7: Importe informativo y minimización de PII *(añadido — partidas-unirse)*
+
+**La UI de confirmar unión DEBE mostrar el importe "tu parte" (total ÷ participantes tras la unión) como referencia informativa; la unión NO cobra online (cobro presencial; el pago compartido se difiere a `pagos-redsys`). Además, el detalle de reserva (`GET /api/reservas/{id}`) DEBE minimizar la PII para co-participantes no-owner: `externalPhone` de invitados y `notes` se devuelven `null` salvo para el owner o ADMIN (RN-RGPD-03).**
+
+#### Scenario: Mostrar tu parte sin cobrar
+- **WHEN** el usuario abre la confirmación de unión a una partida
+- **THEN** la UI muestra el importe que le correspondería e indica que el pago es presencial (sin pasarela)
+
+#### Scenario: Co-participante no ve teléfono ni notas ajenas
+- **GIVEN** un usuario no-owner que se ha unido a una reserva con invitados externos y notas
+- **WHEN** consulta `GET /api/reservas/{id}`
+- **THEN** recibe `externalPhone` de los participantes y `notes` de la reserva en `null` (el owner y el ADMIN sí los ven)
+
 ## Casos límite
 - Unirse a una reserva en estado `CANCELLED` o `COMPLETED`: el sistema responde 422 indicando que la reserva no admite nuevos participantes en ese estado.
 - El `owner_id` de la reserva intenta unirse de nuevo via `/unirse`: el sistema responde 409 (ya es participante y owner).
