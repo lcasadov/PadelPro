@@ -83,6 +83,12 @@
   text-decoration: none;
   color: var(--ink);
   display: block;
+  /* Resets para que un <button> con .action luzca igual que los <a>/<div> */
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  appearance: none;
+  -webkit-appearance: none;
 }
 
 .action:hover {

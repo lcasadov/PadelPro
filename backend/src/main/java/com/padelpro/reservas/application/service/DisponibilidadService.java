@@ -93,7 +93,10 @@ public class DisponibilidadService implements DisponibilidadCacheInvalidator {
 
             int plazasLibres = maxParticipants - occupied;
             if (plazasLibres >= 1) {
-                tramos.add(new TramoDisponible(slotStart.format(TIME_FMT), SLOT_MINUTES, plazasLibres));
+                // creable (D7): true iff the slot is fully empty (occupied == 0, i.e. plazasLibres == maxParticipants);
+                // a slot with an incomplete reservation is only joinable, not creatable.
+                boolean creable = occupied == 0;
+                tramos.add(new TramoDisponible(slotStart.format(TIME_FMT), SLOT_MINUTES, plazasLibres, creable));
             }
         }
 
