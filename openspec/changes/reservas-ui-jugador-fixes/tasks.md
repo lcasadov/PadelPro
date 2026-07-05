@@ -44,7 +44,13 @@
 - [ ] 6.1 **[Refactor]** Limpieza del delta manteniendo la suite en verde
 - [ ] 6.2 `verification-specialist`: build + tests (frontend vitest, backend maven) + lint del delta
 - [ ] 6.3 `reality-checker`: journey end-to-end del jugador (buscar → elegir duración → añadir compañero socio y externo → confirmar → ver en Mis Reservas → cancelar → volver a Inicio) contra el stack real
-- [ ] 6.4 Actualizar `docs/openapi.yaml` (endpoint búsqueda de usuarios; alinear schema del cuerpo de error de reservas con lo que emite el backend)
+- [x] 6.4 Actualizar `docs/openapi.yaml` (endpoint búsqueda de usuarios; alinear schema del cuerpo de error de reservas con lo que emite el backend) — `ErrorResponse` reescrito a `{ error, message, timestamp, details[]:string }` (el schema viejo `{ code, message, errors[]:FieldError }` no coincidía con `ErrorResponse.java` + `GlobalExceptionHandler`); `FieldError` eliminado (quedaba huérfano).
+
+### Notas — pasada de correcciones de seguridad/hardening (backend, #188)
+
+- **[MEDIO — seguridad] Validar `userId` de participante registrado.** `CrearReservaService.addAdditionalParticipants` ahora valida que un participante con `userId` exista y esté `ACTIVE` vía el nuevo puerto `UserRepositoryPort.existsByIdAndStatus(id, ACTIVE)`; si no, lanza `InvalidReservaStateException("PARTICIPANT_NOT_FOUND", …)` → 422 (rollback, no persiste). La FK `participants.user_id → users(id)` (`fk_part_user`, `ON DELETE SET NULL`) **ya existía** en `V7`; no se añadió migración. Tests IT: userId inexistente → 422, userId no-ACTIVE → 422, userId ACTIVE → 201.
+- **[Gap de test] Exclusión de no-ACTIVE en la búsqueda.** Nuevo test en `UsuariosBuscarControllerIntegrationTest`: usuarios PENDING e INACTIVE con nombre coincidente NO aparecen (solo ACTIVE).
+- **[BAJO — hardening] `ESCAPE '\'` explícito en el LIKE.** `UserRepository.searchByNameOrEmail` añade `ESCAPE '\\'` a las 4 cláusulas LIKE; test de regresión: término con `%` no vuelca el directorio.
 
 ---
 

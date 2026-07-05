@@ -138,4 +138,36 @@ class UsuariosBuscarControllerIntegrationTest extends PostgresIntegrationTest {
         mockMvc.perform(get("/api/usuarios/buscar").param("q", "ana"))
                 .andExpect(status().isUnauthorized());
     }
+
+    @Test
+    @DisplayName("GET /api/usuarios/buscar excludes non-ACTIVE (PENDING/INACTIVE) users")
+    void search_excludes_non_active_users() throws Exception {
+        OffsetDateTime now = OffsetDateTime.now();
+        // Same searchable name, but neither is ACTIVE → must not appear.
+        persist("ana.pending", "Ana", "Pending", "ana.pending@club.com",
+                UserRole.USER, UserStatus.PENDING, now);
+        persist("ana.inactive", "Ana", "Inactive", "ana.inactive@club.com",
+                UserRole.USER, UserStatus.INACTIVE, now);
+
+        mockMvc.perform(get("/api/usuarios/buscar")
+                        .param("q", "ana")
+                        .header("Authorization", "Bearer " + userToken))
+                .andExpect(status().isOk())
+                // Only the ACTIVE "Ana Lopez" from setUp() matches.
+                .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(1)))
+                .andExpect(jsonPath("$[0].nombre", is("Ana Lopez")));
+    }
+
+    @Test
+    @DisplayName("GET /api/usuarios/buscar with a '%' wildcard term does not dump the directory")
+    void search_percent_wildcard_does_not_return_all() throws Exception {
+        // "a%" (length ≥ MIN_TERM_LENGTH so it reaches the query): escapeLike turns the '%' into '\%',
+        // and the explicit ESCAPE '\' makes the DB treat it as a literal percent sign. No member has a
+        // literal '%' in their name/email → empty result, i.e. the wildcard cannot dump the directory.
+        mockMvc.perform(get("/api/usuarios/buscar")
+                        .param("q", "a%")
+                        .header("Authorization", "Bearer " + userToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(0)));
+    }
 }
