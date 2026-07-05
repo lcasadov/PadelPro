@@ -11,7 +11,22 @@ export const reservasPaths = {
   mias: '/reservas/mias',
   /** Detalle de una reserva concreta. */
   detalle: (id: string): string => `/reservas/detalle/${id}`,
+  /** Listado de partidas abiertas (reservas con plazas libres a las que unirse). */
+  partidas: '/reservas/partidas',
+  /** Confirmar la unión a una partida concreta (por `reservaId`). */
+  confirmarUnion: (id: string): string => `/reservas/partidas/${id}/unirse`,
 } as const;
+
+/**
+ * Construye el path de "Confirmar unión" a una partida, propagando la `fecha` en la
+ * query. La confirmación re-consulta el listado de partidas de esa fecha (no puede
+ * usar `GET /reservas/{id}`: aún no es participante → 403) y localiza la partida por
+ * `reservaId`. Llevar la fecha en la URL hace la pantalla resistente a recargas.
+ */
+export function confirmarUnionPath(reservaId: string, fecha: string): string {
+  const params = new URLSearchParams({ fecha });
+  return `${reservasPaths.confirmarUnion(reservaId)}?${params.toString()}`;
+}
 
 /**
  * Construye el path (string) de "Confirmar reserva" con el tramo elegido en la

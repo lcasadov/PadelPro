@@ -116,6 +116,38 @@ export interface CrearReservaPayload {
   notes?: string;
 }
 
+// ─── Partidas (partidas-unirse) ───────────────────────────────────────────────
+
+/** Participante de una partida abierta en la proyección del listado. Solo nombre
+ *  de display (sin PII: ni email ni teléfono, RN-RGPD-03). */
+export interface PartidaParticipante {
+  nombre: string;
+  slotPosition: number;
+  owner: boolean;
+}
+
+/** Partida abierta (reserva activa con plazas libres) del contrato
+ *  `GET /api/partidas?fecha=YYYY-MM-DD`. Identificable por `reservaId`; `priceTotal`
+ *  es informativo (el reparto "tu parte" lo calcula la UI, sin cobro online). */
+export interface PartidaAbierta {
+  reservaId: string;
+  reservationDate: string;
+  startTime: string;
+  durationMinutes: number;
+  plazasLibres: number;
+  priceTotal: number;
+  participantes: PartidaParticipante[];
+}
+
+/** Respuesta de `POST /api/reservas/{id}/unirse`. */
+export interface UnirseResponse {
+  participanteId: string | number;
+  reservaId: string;
+  userId: number;
+  nombre: string;
+  statusPago: string;
+}
+
 // ─── Errores tipados (D6) ─────────────────────────────────────────────────────
 
 export type ReservaErrorCode =
@@ -305,6 +337,52 @@ export async function getReserva(token: string, id: string): Promise<ReservaResp
 export async function cancelarReserva(token: string, id: string): Promise<void> {
   try {
     await api.delete(`/reservas/${id}`, { headers: authHeader(token) });
+  } catch (err) {
+    toReservaApiError(err);
+  }
+}
+
+// ─── Partidas: listar, unirse, abandonar (partidas-unirse) ─────────────────────
+
+/** GET /api/partidas?fecha=YYYY-MM-DD — partidas abiertas de la fecha (reservas
+ *  activas con plazas libres). El backend devuelve un ARRAY JSON plano; se normaliza
+ *  por robustez si llegara envuelto en `{ data: [...] }`. */
+export async function getPartidasAbiertas(token: string, fecha: string): Promise<PartidaAbierta[]> {
+  try {
+    const { data } = await api.get<PartidaAbierta[] | { data?: PartidaAbierta[] }>('/partidas', {
+      headers: authHeader(token),
+      params: { fecha },
+    });
+    if (Array.isArray(data)) return data;
+    return Array.isArray(data?.data) ? data.data : [];
+  } catch (err) {
+    toReservaApiError(err);
+  }
+}
+
+/** POST /api/reservas/{id}/unirse (sin body) — une al usuario como participante
+ *  no-owner. Errores del contrato: 404 (inexistente), 409 (ya participante, mapeado
+ *  a CONFLICT por status), 422 (completa o estado no unible). Las páginas
+ *  discriminan por `err.status` para no depender del código textual del cuerpo. */
+export async function unirseReserva(token: string, reservaId: string): Promise<UnirseResponse> {
+  try {
+    const { data } = await api.post<UnirseResponse>(
+      `/reservas/${reservaId}/unirse`,
+      undefined,
+      { headers: authHeader(token) }
+    );
+    return data;
+  } catch (err) {
+    toReservaApiError(err);
+  }
+}
+
+/** DELETE /api/reservas/{id}/participacion — 204. Abandona una partida en la que
+ *  el usuario participa como no-owner (libera su plaza). El owner no puede abandonar
+ *  (debe cancelar): el backend lo rechaza. */
+export async function abandonarReserva(token: string, reservaId: string): Promise<void> {
+  try {
+    await api.delete(`/reservas/${reservaId}/participacion`, { headers: authHeader(token) });
   } catch (err) {
     toReservaApiError(err);
   }

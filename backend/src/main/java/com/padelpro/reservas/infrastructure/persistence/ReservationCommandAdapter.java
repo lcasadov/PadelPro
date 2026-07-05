@@ -51,6 +51,11 @@ public class ReservationCommandAdapter implements ReservationCommandPort {
     }
 
     @Override
+    public Optional<Reservation> findByIdForUpdate(UUID id) {
+        return reservationRepository.findByIdForUpdate(id);
+    }
+
+    @Override
     public IdempotencyKey saveIdempotencyKey(IdempotencyKey key) {
         return idempotencyKeyRepository.saveAndFlush(key);
     }

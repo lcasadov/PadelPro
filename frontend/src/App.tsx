@@ -15,6 +15,8 @@ import { DisponibilidadPage } from './pages/DisponibilidadPage';
 import { ConfirmarReservaPage } from './pages/ConfirmarReservaPage';
 import { MisReservasPage } from './pages/MisReservasPage';
 import { DetalleReservaPage } from './pages/DetalleReservaPage';
+import { PartidasAbiertasPage } from './pages/PartidasAbiertasPage';
+import { ConfirmarUnionPage } from './pages/ConfirmarUnionPage';
 import { reservasPaths } from './pages/reservasPaths';
 
 function App() {
@@ -41,6 +43,10 @@ function App() {
             <Route path={reservasPaths.confirmar} element={<ConfirmarReservaPage />} />
             <Route path={reservasPaths.mias} element={<MisReservasPage />} />
             <Route path={reservasPaths.detalle(':id')} element={<DetalleReservaPage />} />
+
+            {/* Partidas — unirse a reservas con plazas libres (partidas-unirse) */}
+            <Route path={reservasPaths.partidas} element={<PartidasAbiertasPage />} />
+            <Route path={reservasPaths.confirmarUnion(':id')} element={<ConfirmarUnionPage />} />
           </Route>
 
           {/* Rutas de administración — guard de rol ADMIN (D6) */}

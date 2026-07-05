@@ -2,13 +2,16 @@ package com.padelpro.reservas.infrastructure.persistence;
 
 import com.padelpro.reservas.domain.model.Reservation;
 import com.padelpro.reservas.domain.model.ReservationStatus;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -37,6 +40,16 @@ public interface ReservationJpaRepository extends JpaRepository<Reservation, UUI
             WHERE r.id = :id
             """)
     java.util.Optional<Reservation> findByIdWithParticipants(@Param("id") UUID id);
+
+    /**
+     * Load a reservation locking its row ({@code SELECT ... FOR UPDATE}) for the atomic join (D2).
+     * The root row alone is locked — participants are NOT join-fetched here so the lock stays on the
+     * {@code reservations} row; the caller reads {@code getParticipants()} lazily inside the same
+     * transaction, after the lock is held, so the seat count reflects the latest committed state.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT r FROM Reservation r WHERE r.id = :id")
+    Optional<Reservation> findByIdForUpdate(@Param("id") UUID id);
 
     /**
      * Reservations where the user is owner OR a registered participant (RN-AUTH-01), participants

@@ -11,18 +11,29 @@ import java.util.List;
 
 /**
  * Maps domain {@link Reservation}/{@link Payment} aggregates to API DTOs (capability reservas).
+ *
+ * <p><b>PII minimization (RN-RGPD-03).</b> A reservation detail/list is visible not only to its owner
+ * but also to co-players who joined an open match (capability partidas, D2). Since anyone can join an
+ * open match, guest phone numbers ({@code externalPhone}) and the reservation {@code notes} must NOT
+ * be exposed to a mere co-participant. Only the owner and ADMIN see those fields; for everyone else
+ * they are nulled out. This shapes the response only — it does not change the 403 access rule.
  */
 final class ReservaMapper {
 
     private ReservaMapper() {
     }
 
-    static ReservaResponse toResponse(Reservation r, Payment payment) {
+    /**
+     * @param includePii when {@code false} (requester is a co-participant, not owner nor ADMIN),
+     *                   {@code externalPhone} of every participant and the reservation {@code notes}
+     *                   are nulled out (RN-RGPD-03).
+     */
+    static ReservaResponse toResponse(Reservation r, Payment payment, boolean includePii) {
         List<ParticipanteResponse> participants = r.getParticipants().stream()
                 .map(p -> new ParticipanteResponse(
                         p.getUserId(),
                         p.getExternalName(),
-                        p.getExternalPhone(),
+                        includePii ? p.getExternalPhone() : null,
                         p.getSlotPosition(),
                         p.isOwner()))
                 .sorted((a, b) -> Integer.compare(a.slotPosition(), b.slotPosition()))
@@ -45,7 +56,7 @@ final class ReservaMapper {
                 r.getDurationMinutes(),
                 r.getStatus() != null ? r.getStatus().name() : null,
                 r.getChannel() != null ? r.getChannel().name() : null,
-                r.getNotes(),
+                includePii ? r.getNotes() : null,
                 priceTotal,
                 participants,
                 pago,

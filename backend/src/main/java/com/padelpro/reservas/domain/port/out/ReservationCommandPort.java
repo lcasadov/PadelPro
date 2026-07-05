@@ -24,6 +24,14 @@ public interface ReservationCommandPort {
     /** Look up a reservation by id (without forcing participant/payment fetch). */
     Optional<Reservation> findById(UUID id);
 
+    /**
+     * Look up a reservation acquiring a pessimistic write lock on its row ({@code SELECT ... FOR
+     * UPDATE}) so a concurrent join serialises on the same reservation (D2). Participants are loaded
+     * lazily within the caller's transaction after the lock is held, so the seat count re-read
+     * reflects the latest committed state and two joins to the last seat cannot both succeed.
+     */
+    Optional<Reservation> findByIdForUpdate(UUID id);
+
     /** Persist an idempotency record linking (user_id, key) → reservation. */
     IdempotencyKey saveIdempotencyKey(IdempotencyKey key);
 

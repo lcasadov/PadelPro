@@ -492,4 +492,98 @@ class ReservaControllerIntegrationTest extends PostgresIntegrationTest {
         assertThat(reservationRepository.findByIdWithParticipants(reservationId).orElseThrow()
                 .getParticipants()).hasSize(2);
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // RN-RGPD-03 — PII minimization in the reservation detail for co-participants.
+    // A co-player who joined an open match must NOT see guest phones nor the notes;
+    // the owner and ADMIN still see everything. Access rule (403) is unchanged.
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /** Owner-created reservation with private notes and an external guest carrying a phone. */
+    private String createReservaWithGuestAndNotes(String startTime) throws Exception {
+        String body = objectMapper.writeValueAsString(new CrearReservaRequest(
+                futureDate.toString(), startTime, 60, "notas privadas del owner",
+                java.util.List.of(new CrearReservaRequest.ParticipanteAdicional(
+                        null, "Invitado Externo", "+34611223344"))));
+        MvcResult result = mockMvc.perform(post("/api/reservas")
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isCreated())
+                .andReturn();
+        return extractId(result);
+    }
+
+    /** Make {@code otherUser} join the reservation as a non-owner co-participant. */
+    private void joinAs(String id, String token) throws Exception {
+        mockMvc.perform(post("/api/reservas/{id}/unirse", id)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("RGPD: owner ve externalPhone del invitado y notes de la reserva")
+    void should_expose_pii_to_owner() throws Exception {
+        String id = createReservaWithGuestAndNotes("18:00");
+
+        mockMvc.perform(get("/api/reservas/{id}", id)
+                        .header("Authorization", "Bearer " + ownerToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.notes", is("notas privadas del owner")))
+                .andExpect(jsonPath("$.participants[1].externalName", is("Invitado Externo")))
+                .andExpect(jsonPath("$.participants[1].externalPhone", is("+34611223344")));
+    }
+
+    @Test
+    @DisplayName("RGPD: ADMIN (no participante) ve externalPhone y notes")
+    void should_expose_pii_to_admin() throws Exception {
+        String id = createReservaWithGuestAndNotes("18:00");
+
+        mockMvc.perform(get("/api/reservas/{id}", id)
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.notes", is("notas privadas del owner")))
+                .andExpect(jsonPath("$.participants[1].externalPhone", is("+34611223344")));
+    }
+
+    @Test
+    @DisplayName("RGPD: co-participante (no owner) recibe externalPhone y notes en null")
+    void should_minimize_pii_for_co_participant() throws Exception {
+        String id = createReservaWithGuestAndNotes("18:00");
+        joinAs(id, otherToken); // otherUser becomes a non-owner co-participant (slot 3)
+
+        mockMvc.perform(get("/api/reservas/{id}", id)
+                        .header("Authorization", "Bearer " + otherToken))
+                .andExpect(status().isOk())
+                // The guest is still listed by display name, but the phone is nulled out.
+                .andExpect(jsonPath("$.participants[1].externalName", is("Invitado Externo")))
+                .andExpect(jsonPath("$.participants[1].externalPhone").doesNotExist())
+                .andExpect(jsonPath("$.notes").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("RGPD: no-participante sigue recibiendo 403 (regla de acceso intacta)")
+    void should_still_return_403_for_non_participant() throws Exception {
+        String id = createReservaWithGuestAndNotes("18:00");
+        // otherUser has NOT joined → still no access.
+        mockMvc.perform(get("/api/reservas/{id}", id)
+                        .header("Authorization", "Bearer " + otherToken))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error", is("FORBIDDEN")));
+    }
+
+    @Test
+    @DisplayName("RGPD: en el listado, el co-participante tampoco ve phone/notes de reservas ajenas")
+    void should_minimize_pii_in_list_for_co_participant() throws Exception {
+        String id = createReservaWithGuestAndNotes("18:00");
+        joinAs(id, otherToken);
+
+        // otherUser lists their reservations: this one (not owned) must come minimized.
+        mockMvc.perform(get("/api/reservas")
+                        .header("Authorization", "Bearer " + otherToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(1)))
+                .andExpect(jsonPath("$[0].notes").doesNotExist())
+                .andExpect(jsonPath("$[0].participants[1].externalPhone").doesNotExist());
+    }
 }
