@@ -30,3 +30,12 @@ app:
     access-token-expiry-minutes: 15
   encryption:
     key: ${ENCRYPTION_KEY}
+  redsys:
+    # TPV endpoint (sandbox by default; set the production endpoint via env in prod).
+    tpv-url: ${REDSYS_TPV_URL:https://sis-t.redsys.es:25443/sis/realizarPago}
+    # Public server-to-server webhook URL sent as Ds_Merchant_MerchantURL (must be reachable by Redsys).
+    merchant-url: ${REDSYS_MERCHANT_URL:http://localhost:8080/api/pagos/webhook}
+    # Browser return URLs (frontend PagoConfirmadoPage).
+    url-ok: ${REDSYS_URL_OK:http://localhost:5173/pago/confirmado}
+    url-ko: ${REDSYS_URL_KO:http://localhost:5173/pago/confirmado}
+    currency: ${REDSYS_CURRENCY:978}

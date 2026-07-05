@@ -41,6 +41,9 @@ public class SystemConfig {
     @Column(columnDefinition = "TEXT")
     private String redsysMerchantKey;
 
+    @Column(columnDefinition = "TEXT")
+    private String redsysTerminal;
+
     @Column(nullable = false)
     @Positive(message = "maxParticipantsPerPista must be greater than 0")
     private Integer maxParticipantsPerPista;
@@ -67,8 +70,8 @@ public class SystemConfig {
 
     public SystemConfig(Long id, String clubName, String clubDescription, PistaState pistaState,
                         PaymentGateway paymentGateway, String telegramBotToken, String redsysMerchantId,
-                        String redsysMerchantKey, Integer maxParticipantsPerPista, BigDecimal pricePerHour,
-                        Integer cancellationDeadlineHours, OffsetDateTime createdAt,
+                        String redsysMerchantKey, String redsysTerminal, Integer maxParticipantsPerPista,
+                        BigDecimal pricePerHour, Integer cancellationDeadlineHours, OffsetDateTime createdAt,
                         OffsetDateTime updatedAt, Long updatedByUserId) {
         this.id = id;
         this.clubName = clubName;
@@ -78,6 +81,7 @@ public class SystemConfig {
         this.telegramBotToken = telegramBotToken;
         this.redsysMerchantId = redsysMerchantId;
         this.redsysMerchantKey = redsysMerchantKey;
+        this.redsysTerminal = redsysTerminal;
         this.maxParticipantsPerPista = maxParticipantsPerPista;
         this.pricePerHour = pricePerHour;
         this.cancellationDeadlineHours = cancellationDeadlineHours;
@@ -169,6 +173,14 @@ public class SystemConfig {
         this.redsysMerchantKey = redsysMerchantKey;
     }
 
+    public String getRedsysTerminal() {
+        return redsysTerminal;
+    }
+
+    public void setRedsysTerminal(String redsysTerminal) {
+        this.redsysTerminal = redsysTerminal;
+    }
+
     public Integer getMaxParticipantsPerPista() {
         return maxParticipantsPerPista;
     }
@@ -250,6 +262,7 @@ public class SystemConfig {
         private String telegramBotToken;
         private String redsysMerchantId;
         private String redsysMerchantKey;
+        private String redsysTerminal;
         private Integer maxParticipantsPerPista;
         private BigDecimal pricePerHour;
         private Integer cancellationDeadlineHours;
@@ -297,6 +310,11 @@ public class SystemConfig {
             return this;
         }
 
+        public SystemConfigBuilder redsysTerminal(String redsysTerminal) {
+            this.redsysTerminal = redsysTerminal;
+            return this;
+        }
+
         public SystemConfigBuilder maxParticipantsPerPista(Integer maxParticipantsPerPista) {
             this.maxParticipantsPerPista = maxParticipantsPerPista;
             return this;
@@ -329,8 +347,9 @@ public class SystemConfig {
 
         public SystemConfig build() {
             return new SystemConfig(id, clubName, clubDescription, pistaState, paymentGateway,
-                    telegramBotToken, redsysMerchantId, redsysMerchantKey, maxParticipantsPerPista,
-                    pricePerHour, cancellationDeadlineHours, createdAt, updatedAt, updatedByUserId);
+                    telegramBotToken, redsysMerchantId, redsysMerchantKey, redsysTerminal,
+                    maxParticipantsPerPista, pricePerHour, cancellationDeadlineHours, createdAt,
+                    updatedAt, updatedByUserId);
         }
     }
 }

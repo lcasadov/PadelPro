@@ -74,4 +74,7 @@ public interface ReservationJpaRepository extends JpaRepository<Reservation, UUI
             ORDER BY r.reservationDate DESC, r.startTime DESC
             """)
     List<Reservation> findAllWithParticipants();
+
+    /** Reservations owned by a user (own-payments history, pagos-redsys-online group 5). */
+    List<Reservation> findByOwnerId(Long ownerId);
 }

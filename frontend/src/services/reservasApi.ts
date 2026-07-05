@@ -251,8 +251,9 @@ function codeFromStatus(status: number): ReservaErrorCode {
  *  CANCELLATION_DEADLINE_PASSED), que comparten status. Por eso el código se toma
  *  SIEMPRE del valor textual del cuerpo cuando es un `ReservaErrorCode` conocido; solo
  *  se cae a `codeFromStatus` si el cuerpo no lo trae (401 sesión, 5xx servidor, red).
- *  Re-lanza. */
-function toReservaApiError(error: unknown): never {
+ *  Re-lanza. Exportado para reutilizarlo desde otras services del mismo dominio
+ *  (p. ej. `pagosApi`) sin duplicar el mapeo del error shape real del backend. */
+export function toReservaApiError(error: unknown): never {
   const axErr = error as AxiosError<BackendErrorBody>;
   const status = axErr.response?.status ?? 0;
   const body = axErr.response?.data;
