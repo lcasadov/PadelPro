@@ -22,7 +22,6 @@ import org.mockito.quality.Strictness;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.OffsetDateTime;
-import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -97,6 +96,9 @@ class AuthServiceRefreshTest {
 
         when(refreshTokenRepository.findByTokenHash(sha256Hex(rawToken)))
                 .thenReturn(Optional.of(stored));
+        // The atomic conditional revoke succeeds (1 row) → this request wins the rotation race.
+        when(refreshTokenRepository.revokeByTokenHashIfActive(sha256Hex(rawToken)))
+                .thenReturn(1);
 
         TokenPair result = authService.refresh(rawToken);
 
@@ -112,22 +114,41 @@ class AuthServiceRefreshTest {
                 .isNotBlank()
                 .isNotEqualTo(rawToken);
 
-        // The used token is revoked and both the revoked and the new token are persisted
-        ArgumentCaptor<RefreshToken> captor = ArgumentCaptor.forClass(RefreshToken.class);
-        verify(refreshTokenRepository, times(2)).save(captor.capture());
-        List<RefreshToken> saved = captor.getAllValues();
+        // Revocation of the used token goes through the atomic conditional UPDATE (not check-then-set).
+        verify(refreshTokenRepository).revokeByTokenHashIfActive(sha256Hex(rawToken));
 
-        assertThat(stored.isRevoked())
-                .as("the used refresh token must be revoked")
-                .isTrue();
-        assertThat(saved)
-                .as("both the revoked token and a fresh token are persisted")
-                .anySatisfy(t -> assertThat(t.isRevoked()).isTrue())
-                .anySatisfy(t -> {
-                    assertThat(t.isRevoked()).isFalse();
-                    assertThat(t.getTokenHash()).isNotEqualTo(sha256Hex(rawToken));
-                    assertThat(t.getExpiresAt()).isAfter(OffsetDateTime.now().plusSeconds(604000));
-                });
+        // Only the fresh token is persisted; the old one was revoked atomically in the DB.
+        ArgumentCaptor<RefreshToken> captor = ArgumentCaptor.forClass(RefreshToken.class);
+        verify(refreshTokenRepository, times(1)).save(captor.capture());
+        RefreshToken persisted = captor.getValue();
+        assertThat(persisted.isRevoked()).isFalse();
+        assertThat(persisted.getTokenHash()).isNotEqualTo(sha256Hex(rawToken));
+        assertThat(persisted.getExpiresAt()).isAfter(OffsetDateTime.now().plusSeconds(604000));
+    }
+
+    // -------------------------------------------------------------------------
+    // Concurrent reuse / lost race → 401 (MEDIO-1: atomic rotation)
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("token still active at load but atomic revoke returns 0 (lost race) → invalid, no new token minted")
+    void should_reject_reuse_when_revoke_returns_zero() throws Exception {
+        // Simulates two concurrent refreshes with the SAME token: both pass findByTokenHash and the
+        // expiry check, but only one wins the conditional UPDATE. The loser sees 0 rows affected.
+        String rawToken = "raced-raw-token";
+        RefreshToken stored = new RefreshToken(
+                activeUser(), sha256Hex(rawToken),
+                OffsetDateTime.now().plusSeconds(604800), null, OffsetDateTime.now());
+        when(refreshTokenRepository.findByTokenHash(sha256Hex(rawToken)))
+                .thenReturn(Optional.of(stored));
+        when(refreshTokenRepository.revokeByTokenHashIfActive(sha256Hex(rawToken)))
+                .thenReturn(0);
+
+        assertThatThrownBy(() -> authService.refresh(rawToken))
+                .isInstanceOf(RefreshTokenInvalidException.class);
+
+        // The loser of the race must NOT mint / persist a new refresh token.
+        verify(refreshTokenRepository, never()).save(org.mockito.ArgumentMatchers.any());
     }
 
     // -------------------------------------------------------------------------

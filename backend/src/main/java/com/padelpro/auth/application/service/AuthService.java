@@ -17,6 +17,7 @@ import com.padelpro.auth.domain.port.out.UserRepositoryPort;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -166,6 +167,7 @@ public class AuthService implements LoginUseCase, RefreshTokenUseCase {
     // -------------------------------------------------------------------------
 
     @Override
+    @Transactional
     public TokenPair refresh(String rawRefreshToken) {
         // Missing cookie / empty value → invalid (RN-RGPD-04: never log the token or its hash).
         if (rawRefreshToken == null || rawRefreshToken.isBlank()) {
@@ -186,9 +188,15 @@ public class AuthService implements LoginUseCase, RefreshTokenUseCase {
 
         User user = stored.getUser();
 
-        // Rotation: revoke the token that was used so it cannot be replayed (D1).
-        stored.setRevoked(true);
-        refreshTokenRepository.save(stored);
+        // Rotation must be atomic (MEDIO-1). The prior check-then-set on the loaded entity was a
+        // race: two concurrent refreshes with the same token could both pass isRevoked()==false and
+        // each mint a valid new token (double-spend), defeating the replay mitigation. Instead we
+        // let a single conditional UPDATE decide the winner: it revokes exactly one row and returns
+        // 1 only for the request that arrives first. Any concurrent reuse gets 0 rows → invalid.
+        int revoked = refreshTokenRepository.revokeByTokenHashIfActive(tokenHash);
+        if (revoked == 0) {
+            throw new RefreshTokenInvalidException();
+        }
 
         // Issue a brand-new refresh token with a fresh 7-day sliding window (D1).
         String newRawRefreshToken = generateRawRefreshToken();
