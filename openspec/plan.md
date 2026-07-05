@@ -1,7 +1,7 @@
 # Plan de ejecución — PadelPro OpenSpec
 
 **Generado:** 2026-05-31  
-**Última actualización:** 2026-07-03  
+**Última actualización:** 2026-07-05  
 **Base:** dependencias declaradas en `openspec/specs/*/spec.md`  
 **Estado:** 7/14 capabilities de producto implementadas (+ `notificaciones` parcial, + transversales: `ci-cd-deploy` ✅ y refuerzos de `auth-local`/`usuarios` en producción)
 
@@ -11,15 +11,15 @@
 
 | Capability | Estado | Change archivado |
 |---|---|---|
-| `auth-local` | ✅ Implementada (+ admin inicial, gracia 48h, cambio forzado) | `archive/2026-05-31-bootstrap-mvp`, `archive/2026-07-03-acceso-cuenta-prod` |
-| `usuarios` | ✅ Implementada (+ panel admin, alta/edición, reset por admin) | `archive/2026-05-31-usuarios`, `archive/2026-07-03-acceso-cuenta-prod`, `archive/2026-07-03-usuarios-alta-edicion-email` |
+| `auth-local` | ✅ Implementada (+ admin inicial, gracia 48h, cambio forzado, refresh de sesión) | `archive/2026-05-31-bootstrap-mvp`, `archive/2026-07-03-acceso-cuenta-prod`, `archive/2026-07-05-auth-session-refresh` |
+| `usuarios` | ✅ Implementada (+ panel admin, alta/edición, reset por admin, búsqueda de socios) | `archive/2026-05-31-usuarios`, `archive/2026-07-03-acceso-cuenta-prod`, `archive/2026-07-03-usuarios-alta-edicion-email`, `archive/2026-07-05-reservas-ui-jugador-fixes` |
 | `roles-permisos` | ✅ Implementada | `archive/2026-05-31-roles-permisos` |
 | `auditoria` | ✅ Implementada | `archive/2026-06-07-auditoria` |
 | `configuracion-club` | ✅ Implementada | `archive/2026-06-07-configuracion-club` |
 | `pistas` | ✅ Implementada | (incluida en `configuracion-club`) |
 | `disponibilidad-pistas` | ✅ Implementada | `archive/2026-06-18-disponibilidad-pistas` |
 | `auth-otp-telegram` | 📋 Pendiente | — |
-| `reservas` | ✅ Implementada | `archive/2026-06-20-reservas` |
+| `reservas` | ✅ Implementada (+ UI jugador: disponibilidad/confirmar/mis reservas + duración/compañero/cancelar) | `archive/2026-06-20-reservas`, `archive/2026-07-05-reservas-ui-jugador-fixes` (UI en #184, aún sin archivar) |
 | `pagos-redsys` | 📋 Pendiente | — |
 | `notificaciones` | 🔶 Parcial — email SMTP + bienvenida ✅; eventos de reserva y Telegram pendientes | `archive/2026-07-03-usuarios-alta-edicion-email` |
 | `partidas` | 📋 Pendiente | — |
@@ -249,12 +249,11 @@ Wave 6  ────────└──── administracion-club  ← Fase 2
 
 ## Próximas acciones recomendadas
 
-> Estado 2026-07-03: la app está **desplegada y usable** (CI/CD a EC2 ✅, acceso/panel admin ✅, alta/edición + email de bienvenida ✅). Wave 4 desbloqueada. Sin changes activos.
+> Estado 2026-07-05: la app está **desplegada y usable** (CI/CD a EC2 ✅, acceso/panel admin ✅). **UI de reservas del jugador ✅** (disponibilidad, confirmar, mis reservas, detalle) + correcciones (#188: duración 60/90/120, compañero socio/externo con buscador, navegación, cancelar/estado pago) y **renovación silenciosa de sesión ✅** (#186: `/api/auth/refresh` + interceptor, cura el 401 tras 15 min). Sin changes activos salvo `reservas-ui-jugador` (#184) pendiente de archivar.
 
-1. **UI de reservas (frontend)** — mayor valor inmediato para la demo: `reservas` es solo backend y el botón "Reservar pista" no hace nada. Pantallas de disponibilidad + crear/cancelar reserva sobre los endpoints existentes. No es una capability nueva del plan, pero desbloquea el uso end-to-end.
-2. **Candidatos Wave 4** (dependen de `reservas` ✅):
+1. **Candidatos Wave 4** (dependen de `reservas` ✅):
    - **`partidas`** (4C) — baja complejidad, reutiliza reservas + disponibilidad.
    - **`pagos-redsys`** (4A) — pago online real (activa `payment_gateway=REDSYS`); el más complejo (HMAC, webhooks).
    - **`notificaciones`** (4B, ampliación) — la infra SMTP ya existe; añadir emails de eventos de reserva/cancelación (la pata Telegram requiere `auth-otp-telegram`).
-3. **`auth-otp-telegram` (Wave 2B)** — sigue pendiente e independiente.
-4. **Deuda técnica** (tickets): #181 test flaky rate-limit; TTL/purga de `idempotency_keys`; migrar los 8 IT `@Testcontainers` restantes a la base portable; reconciliar `openapi.yaml` camelCase↔snake_case; TLS/dominio en el EC2; `docs/PROJECT.md` dice Java 21 vs pom 17.
+2. **`auth-otp-telegram` (Wave 2B)** — sigue pendiente e independiente.
+3. **Deuda técnica** (tickets): #181 test flaky rate-limit; TTL/purga de `idempotency_keys`; migrar los 8 IT `@Testcontainers` restantes a la base portable; reconciliar `openapi.yaml` camelCase↔snake_case; TLS/dominio en el EC2; `docs/PROJECT.md` dice Java 21 vs pom 17.
