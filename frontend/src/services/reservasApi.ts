@@ -96,11 +96,15 @@ export interface ReservaResponse {
   updatedAt?: string;
 }
 
-/** Participante adicional (v1: solo `externalName`, D4). */
-export interface ParticipanteAdicional {
-  externalName: string;
-  externalPhone?: string;
-}
+/**
+ * Participante adicional (D4). XOR estricto acorde a la validación del backend:
+ *  - socio registrado → `{ userId }` (sin datos de externo)
+ *  - invitado externo → `{ externalName }` (+ `externalPhone` opcional)
+ * El payload envía exactamente una de las dos formas por participante.
+ */
+export type ParticipanteAdicional =
+  | { userId: number }
+  | { externalName: string; externalPhone?: string };
 
 /** Payload de creación. NUNCA incluye importe (RN-RES-03): el precio lo
  *  calcula y congela el backend. */
@@ -115,6 +119,7 @@ export interface CrearReservaPayload {
 // ─── Errores tipados (D6) ─────────────────────────────────────────────────────
 
 export type ReservaErrorCode =
+  | 'AUTH_REQUIRED'
   | 'CONFLICT'
   | 'VALIDATION_ERROR'
   | 'PARTICIPANTS_LIMIT_EXCEEDED'
@@ -122,6 +127,8 @@ export type ReservaErrorCode =
   | 'CANCELLATION_DEADLINE_PASSED'
   | 'FORBIDDEN'
   | 'NOT_FOUND'
+  | 'SERVER_ERROR'
+  | 'NETWORK_ERROR'
   | 'UNKNOWN';
 
 export interface FieldError {
@@ -134,13 +141,22 @@ export class ReservaApiError extends Error {
   readonly code: ReservaErrorCode;
   readonly status: number;
   readonly fieldErrors: FieldError[];
+  /** Lista de detalles textuales del backend (contrato real: `details`). */
+  readonly details: string[];
 
-  constructor(code: ReservaErrorCode, message: string, status: number, fieldErrors: FieldError[] = []) {
+  constructor(
+    code: ReservaErrorCode,
+    message: string,
+    status: number,
+    fieldErrors: FieldError[] = [],
+    details: string[] = []
+  ) {
     super(message);
     this.name = 'ReservaApiError';
     this.code = code;
     this.status = status;
     this.fieldErrors = fieldErrors;
+    this.details = details;
     Object.setPrototypeOf(this, ReservaApiError.prototype);
   }
 }
@@ -155,10 +171,17 @@ interface BackendErrorBody {
   error?: string;
   code?: string;
   message?: string;
+  /** Contrato real: lista de detalles del error (p. ej. campos inválidos). */
+  details?: string[];
+  /** Compat: algunos endpoints devolvían `errors[]` tipado por campo. */
   errors?: FieldError[];
 }
 
+/** Códigos de negocio que llegan en el cuerpo (`error`) del backend. Los códigos
+ *  derivados del status (AUTH_REQUIRED, SERVER_ERROR, NETWORK_ERROR) NO se listan
+ *  aquí: se infieren de `codeFromStatus`. */
 const KNOWN_CODES: ReservaErrorCode[] = [
+  'AUTH_REQUIRED',
   'CONFLICT',
   'VALIDATION_ERROR',
   'PARTICIPANTS_LIMIT_EXCEEDED',
@@ -168,11 +191,14 @@ const KNOWN_CODES: ReservaErrorCode[] = [
   'NOT_FOUND',
 ];
 
-/** Traduce el status HTTP a un `code` cuando el cuerpo no trae uno reconocible. */
+/** Traduce el status HTTP a un `code` cuando el cuerpo no trae uno reconocible.
+ *  Diferencia el 401 (sesión), el 5xx (servidor) y el error de red (status 0). */
 function codeFromStatus(status: number): ReservaErrorCode {
   switch (status) {
     case 400:
       return 'VALIDATION_ERROR';
+    case 401:
+      return 'AUTH_REQUIRED';
     case 403:
       return 'FORBIDDEN';
     case 404:
@@ -180,17 +206,20 @@ function codeFromStatus(status: number): ReservaErrorCode {
     case 409:
       return 'CONFLICT';
     default:
+      if (status === 0) return 'NETWORK_ERROR';
+      if (status >= 500) return 'SERVER_ERROR';
       return 'UNKNOWN';
   }
 }
 
 /** Convierte cualquier fallo axios en un ReservaApiError tipado. El backend en vivo
- *  responde `{ error, message, timestamp }` (la clave del código es `error`, no `code`)
- *  y usa HTTP 422 para los tres errores de negocio (PARTICIPANTS_LIMIT_EXCEEDED,
- *  INVALID_STATE_TRANSITION, CANCELLATION_DEADLINE_PASSED), que comparten status.
- *  Por eso el código se toma SIEMPRE del valor textual del cuerpo cuando es un
- *  `ReservaErrorCode` conocido; solo se cae a `codeFromStatus` si el cuerpo no lo
- *  trae. Re-lanza. */
+ *  responde `{ error, message, timestamp, details? }` (la clave del código es `error`,
+ *  no `code`; la lista es `details`, no `fieldErrors`) y usa HTTP 422 para los tres
+ *  errores de negocio (PARTICIPANTS_LIMIT_EXCEEDED, INVALID_STATE_TRANSITION,
+ *  CANCELLATION_DEADLINE_PASSED), que comparten status. Por eso el código se toma
+ *  SIEMPRE del valor textual del cuerpo cuando es un `ReservaErrorCode` conocido; solo
+ *  se cae a `codeFromStatus` si el cuerpo no lo trae (401 sesión, 5xx servidor, red).
+ *  Re-lanza. */
 function toReservaApiError(error: unknown): never {
   const axErr = error as AxiosError<BackendErrorBody>;
   const status = axErr.response?.status ?? 0;
@@ -204,8 +233,11 @@ function toReservaApiError(error: unknown): never {
 
   const message = body?.message ?? axErr.message ?? 'Error inesperado';
   const fieldErrors = Array.isArray(body?.errors) ? body!.errors! : [];
+  const details = Array.isArray(body?.details)
+    ? body!.details!.filter((d): d is string => typeof d === 'string')
+    : [];
 
-  throw new ReservaApiError(code, message, status, fieldErrors);
+  throw new ReservaApiError(code, message, status, fieldErrors, details);
 }
 
 // ─── Endpoints ────────────────────────────────────────────────────────────────

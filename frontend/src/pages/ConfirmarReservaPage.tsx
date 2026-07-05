@@ -1,14 +1,21 @@
 // Grupo 5 — ConfirmarReservaPage (mockup 04).
-// Muestra el tramo elegido (fecha/hora/duración leídos de la query, D3) y crea la
-// reserva con POST /api/reservas. El precio total lo muestra tal cual lo devuelve
-// el backend (priceTotal), NUNCA se calcula ni se envía desde el cliente (RN-RES-03).
+// Muestra el tramo elegido (fecha/hora leídos de la query) y crea la reserva con
+// POST /api/reservas. El precio total lo muestra tal cual lo devuelve el backend
+// (priceTotal), NUNCA se calcula ni se envía desde el cliente (RN-RES-03).
+//
+// reservas-ui-jugador-fixes:
+//  - D3: selector de duración 60/90/120 (default 60), acotado por `maxDuracion` de
+//    la query (disponibilidad contigua real); se envía en `durationMinutes` y se
+//    refleja en el resumen. El 409 del backend es la red de seguridad.
+//  - D4/D5: cada participante adicional se añade con un conmutador socio/externo
+//    (ParticipanteSelector); el payload es XOR (userId | externalName[+phone]).
+//  - D2: 401 AUTH_REQUIRED → mensaje de sesión caducada + redirección a login. El
+//    mapeo de error lee el contrato real (`error` como código, `details[0]` como
+//    detalle); el genérico solo para 5xx sin código / error de red.
 //
 // Idempotency-Key (D2): se genera con crypto.randomUUID() por intento. Se reutiliza
 // en reintentos de red del mismo envío (misma firma de formulario) y se regenera si
 // el usuario cambia los datos (fecha/hora/duración/participantes).
-//
-// Errores por `code` (D6): 409 CONFLICT (D5, botón volver/refrescar), 400
-// VALIDATION_ERROR, 422 PARTICIPANTS_LIMIT_EXCEEDED / INVALID_STATE_TRANSITION.
 import { useMemo, useRef, useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -16,16 +23,24 @@ import {
   crearReserva,
   isReservaApiError,
   CrearReservaPayload,
+  ParticipanteAdicional,
   ReservaResponse,
   ReservaApiError,
 } from '../services/reservasApi';
+import { ParticipanteSelector } from '../components/ParticipanteSelector';
+import {
+  ParticipanteInput,
+  emptyParticipante,
+  participanteCompleto,
+} from '../components/participanteModel';
 import { reservasPaths } from './reservasPaths';
 import './pages.css';
 import styles from './ConfirmarReservaPage.module.css';
 
-interface ParticipanteInput {
-  externalName: string;
-}
+/** Duraciones ofrecidas en la UI (D3). El backend acepta hasta 180, pero esta fase
+ *  solo expone 60/90/120. */
+const DURACIONES = [60, 90, 120] as const;
+const DEFAULT_DURACION = 60;
 
 /** Formatea un importe (number) como euros. El valor viene del backend. */
 function formatPrecio(amount: number): string {
@@ -35,23 +50,43 @@ function formatPrecio(amount: number): string {
   }).format(amount);
 }
 
-/** Traduce el error de negocio (por `code`) a copy accionable. `null` = error de
- *  franja ocupada, que se maneja como pantalla dedicada (D5). */
+/** Traduce el error (por `code`) a copy accionable, leyendo el contrato real del
+ *  backend (`details[0]` para VALIDATION_ERROR). El genérico queda reservado para
+ *  fallos verdaderamente desconocidos. */
 function messageForError(err: ReservaApiError): string {
   switch (err.code) {
+    case 'AUTH_REQUIRED':
+      return 'Tu sesión ha caducado. Vuelve a iniciar sesión.';
     case 'PARTICIPANTS_LIMIT_EXCEEDED':
       return 'Has superado el número máximo de participantes permitido.';
     case 'INVALID_STATE_TRANSITION':
       return 'La operación no es válida para el estado actual de la reserva.';
     case 'VALIDATION_ERROR': {
-      const first = err.fieldErrors[0];
-      return first
-        ? `Revisa los datos: ${first.message}`
-        : 'Revisa los datos de la reserva e inténtalo de nuevo.';
+      const detalle = err.details[0] ?? err.fieldErrors[0]?.message;
+      return detalle
+        ? `Revisa los datos: ${detalle}`
+        : 'Revisa los datos de la reserva; alguno no es válido e inténtalo de nuevo.';
     }
+    case 'NOT_FOUND':
+      return 'La franja ya no está disponible. Vuelve a la búsqueda para elegir otra.';
+    case 'SERVER_ERROR':
+      return 'Ha ocurrido un error en el servidor. Inténtalo de nuevo en unos momentos.';
+    case 'NETWORK_ERROR':
+      return 'No se pudo conectar con el servidor. Comprueba tu conexión e inténtalo de nuevo.';
     default:
       return 'No se pudo completar la reserva. Inténtalo de nuevo.';
   }
+}
+
+/** Construye el participante XOR del payload a partir del input de la fila. */
+function toPayloadParticipante(p: ParticipanteInput): ParticipanteAdicional | null {
+  if (p.tipo === 'socio') {
+    return p.userId != null ? { userId: p.userId } : null;
+  }
+  const externalName = p.externalName.trim();
+  if (!externalName) return null;
+  const externalPhone = p.externalPhone.trim();
+  return externalPhone ? { externalName, externalPhone } : { externalName };
 }
 
 export function ConfirmarReservaPage() {
@@ -61,11 +96,17 @@ export function ConfirmarReservaPage() {
 
   const fecha = params.get('fecha') ?? '';
   const hora = params.get('hora') ?? '';
-  const duracion = params.get('duracion') ?? '';
+  const maxDuracion = Number(params.get('maxDuracion')) || 0;
 
+  // Opciones de duración válidas para la franja (D3): acotadas por `maxDuracion`
+  // (disponibilidad contigua). Sin `maxDuracion` se ofrecen todas.
+  const opcionesDuracion = useMemo(
+    () => DURACIONES.filter((d) => (maxDuracion > 0 ? d <= maxDuracion : true)),
+    [maxDuracion]
+  );
+
+  const [duracion, setDuracion] = useState<number>(DEFAULT_DURACION);
   const [participantes, setParticipantes] = useState<ParticipanteInput[]>([]);
-  // El campo de notas aún no tiene UI (pendiente en Grupo 5); se mantiene el valor
-  // por defecto vacío para que el payload lo omita (notes.trim() === '').
   const [notes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [reserva, setReserva] = useState<ReservaResponse | null>(null);
@@ -73,11 +114,12 @@ export function ConfirmarReservaPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // ── Idempotency-Key por intento (D2) ────────────────────────────────────────
-  // La firma resume los datos del formulario; si cambia, se regenera la key.
-  const nombresParticipantes = participantes.map((p) => p.externalName.trim());
+  const participantesSig = participantes.map((p) =>
+    p.tipo === 'socio' ? `s:${p.userId ?? ''}` : `e:${p.externalName.trim()}:${p.externalPhone.trim()}`
+  );
   const signature = useMemo(
-    () => JSON.stringify({ fecha, hora, duracion, notes: notes.trim(), nombresParticipantes }),
-    [fecha, hora, duracion, notes, nombresParticipantes]
+    () => JSON.stringify({ fecha, hora, duracion, notes: notes.trim(), participantesSig }),
+    [fecha, hora, duracion, notes, participantesSig]
   );
   const idemRef = useRef<{ sig: string; key: string } | null>(null);
 
@@ -93,13 +135,11 @@ export function ConfirmarReservaPage() {
   }
 
   function addParticipante() {
-    setParticipantes((prev) => [...prev, { externalName: '' }]);
+    setParticipantes((prev) => [...prev, emptyParticipante()]);
   }
 
-  function updateParticipante(index: number, value: string) {
-    setParticipantes((prev) =>
-      prev.map((p, i) => (i === index ? { externalName: value } : p))
-    );
+  function updateParticipante(index: number, next: ParticipanteInput) {
+    setParticipantes((prev) => prev.map((p, i) => (i === index ? next : p)));
   }
 
   function removeParticipante(index: number) {
@@ -108,20 +148,28 @@ export function ConfirmarReservaPage() {
 
   async function handleConfirm() {
     if (!accessToken) return;
+
+    // Bloquea si algún participante está incompleto/ambiguo (XOR): socio sin
+    // seleccionar o externo sin nombre.
+    if (participantes.some((p) => !participanteCompleto(p))) {
+      setConflict(false);
+      setErrorMsg('Completa los datos de cada compañero: elige un socio o indica el nombre del invitado.');
+      return;
+    }
+
     setSubmitting(true);
     setErrorMsg(null);
     setConflict(false);
 
     const adicionales = participantes
-      .map((p) => p.externalName.trim())
-      .filter(Boolean)
-      .map((externalName) => ({ externalName }));
+      .map(toPayloadParticipante)
+      .filter((p): p is ParticipanteAdicional => p !== null);
 
     // Payload sin importe alguno (RN-RES-03): el backend congela el precio.
     const payload: CrearReservaPayload = {
       reservationDate: fecha,
       startTime: hora,
-      durationMinutes: Number(duracion),
+      durationMinutes: duracion,
       ...(adicionales.length ? { participantesAdicionales: adicionales } : {}),
       ...(notes.trim() ? { notes: notes.trim() } : {}),
     };
@@ -130,6 +178,11 @@ export function ConfirmarReservaPage() {
       const created = await crearReserva(accessToken, payload, idempotencyKey());
       setReserva(created);
     } catch (err) {
+      if (isReservaApiError(err) && err.code === 'AUTH_REQUIRED') {
+        // Sesión caducada (D2): no reintentar la misma petición; re-autenticar.
+        navigate('/login', { replace: true });
+        return;
+      }
       if (isReservaApiError(err) && err.code === 'CONFLICT') {
         setConflict(true);
       } else if (isReservaApiError(err)) {
@@ -208,6 +261,13 @@ export function ConfirmarReservaPage() {
           <span className="p-dot" />
           PadelPro
         </div>
+        <button
+          type="button"
+          className={styles.homeBtn}
+          onClick={() => navigate(reservasPaths.home)}
+        >
+          Inicio
+        </button>
       </header>
 
       <div className={styles.titleBlock}>
@@ -218,7 +278,7 @@ export function ConfirmarReservaPage() {
         </h1>
       </div>
 
-      {/* Resumen del tramo elegido (D3): valores ya resueltos por el backend */}
+      {/* Resumen del tramo elegido: fecha/hora de la query, duración elegida (D3) */}
       <div className={styles.summary}>
         <div className={styles.summaryRow}>
           <span className={styles.summaryLab}>Fecha</span>
@@ -230,37 +290,40 @@ export function ConfirmarReservaPage() {
         </div>
         <div className={styles.summaryRow}>
           <span className={styles.summaryLab}>Duración</span>
-          <span className={styles.summaryVal}>{duracion} min</span>
+          <span className={styles.summaryVal} data-testid="resumen-duracion">{duracion} min</span>
         </div>
       </div>
 
-      {/* Participantes adicionales (D4: solo externalName en v1) */}
+      {/* Selector de duración (D3) */}
+      <div className={styles.durationBlock}>
+        <p className={styles.sectionTitle} id="duracion-label">Duración</p>
+        <div className={styles.durationOptions} role="group" aria-labelledby="duracion-label">
+          {opcionesDuracion.map((d) => (
+            <button
+              key={d}
+              type="button"
+              className={`${styles.durationBtn} ${duracion === d ? styles.durationOn : ''}`}
+              aria-pressed={duracion === d}
+              onClick={() => setDuracion(d)}
+            >
+              {d} min
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Participantes adicionales (D4/D5: socio registrado o invitado externo) */}
       <div className={styles.participantesBlock}>
         <p className={styles.sectionTitle}>Participantes adicionales</p>
         {participantes.map((p, i) => (
-          <div key={i} className={styles.participanteRow}>
-            <label className={styles.fieldLabel} htmlFor={`participante-${i}`}>
-              Nombre del compañero {i + 1}
-            </label>
-            <div className={styles.participanteInputRow}>
-              <input
-                id={`participante-${i}`}
-                className={styles.textInput}
-                type="text"
-                value={p.externalName}
-                onChange={(e) => updateParticipante(i, e.target.value)}
-                placeholder="Nombre y apellido"
-              />
-              <button
-                type="button"
-                className={styles.removeBtn}
-                onClick={() => removeParticipante(i)}
-                aria-label={`Quitar compañero ${i + 1}`}
-              >
-                ×
-              </button>
-            </div>
-          </div>
+          <ParticipanteSelector
+            key={i}
+            index={i}
+            value={p}
+            token={accessToken ?? ''}
+            onChange={(next) => updateParticipante(i, next)}
+            onRemove={() => removeParticipante(i)}
+          />
         ))}
         <button type="button" className={styles.addBtn} onClick={addParticipante}>
           + Añadir compañero

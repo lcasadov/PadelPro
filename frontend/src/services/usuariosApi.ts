@@ -52,3 +52,23 @@ export async function changeMyPasswordApi(
     _skipAuthRefresh: true,
   });
 }
+
+// reservas-ui-jugador-fixes (D5) — búsqueda de socios para el buscador de
+// participante registrado. GET /api/usuarios/buscar?q=<term> → [{ id, nombre }].
+// Resultados mínimos (id + nombre) y acotados; el backend exige término mínimo y
+// autenticación. Un término corto o sin coincidencias devuelve un array vacío.
+export interface UsuarioBusqueda {
+  id: number;
+  nombre: string;
+}
+
+export async function buscarUsuariosApi(
+  token: string,
+  q: string
+): Promise<UsuarioBusqueda[]> {
+  const { data } = await api.get<UsuarioBusqueda[]>('/usuarios/buscar', {
+    headers: { Authorization: `Bearer ${token}` },
+    params: { q },
+  });
+  return Array.isArray(data) ? data : [];
+}

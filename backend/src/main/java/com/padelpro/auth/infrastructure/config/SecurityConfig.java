@@ -53,6 +53,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/usuarios/me").authenticated()
+                        // Partner search (D5): any authenticated user (USER or ADMIN); 401 if anonymous.
+                        .requestMatchers("/api/usuarios/buscar").authenticated()
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex

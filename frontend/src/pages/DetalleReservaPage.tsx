@@ -5,7 +5,7 @@
 // Se respetan 403 (ajena, RN-RGPD-03) y 404 (inexistente) sin exponer datos; el
 // 422 CANCELLATION_DEADLINE_PASSED informa de fuera de plazo y no reembolso (RN-RES-04).
 import { useCallback, useEffect, useState } from 'react';
-import { Navigate, useParams } from 'react-router-dom';
+import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   getReserva,
@@ -15,6 +15,7 @@ import {
   ReservationStatus,
 } from '../services/reservasApi';
 import { EstadoBadge } from '../components/EstadoBadge';
+import { reservasPaths } from './reservasPaths';
 import './pages.css';
 import styles from './DetalleReservaPage.module.css';
 
@@ -30,6 +31,7 @@ function formatPrecio(amount: number): string {
 
 export function DetalleReservaPage() {
   const { accessToken, userId, loadUserId, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
 
   const [reserva, setReserva] = useState<ReservaResponse | null>(null);
@@ -118,6 +120,15 @@ export function DetalleReservaPage() {
           : 'No se pudo cargar la reserva. Inténtalo de nuevo.';
     return (
       <div className={styles.page}>
+        <div className={styles.topBar}>
+          <button
+            type="button"
+            className={styles.homeBtn}
+            onClick={() => navigate(reservasPaths.home)}
+          >
+            Inicio
+          </button>
+        </div>
         <p className="p-error" role="alert">
           {msg}
         </p>
@@ -129,6 +140,15 @@ export function DetalleReservaPage() {
 
   return (
     <div className={styles.page}>
+      <div className={styles.topBar}>
+        <button
+          type="button"
+          className={styles.homeBtn}
+          onClick={() => navigate(reservasPaths.home)}
+        >
+          Inicio
+        </button>
+      </div>
       <header className={styles.hero}>
         <div className={styles.heroBadges}>
           <EstadoBadge kind="reserva" status={reserva.status} />

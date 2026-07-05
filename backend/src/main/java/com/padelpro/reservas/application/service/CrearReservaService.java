@@ -2,7 +2,9 @@ package com.padelpro.reservas.application.service;
 
 import com.padelpro.auth.domain.exception.ValidationException;
 import com.padelpro.auth.domain.model.SystemConfig;
+import com.padelpro.auth.domain.model.UserStatus;
 import com.padelpro.auth.domain.port.out.SystemConfigRepositoryPort;
+import com.padelpro.auth.domain.port.out.UserRepositoryPort;
 import com.padelpro.reservas.application.dto.CrearReservaRequest;
 import com.padelpro.reservas.application.dto.ReservaResponse;
 import com.padelpro.reservas.domain.exception.InvalidReservaStateException;
@@ -44,15 +46,18 @@ public class CrearReservaService {
     private final ReservationCommandPort reservationCommandPort;
     private final PaymentCommandPort paymentCommandPort;
     private final SystemConfigRepositoryPort systemConfigRepositoryPort;
+    private final UserRepositoryPort userRepositoryPort;
     private final DisponibilidadCacheInvalidator cacheInvalidator;
 
     public CrearReservaService(ReservationCommandPort reservationCommandPort,
                                PaymentCommandPort paymentCommandPort,
                                SystemConfigRepositoryPort systemConfigRepositoryPort,
+                               UserRepositoryPort userRepositoryPort,
                                DisponibilidadCacheInvalidator cacheInvalidator) {
         this.reservationCommandPort = reservationCommandPort;
         this.paymentCommandPort = paymentCommandPort;
         this.systemConfigRepositoryPort = systemConfigRepositoryPort;
+        this.userRepositoryPort = userRepositoryPort;
         this.cacheInvalidator = cacheInvalidator;
     }
 
@@ -130,6 +135,14 @@ public class CrearReservaService {
                         "Cada participante adicional debe ser un usuario registrado o un invitado externo, no ambos ni ninguno");
             }
             if (hasUser) {
+                // Security: a registered participant must reference a real, ACTIVE member. Without this
+                // check a caller could attach an arbitrary or forged userId (or an inactive account) to
+                // their reservation.
+                if (!userRepositoryPort.existsByIdAndStatus(p.userId(), UserStatus.ACTIVE)) {
+                    throw new InvalidReservaStateException(
+                            "PARTICIPANT_NOT_FOUND",
+                            "El participante registrado no existe o no es un usuario activo");
+                }
                 reservation.addParticipant(
                         Participant.registered(p.userId(), slot, ReservationChannel.WEB));
             } else {

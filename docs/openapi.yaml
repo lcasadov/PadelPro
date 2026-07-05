@@ -310,6 +310,40 @@ paths:
 
   # ─── Usuarios — perfil propio ──────────────────────────────────────────────
 
+  /usuarios/buscar:
+    get:
+      tags: [Usuarios]
+      operationId: buscarUsuarios
+      summary: Buscar usuarios (selector de compañero registrado)
+      description: |
+        Busca usuarios ACTIVOS por nombre o email (case-insensitive, coincidencia parcial) para
+        alimentar el selector de compañero registrado de la UI de reserva (D5). Accesible por
+        cualquier usuario autenticado (ROLE_USER o ROLE_ADMIN).
+
+        Salvaguardas RGPD: la respuesta contiene **únicamente** `id` y `nombre` (nombre a mostrar) —
+        nunca email, hash de contraseña, rol ni estado. El email se usa solo para filtrar, no se
+        devuelve. Un término con menos de 2 caracteres (o ausente) devuelve `[]` sin consultar la
+        base de datos, evitando volcar el directorio. Los resultados están acotados (máx. 10).
+      parameters:
+        - name: q
+          in: query
+          required: false
+          description: Término de búsqueda (nombre o email). Menos de 2 caracteres devuelve `[]`.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: |
+            Lista acotada de coincidencias (posiblemente vacía). Sin coincidencias o término corto → `[]`.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UsuarioBusquedaResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
   /usuarios/me:
     get:
       tags: [Usuarios]
@@ -1356,13 +1390,17 @@ components:
 
     ErrorResponse:
       type: object
-      description: Respuesta de error estándar de la API
+      description: >-
+        Respuesta de error estándar de la API, emitida por GlobalExceptionHandler.
+        El código de aplicación va en `error`; `details` sólo aparece en errores que
+        aportan una lista de violaciones (p. ej. INVALID_PASSWORD) y se omite en el
+        resto (JSON con `NON_NULL`).
       required:
-        - code
+        - error
         - message
-        - errors
+        - timestamp
       properties:
-        code:
+        error:
           type: string
           description: Código de error de aplicación
           example: VALIDATION_ERROR
@@ -1370,36 +1408,35 @@ components:
           type: string
           description: Descripción legible del error
           example: "Los datos de la solicitud no son válidos."
-        errors:
+        timestamp:
+          type: string
+          format: date-time
+          description: Instante (UTC, ISO-8601) en que se generó el error
+          example: "2026-07-05T18:30:00Z"
+        details:
           type: array
-          description: Lista de errores de campo (vacía si el error no es de validación)
+          description: >-
+            Lista opcional de detalles/violaciones del error (cadenas). Se omite del
+            cuerpo cuando no aplica.
           items:
-            $ref: '#/components/schemas/FieldError'
+            type: string
+          example:
+            - "La contraseña debe tener al menos 8 caracteres"
       examples:
         validacionFallida:
-          summary: Error de validación de campos
+          summary: Error de validación
           value:
-            code: "VALIDATION_ERROR"
+            error: "VALIDATION_ERROR"
             message: "Los datos de la solicitud no son válidos."
-            errors:
-              - field: "email"
-                message: "El formato del email no es válido."
-
-    FieldError:
-      type: object
-      description: Detalle de un error de campo específico
-      required:
-        - field
-        - message
-      properties:
-        field:
-          type: string
-          description: Nombre del campo con error
-          example: email
-        message:
-          type: string
-          description: Descripción del error de validación del campo
-          example: "El formato del email no es válido."
+            timestamp: "2026-07-05T18:30:00Z"
+        passwordInvalida:
+          summary: Error con lista de detalles
+          value:
+            error: "INVALID_PASSWORD"
+            message: "La contraseña no cumple los requisitos"
+            timestamp: "2026-07-05T18:30:00Z"
+            details:
+              - "La contraseña debe tener al menos 8 caracteres"
 
     MessageResponse:
       type: object
@@ -1680,6 +1717,25 @@ components:
           format: date-time
           description: Última modificación del perfil
           example: "2025-03-10T14:22:00Z"
+
+    UsuarioBusquedaResult:
+      type: object
+      description: |
+        Resultado mínimo de la búsqueda de usuarios (selector de compañero, D5). Contiene solo los
+        campos necesarios para mostrar y seleccionar; nunca email, hash, rol ni estado (RGPD).
+      required:
+        - id
+        - nombre
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Identificador único del usuario (para fijar `userId` en el payload de reserva)
+          example: 42
+        nombre:
+          type: string
+          description: Nombre a mostrar (nombre y apellidos)
+          example: "Ana Lopez"
 
     UsuarioPatchRequest:
       type: object

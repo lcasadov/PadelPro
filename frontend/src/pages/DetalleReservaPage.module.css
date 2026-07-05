@@ -11,6 +11,30 @@
   padding: 0 0 48px;
 }
 
+/* --- Top bar con control de Inicio --- */
+.topBar {
+  display: flex;
+  justify-content: flex-start;
+  padding: 16px 24px 0;
+}
+
+.homeBtn {
+  background: transparent;
+  border: 1.5px solid rgba(13, 13, 13, 0.25);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.homeBtn:hover {
+  border-color: var(--ink);
+}
+
 /* --- Hero olive --- */
 .hero {
   background: var(--olive);
