@@ -1390,13 +1390,17 @@ components:
 
     ErrorResponse:
       type: object
-      description: Respuesta de error estándar de la API
+      description: >-
+        Respuesta de error estándar de la API, emitida por GlobalExceptionHandler.
+        El código de aplicación va en `error`; `details` sólo aparece en errores que
+        aportan una lista de violaciones (p. ej. INVALID_PASSWORD) y se omite en el
+        resto (JSON con `NON_NULL`).
       required:
-        - code
+        - error
         - message
-        - errors
+        - timestamp
       properties:
-        code:
+        error:
           type: string
           description: Código de error de aplicación
           example: VALIDATION_ERROR
@@ -1404,36 +1408,35 @@ components:
           type: string
           description: Descripción legible del error
           example: "Los datos de la solicitud no son válidos."
-        errors:
+        timestamp:
+          type: string
+          format: date-time
+          description: Instante (UTC, ISO-8601) en que se generó el error
+          example: "2026-07-05T18:30:00Z"
+        details:
           type: array
-          description: Lista de errores de campo (vacía si el error no es de validación)
+          description: >-
+            Lista opcional de detalles/violaciones del error (cadenas). Se omite del
+            cuerpo cuando no aplica.
           items:
-            $ref: '#/components/schemas/FieldError'
+            type: string
+          example:
+            - "La contraseña debe tener al menos 8 caracteres"
       examples:
         validacionFallida:
-          summary: Error de validación de campos
+          summary: Error de validación
           value:
-            code: "VALIDATION_ERROR"
+            error: "VALIDATION_ERROR"
             message: "Los datos de la solicitud no son válidos."
-            errors:
-              - field: "email"
-                message: "El formato del email no es válido."
-
-    FieldError:
-      type: object
-      description: Detalle de un error de campo específico
-      required:
-        - field
-        - message
-      properties:
-        field:
-          type: string
-          description: Nombre del campo con error
-          example: email
-        message:
-          type: string
-          description: Descripción del error de validación del campo
-          example: "El formato del email no es válido."
+            timestamp: "2026-07-05T18:30:00Z"
+        passwordInvalida:
+          summary: Error con lista de detalles
+          value:
+            error: "INVALID_PASSWORD"
+            message: "La contraseña no cumple los requisitos"
+            timestamp: "2026-07-05T18:30:00Z"
+            details:
+              - "La contraseña debe tener al menos 8 caracteres"
 
     MessageResponse:
       type: object
