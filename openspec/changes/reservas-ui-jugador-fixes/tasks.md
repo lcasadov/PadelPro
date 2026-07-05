@@ -41,9 +41,9 @@
 
 ## 6. QA Fase A
 
-- [ ] 6.1 **[Refactor]** Limpieza del delta manteniendo la suite en verde
-- [ ] 6.2 `verification-specialist`: build + tests (frontend vitest, backend maven) + lint del delta
-- [ ] 6.3 `reality-checker`: journey end-to-end del jugador (buscar → elegir duración → añadir compañero socio y externo → confirmar → ver en Mis Reservas → cancelar → volver a Inicio) contra el stack real
+- [x] 6.1 **[Refactor]** Limpieza del delta manteniendo la suite en verde — helpers extraídos (`participanteModel.ts`), sin deuda
+- [x] 6.2 `verification-specialist`: PASS — backend IT 34 verdes (contra PG real :5433), frontend 155/155, tsc/eslint limpios. security-auditor: 0 críticos/altos; MEDIO (validar userId participante) corregido; rate-limit del buscador y oráculo email evaluados como aceptables/defensa en profundidad (seguimiento)
+- [ ] 6.3 `reality-checker`: journey end-to-end del jugador (buscar → elegir duración → añadir compañero socio y externo → confirmar → ver en Mis Reservas → cancelar → volver a Inicio) — **PENDIENTE de live E2E: requiere desplegar el build de la rama; cubierto a nivel de contrato/unidad por IT backend + tests MSW frontend**
 - [x] 6.4 Actualizar `docs/openapi.yaml` (endpoint búsqueda de usuarios; alinear schema del cuerpo de error de reservas con lo que emite el backend) — `ErrorResponse` reescrito a `{ error, message, timestamp, details[]:string }` (el schema viejo `{ code, message, errors[]:FieldError }` no coincidía con `ErrorResponse.java` + `GlobalExceptionHandler`); `FieldError` eliminado (quedaba huérfano).
 
 ### Notas — pasada de correcciones de seguridad/hardening (backend, #188)
