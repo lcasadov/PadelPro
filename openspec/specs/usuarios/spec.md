@@ -254,6 +254,22 @@ Fase 1
 - **WHEN** el ADMIN aprueba una cuenta `PENDING`
 - **THEN** la cuenta pasa a `ACTIVE` conservando su contraseña y se envía la bienvenida sin contraseña
 
+### Requirement 9: Búsqueda de usuarios registrados para selección de compañero *(añadido — reservas-ui-jugador-fixes)*
+
+**El sistema DEBE exponer `GET /api/usuarios/buscar?q=<término>`, autenticado (cualquier USER o ADMIN), que devuelve un conjunto mínimo (`[{id, nombre}]`) para alimentar el buscador de compañero registrado en la UI de reserva. La búsqueda es por nombre o email (el email solo se usa como filtro, nunca se devuelve), case-insensitive y parcial; solo usuarios `ACTIVE`. Los resultados están acotados (término mínimo 2 caracteres, límite de filas, comodines LIKE escapados) para no exponer el directorio ni PII (RN-RGPD).**
+
+#### Scenario: Buscar por término coincidente
+- **WHEN** un usuario autenticado busca un término que coincide con el nombre o email de socios `ACTIVE`
+- **THEN** el endpoint devuelve una lista acotada de `{id, nombre}`, sin email ni otros datos sensibles
+
+#### Scenario: Sin coincidencias o término corto
+- **WHEN** el término no coincide con nadie o tiene menos de 2 caracteres
+- **THEN** el endpoint devuelve `[]` con código 200
+
+#### Scenario: Requiere autenticación
+- **WHEN** se llama al endpoint sin credenciales válidas
+- **THEN** el endpoint responde 401 y no devuelve datos
+
 ---
 
 ## Casos límite

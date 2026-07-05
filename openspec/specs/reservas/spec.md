@@ -193,6 +193,70 @@ Gestión del ciclo de vida completo de una reserva de pista: creación, consulta
 - **WHEN** se envía cualquier operación de reservas sin JWT válido
 - **THEN** el sistema responde 401
 
+### Requirement 8: Selección de duración en la UI de reserva *(añadido — reservas-ui-jugador-fixes)*
+
+**La UI de confirmación DEBE permitir elegir la duración entre 60, 90 y 120 minutos en franjas de media hora (default 60), enviando `durationMinutes`; solo ofrece duraciones que no excedan el horario disponible de la franja (el 409 del backend es la red de seguridad). El backend acepta además 150/180, no ofrecidos en esta fase.**
+
+#### Scenario: Elegir duración de 90 minutos
+- **WHEN** el usuario selecciona una franja y elige duración 90 min
+- **THEN** la UI envía `durationMinutes: 90` y el resumen refleja "90 min"
+
+#### Scenario: Duración por defecto
+- **WHEN** el usuario abre la confirmación sin cambiar la duración
+- **THEN** la UI preselecciona y envía 60 min
+
+### Requirement 9: Distinción entre compañero registrado e invitado externo (UI jugador) *(añadido — reservas-ui-jugador-fixes)*
+
+**Al añadir un participante adicional, la UI DEBE permitir elegir entre socio registrado (seleccionado mediante buscador `GET /api/usuarios/buscar`, enviando `userId`) o invitado externo (nombre + teléfono, enviando `externalName`/`externalPhone`), enviando exactamente uno de los dos (XOR) acorde a la validación del backend.**
+
+#### Scenario: Añadir un socio registrado
+- **WHEN** el usuario elige "socio registrado" y selecciona un usuario del buscador
+- **THEN** el participante se envía con `userId` y sin `externalName`
+
+#### Scenario: Añadir un invitado externo
+- **WHEN** el usuario elige "invitado externo" e introduce nombre (y teléfono)
+- **THEN** el participante se envía con `externalName`(+`externalPhone`) y sin `userId`
+
+#### Scenario: Participante incompleto bloquea el envío
+- **WHEN** un participante no tiene ni socio seleccionado ni nombre externo
+- **THEN** la UI impide continuar hasta completarlo
+
+### Requirement 10: Validación del participante registrado en la creación *(añadido — reservas-ui-jugador-fixes)*
+
+**Al crear una reserva, el backend DEBE validar que cada participante adicional con `userId` corresponda a un usuario existente y `ACTIVE`; si no, responde 422 (`PARTICIPANT_NOT_FOUND`) y no persiste la reserva. Previene asociar a un socio inexistente o inactivo (CWE-639).**
+
+#### Scenario: userId inexistente o no ACTIVE
+- **WHEN** se crea una reserva con un participante `userId` que no existe o no está `ACTIVE`
+- **THEN** el sistema responde 422 `PARTICIPANT_NOT_FOUND` y no crea la reserva
+
+### Requirement 11: Manejo de sesión caducada y errores al crear reserva (UI jugador) *(añadido — reservas-ui-jugador-fixes)*
+
+**La UI DEBE traducir los errores del backend leyendo el contrato real (`error` como código, `details` como lista): un 401 `AUTH_REQUIRED` que persista tras la renovación de sesión (ver `auth-local` R-13) DEBE llevar a login con mensaje de sesión caducada; un 400 `VALIDATION_ERROR` DEBE mostrar el detalle; el mensaje genérico "No se pudo completar la reserva" se reserva para fallos verdaderamente desconocidos (5xx sin código / red). Una reserva válida con sesión vigente se crea con éxito (201).**
+
+#### Scenario: Sesión caducada al confirmar
+- **WHEN** al confirmar, la petición devuelve 401 y la renovación de sesión no la recupera
+- **THEN** la UI muestra "sesión caducada" y lleva a la pantalla de login
+
+#### Scenario: Error de validación muestra el detalle
+- **WHEN** el backend responde 400 `VALIDATION_ERROR` con `details` no vacío
+- **THEN** la UI muestra el primer detalle, no el mensaje genérico
+
+### Requirement 12: Navegación a Inicio y acciones en "Mis Reservas" (UI jugador) *(añadido — reservas-ui-jugador-fixes)*
+
+**Cada página del flujo de reservas (disponibilidad, confirmar, mis reservas, detalle) DEBE ofrecer un control visible para volver a Inicio. "Mis Reservas" DEBE permitir, por reserva y sin entrar al detalle: cancelar (solo owner y estado cancelable, vía `DELETE /api/reservas/{id}`, refrescando la lista), visualizar el estado del pago, y elegir método de pago entre "pago en diferido" (presencial, sin llamada) o "pagar ahora" (deshabilitado/informativo hasta la capability `pagos-redsys`).**
+
+#### Scenario: Volver a Inicio
+- **WHEN** el usuario activa el control de Inicio en cualquier página de reservas
+- **THEN** la aplicación navega a Home
+
+#### Scenario: Cancelar desde la lista
+- **WHEN** el owner de una reserva cancelable activa "Cancelar" en su tarjeta
+- **THEN** la reserva se cancela y la lista refleja el nuevo estado
+
+#### Scenario: Pagar ahora no disponible
+- **WHEN** el usuario elige "pagar ahora" y `pagos-redsys` no está disponible
+- **THEN** la UI informa que el pago online no está disponible todavía y mantiene el pago en diferido
+
 ## Casos límite
 - Reserva con `durationMinutes` no incluido en `[60, 90, 120, 150, 180]`: el sistema responde 400.
 - Reserva con `startTime` que no es en punto ni en media hora (ej. `09:15`): el sistema responde 400.

@@ -321,6 +321,56 @@ Cuando una cuenta tiene `must_change_password = true` (tras un reset del adminis
 
 La interfaz web DEBE ofrecer, desde el login ("¿Olvidaste la contraseña?"), una pantalla que dirija al usuario a contactar con el administrador del club; el restablecimiento efectivo lo realiza el administrador (ver capability `usuarios`). NO existe reset self-service por email/token en esta fase.
 
+### R-12 — Renovación de access token vía refresh token `[AÑADIDO — auth-session-refresh]`
+
+El sistema DEBE exponer `POST /api/auth/refresh` que, a partir de la cookie httpOnly `refresh_token`, emite un nuevo access token JWT (15 min) y **rota** el refresh token de forma atómica: valida que exista (por hash), no esté expirado ni revocado, revoca el usado (compare-and-set) y emite uno nuevo con nueva ventana de 7 días en una nueva cookie `refresh_token; HttpOnly; Secure; SameSite=Strict; Path=/api/auth/refresh`. El endpoint NO exige access token y está sujeto al mismo rate limiting que el resto de auth público (RN-AUTH-04). El refresh token se almacena solo como hash SHA-256; el raw únicamente en la cookie (RN-RGPD-04).
+
+#### Scenarios
+
+**Scenario R-12.1 — Refresh con cookie válida rota el token**
+```
+GIVEN una cookie refresh_token válida (no expirada, no revocada)
+WHEN el cliente envía POST /api/auth/refresh
+THEN el sistema responde 200 con {access_token, token_type: "Bearer", expires_in: 900}
+  AND setea un nuevo refresh_token en Set-Cookie
+  AND el refresh token anterior queda revocado
+```
+
+**Scenario R-12.2 — Cookie ausente, expirada o revocada se rechaza**
+```
+GIVEN una petición a POST /api/auth/refresh sin cookie, o con un refresh_token expirado/revocado
+WHEN el sistema procesa la petición
+THEN responde 401 con {error: "AUTH_REFRESH_INVALID"}
+  AND no emite ningún token
+```
+
+**Scenario R-12.3 — El refresh usado no se puede reutilizar (ni en carrera)**
+```
+GIVEN un refresh_token que se usa con éxito
+WHEN se intenta usar de nuevo el mismo valor (secuencial o concurrentemente)
+THEN el segundo intento responde 401 (la revocación compare-and-set decide un único ganador)
+```
+
+### R-13 — Renovación silenciosa de sesión en el cliente `[AÑADIDO — auth-session-refresh]`
+
+El cliente web DEBE renovar la sesión de forma transparente: ante un 401 en una petición autenticada, intenta `POST /api/auth/refresh` una sola vez y, si tiene éxito, reintenta la petición original con el nuevo access token; si el refresh falla, limpia la sesión y redirige a login. Peticiones 401 concurrentes comparten una única renovación en vuelo (single-flight) y el endpoint de refresh se excluye para evitar bucles. El access token renovado vive solo en memoria (RN-AUTH-09).
+
+#### Scenarios
+
+**Scenario R-13.1 — Renovación transparente ante 401**
+```
+GIVEN una petición autenticada que recibe 401 por access token caducado y refresh vigente
+WHEN el interceptor del cliente procesa la respuesta
+THEN renueva el token y reintenta la petición original, que se completa sin intervención del usuario
+```
+
+**Scenario R-13.2 — Refresh fallido lleva a login**
+```
+GIVEN una petición que recibe 401 y el refresh también falla
+WHEN el interceptor agota la renovación
+THEN limpia la sesión y redirige a la pantalla de login, sin bucle sobre /api/auth/refresh
+```
+
 ---
 
 ## Mockups asociados
