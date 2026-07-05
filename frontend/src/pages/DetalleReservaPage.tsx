@@ -10,6 +10,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   getReserva,
   cancelarReserva,
+  abandonarReserva,
   isReservaApiError,
   ReservaResponse,
   ReservationStatus,
@@ -41,6 +42,10 @@ export function DetalleReservaPage() {
   const [confirming, setConfirming] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
+
+  const [abandonConfirm, setAbandonConfirm] = useState(false);
+  const [abandoning, setAbandoning] = useState(false);
+  const [abandonError, setAbandonError] = useState<string | null>(null);
 
   // Asegura el id de usuario (D8) para decidir la visibilidad del botón cancelar.
   useEffect(() => {
@@ -78,6 +83,33 @@ export function DetalleReservaPage() {
   const canCancel = Boolean(
     reserva && isOwner && ESTADOS_CANCELABLES.includes(reserva.status)
   );
+
+  // Abandonar (partidas-unirse): visible solo para el participante no-owner (se unió
+  // a la partida) y estado activo. El owner no puede abandonar (debe cancelar). La
+  // barrera real la impone el backend.
+  const isParticipanteNoOwner = Boolean(
+    reserva &&
+      userId != null &&
+      !isOwner &&
+      reserva.participants.some((p) => !p.owner && p.userId === userId)
+  );
+  const canAbandon = Boolean(
+    reserva && isParticipanteNoOwner && ESTADOS_CANCELABLES.includes(reserva.status)
+  );
+
+  async function handleConfirmAbandon() {
+    if (!accessToken || !id) return;
+    setAbandoning(true);
+    setAbandonError(null);
+    try {
+      await abandonarReserva(accessToken, id);
+      navigate(reservasPaths.mias);
+    } catch {
+      setAbandonError('No se pudo abandonar la partida. Inténtalo de nuevo.');
+    } finally {
+      setAbandoning(false);
+    }
+  }
 
   async function handleConfirmCancel() {
     if (!accessToken || !id) return;
@@ -251,6 +283,55 @@ export function DetalleReservaPage() {
               disabled={cancelling}
             >
               {cancelling ? 'Cancelando…' : 'Confirmar cancelación'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {abandonError && (
+        <p className="p-error" role="alert">
+          {abandonError}
+        </p>
+      )}
+
+      {/* Abandonar: visible solo para el participante no-owner y estados activos */}
+      {canAbandon && !abandonConfirm && (
+        <button
+          type="button"
+          className={`p-btn ${styles.cancelBtn}`}
+          onClick={() => {
+            setAbandonError(null);
+            setAbandonConfirm(true);
+          }}
+        >
+          Abandonar partida
+        </button>
+      )}
+
+      {canAbandon && abandonConfirm && (
+        <div className={styles.confirmPanel} role="dialog" aria-label="Confirmar abandono">
+          <p className={styles.confirmPolicy}>
+            <b>Abandonar partida</b>
+            <br />
+            Dejarás tu plaza libre para que otro jugador pueda unirse. El pago se
+            gestiona de forma presencial en el club.
+          </p>
+          <div className={styles.confirmActions}>
+            <button
+              type="button"
+              className="p-btn p-btn-outline"
+              onClick={() => setAbandonConfirm(false)}
+              disabled={abandoning}
+            >
+              Volver
+            </button>
+            <button
+              type="button"
+              className={`p-btn ${styles.cancelBtn}`}
+              onClick={handleConfirmAbandon}
+              disabled={abandoning}
+            >
+              {abandoning ? 'Abandonando…' : 'Confirmar abandono'}
             </button>
           </div>
         </div>

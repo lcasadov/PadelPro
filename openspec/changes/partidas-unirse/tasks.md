@@ -22,10 +22,10 @@
 
 ## 4. Frontend — pantallas de partidas
 
-- [ ] 4.1 **[Red]** Tests (MSW): `PartidasAbiertasPage` lista partidas (reservaId, hora, plazas); estado vacío; error
-- [ ] 4.2 **[Green]** `PartidasAbiertasPage` (mockup 21) + funciones en `reservasApi.ts` (listar partidas) + ruta en `reservasPaths.ts`/`App.tsx` + acceso desde Home
-- [ ] 4.3 **[Red]** Tests: `ConfirmarUnionPage` muestra detalle + "tu parte" informativo; unirse con éxito → confirmación; 409 ya participante → mensaje claro sin checkout; 422 completa → mensaje
-- [ ] 4.4 **[Green]** `ConfirmarUnionPage` (mockup 22) + `unirseReserva` en `reservasApi.ts`; importe informativo (sin cobro online); abandono desde el detalle/mis reservas si aplica
+- [x] 4.1 **[Red]** Tests (MSW): `PartidasAbiertasPage` lista partidas (reservaId, hora, plazas); estado vacío; error
+- [x] 4.2 **[Green]** `PartidasAbiertasPage` (mockup 21) + funciones en `reservasApi.ts` (listar partidas) + ruta en `reservasPaths.ts`/`App.tsx` + acceso desde Home
+- [x] 4.3 **[Red]** Tests: `ConfirmarUnionPage` muestra detalle + "tu parte" informativo; unirse con éxito → confirmación; 409 ya participante → mensaje claro sin checkout; 422 completa → mensaje
+- [x] 4.4 **[Green]** `ConfirmarUnionPage` (mockup 22) + `unirseReserva` en `reservasApi.ts`; importe informativo (sin cobro online); abandono desde el detalle/mis reservas si aplica
 
 ## 5. QA
 
