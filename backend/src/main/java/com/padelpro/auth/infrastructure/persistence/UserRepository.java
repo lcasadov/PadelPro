@@ -52,6 +52,13 @@ public interface UserRepository extends JpaRepository<User, Long>, UserRepositor
     boolean existsByEmailAndIdNot(String email, Long id);
 
     /**
+     * Check whether a user with the given id exists in the given lifecycle status. Used to validate
+     * registered participants on reservation creation (a forged/inactive {@code userId} must be
+     * rejected).
+     */
+    boolean existsByIdAndStatus(Long id, UserStatus status);
+
+    /**
      * Check whether a user with the given login already exists.
      */
     boolean existsByLogin(String login);
@@ -71,10 +78,10 @@ public interface UserRepository extends JpaRepository<User, Long>, UserRepositor
             SELECT u FROM User u
             WHERE u.status = com.padelpro.auth.domain.model.UserStatus.ACTIVE
               AND (
-                    LOWER(u.firstName) LIKE LOWER(CONCAT('%', :term, '%'))
-                 OR LOWER(u.lastName) LIKE LOWER(CONCAT('%', :term, '%'))
-                 OR LOWER(CONCAT(u.firstName, ' ', u.lastName)) LIKE LOWER(CONCAT('%', :term, '%'))
-                 OR LOWER(u.email) LIKE LOWER(CONCAT('%', :term, '%'))
+                    LOWER(u.firstName) LIKE LOWER(CONCAT('%', :term, '%')) ESCAPE '\\'
+                 OR LOWER(u.lastName) LIKE LOWER(CONCAT('%', :term, '%')) ESCAPE '\\'
+                 OR LOWER(CONCAT(u.firstName, ' ', u.lastName)) LIKE LOWER(CONCAT('%', :term, '%')) ESCAPE '\\'
+                 OR LOWER(u.email) LIKE LOWER(CONCAT('%', :term, '%')) ESCAPE '\\'
               )
             ORDER BY u.firstName ASC, u.lastName ASC
             """)

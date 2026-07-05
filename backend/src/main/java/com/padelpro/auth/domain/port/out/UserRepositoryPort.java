@@ -56,6 +56,19 @@ public interface UserRepositoryPort {
     boolean existsByEmailAndIdNot(String email, Long id);
 
     /**
+     * Check whether a user exists with the given id and status.
+     *
+     * <p>Used to validate that a registered participant attached to a reservation refers to a real
+     * member in the expected lifecycle state (security: prevents a caller from attaching an arbitrary
+     * or forged {@code userId}, or a non-{@code ACTIVE} account, to their reservation).
+     *
+     * @param id     the user id to check
+     * @param status the required lifecycle status
+     * @return {@code true} if a user with this id and status exists
+     */
+    boolean existsByIdAndStatus(Long id, UserStatus status);
+
+    /**
      * Check whether a user with the given login already exists.
      */
     boolean existsByLogin(String login);

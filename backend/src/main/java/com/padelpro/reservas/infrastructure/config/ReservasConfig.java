@@ -1,6 +1,7 @@
 package com.padelpro.reservas.infrastructure.config;
 
 import com.padelpro.auth.domain.port.out.SystemConfigRepositoryPort;
+import com.padelpro.auth.domain.port.out.UserRepositoryPort;
 import com.padelpro.reservas.application.service.AdminReservaService;
 import com.padelpro.reservas.application.service.CancelarReservaService;
 import com.padelpro.reservas.application.service.CrearReservaService;
@@ -28,9 +29,10 @@ public class ReservasConfig {
             ReservationCommandPort reservationCommandPort,
             PaymentCommandPort paymentCommandPort,
             SystemConfigRepositoryPort systemConfigRepositoryPort,
+            UserRepositoryPort userRepositoryPort,
             @Qualifier("disponibilidadCacheInvalidator") DisponibilidadCacheInvalidator cacheInvalidator) {
         return new CrearReservaService(reservationCommandPort, paymentCommandPort,
-                systemConfigRepositoryPort, cacheInvalidator);
+                systemConfigRepositoryPort, userRepositoryPort, cacheInvalidator);
     }
 
     @Bean

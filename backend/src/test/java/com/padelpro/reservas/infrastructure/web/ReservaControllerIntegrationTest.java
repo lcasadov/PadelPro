@@ -95,6 +95,14 @@ class ReservaControllerIntegrationTest extends PostgresIntegrationTest {
                 futureDate.toString(), startTime, durationMinutes, "test", null));
     }
 
+    /** Build a create-reservation body with a single registered-participant {@code userId}. */
+    private String reservaJsonWithRegisteredParticipant(String startTime, int durationMinutes, Long userId)
+            throws Exception {
+        return objectMapper.writeValueAsString(new CrearReservaRequest(
+                futureDate.toString(), startTime, durationMinutes, "test",
+                java.util.List.of(new CrearReservaRequest.ParticipanteAdicional(userId, null, null))));
+    }
+
     private MvcResult createReserva(String token, String startTime, int duration, String idempotencyKey)
             throws Exception {
         var req = post("/api/reservas")
@@ -428,5 +436,60 @@ class ReservaControllerIntegrationTest extends PostgresIntegrationTest {
                         .content(reservaJson("18:15", 60)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error", is("VALIDATION_ERROR")));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // registered-participant validation (security): a userId attached to a
+    // reservation must reference a real, ACTIVE member.
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("seguridad: participante con userId inexistente → 422 PARTICIPANT_NOT_FOUND (no persiste)")
+    void should_return_422_when_registered_participant_does_not_exist() throws Exception {
+        mockMvc.perform(post("/api/reservas")
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(reservaJsonWithRegisteredParticipant("18:00", 60, 999999L)))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.error", is("PARTICIPANT_NOT_FOUND")));
+
+        // Rolled back: nothing was persisted.
+        assertThat(reservationRepository.findAll()).isEmpty();
+        assertThat(paymentRepository.findAll()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("seguridad: participante con userId de usuario no-ACTIVE → 422 (no persiste)")
+    void should_return_422_when_registered_participant_not_active() throws Exception {
+        OffsetDateTime now = OffsetDateTime.now();
+        User pending = userRepository.saveAndFlush(new User(
+                "pending.user", passwordEncoder.encode("Password1"), "Pending", "User",
+                "pending@example.com", UserRole.USER, UserStatus.PENDING, now, now));
+
+        mockMvc.perform(post("/api/reservas")
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(reservaJsonWithRegisteredParticipant("18:00", 60, pending.getId())))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.error", is("PARTICIPANT_NOT_FOUND")));
+
+        assertThat(reservationRepository.findAll()).isEmpty();
+        assertThat(paymentRepository.findAll()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("seguridad: participante con userId ACTIVE válido → 201 con 2 participantes")
+    void should_create_reservation_when_registered_participant_is_active() throws Exception {
+        MvcResult result = mockMvc.perform(post("/api/reservas")
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(reservaJsonWithRegisteredParticipant("18:00", 60, otherUser.getId())))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.participants", org.hamcrest.Matchers.hasSize(2)))
+                .andReturn();
+
+        UUID reservationId = UUID.fromString(extractId(result));
+        assertThat(reservationRepository.findByIdWithParticipants(reservationId).orElseThrow()
+                .getParticipants()).hasSize(2);
     }
 }
