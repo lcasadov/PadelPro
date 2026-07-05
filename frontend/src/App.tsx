@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { SessionBridge } from './components/SessionBridge';
 import { PrivateRoute } from './guards/PrivateRoute';
 import { AdminRoute } from './guards/AdminRoute';
 import { SplashPage } from './pages/SplashPage';
@@ -20,6 +21,7 @@ function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <SessionBridge />
         <Routes>
           {/* Rutas públicas */}
           <Route path="/" element={<SplashPage />} />

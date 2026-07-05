@@ -4,7 +4,7 @@
 
 ## 1. Backend — endpoint `POST /api/auth/refresh`
 
-- [ ] 1.1 Verificar la entidad `RefreshToken` y el esquema: ¿existe campo de revocación? Si no, migración Flyway `revoked_at` (nullable)
+- [x] 1.1 Verificar la entidad `RefreshToken` y el esquema: ¿existe campo de revocación? → **Sí, existe `revoked` (boolean, NOT NULL, default false) en `RefreshToken.java`. No hace falta migración.**
 - [ ] 1.2 **[Red]** Test del caso de uso `refresh`: cookie válida → nuevo access token + rotación (viejo revocado); ausente/expirado/revocado → 401; reuso del revocado → 401
 - [ ] 1.3 **[Green]** Caso de uso `refresh(rawRefreshToken)` en la capa de aplicación: lookup por hash SHA-256, validar expiración/revocación, revocar el usado, emitir nuevo refresh (ventana 7 días) + nuevo access token
 - [ ] 1.4 **[Red]** Test de integración web: `POST /api/auth/refresh` con/ sin cookie, esquema de respuesta `{access_token, token_type, expires_in}` + `Set-Cookie`
@@ -13,11 +13,11 @@
 
 ## 2. Frontend — interceptor de renovación silenciosa
 
-- [ ] 2.1 **[Red]** Test (MSW): 401 en petición autenticada → llama a `/api/auth/refresh` → reintenta original con nuevo token → éxito; refresh 401 → limpia sesión y redirige a login; sin bucle sobre la URL de refresh
-- [ ] 2.2 **[Red]** Test: múltiples 401 concurrentes → un solo `/api/auth/refresh` (single-flight) → todas reintentadas
-- [ ] 2.3 **[Green]** Instancia axios base compartida con interceptor de respuesta 401 (single-flight: promesa de refresh compartida, cola de peticiones, flag anti-bucle)
-- [ ] 2.4 **[Green]** `AuthContext`: setter para el access token renovado; en fallo de refresh limpiar sesión
-- [ ] 2.5 **[Green]** Migrar los services (`reservasApi`, `usuariosApi`, `authApi`…) a la instancia base compartida
+- [x] 2.1 **[Red]** Test (MSW): 401 en petición autenticada → llama a `/api/auth/refresh` → reintenta original con nuevo token → éxito; refresh 401 → limpia sesión y redirige a login; sin bucle sobre la URL de refresh
+- [x] 2.2 **[Red]** Test: múltiples 401 concurrentes → un solo `/api/auth/refresh` (single-flight) → todas reintentadas
+- [x] 2.3 **[Green]** Instancia axios base compartida con interceptor de respuesta 401 (single-flight: promesa de refresh compartida, cola de peticiones, flag anti-bucle)
+- [x] 2.4 **[Green]** `AuthContext`: setter para el access token renovado; en fallo de refresh limpiar sesión
+- [x] 2.5 **[Green]** Migrar los services (`reservasApi`, `usuariosApi`, `authApi`…) a la instancia base compartida
 
 ## 3. Integración con reservas-ui-jugador-fixes
 

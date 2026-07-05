@@ -7,9 +7,7 @@
 //   PATCH  /api/admin/usuarios/{id}/reset-password   (contraseña temporal, D3/D9)
 //   POST   /api/admin/usuarios                       (alta directa ACTIVE — change usuarios-alta-edicion-email D2/D6)
 //   PATCH  /api/admin/usuarios/{id}                  (editar datos de contacto, sin rol — D7)
-import axios from 'axios';
-
-const api = axios.create({ baseURL: '/api', withCredentials: true });
+import { api } from './httpClient';
 
 function authHeader(token: string) {
   return { headers: { Authorization: `Bearer ${token}` } };

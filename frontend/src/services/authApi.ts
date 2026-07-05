@@ -1,8 +1,11 @@
 // Oleada 3 — implementación real con axios
 // Tipos coinciden con docs/openapi.yaml (POST /api/auth/login y /api/auth/register)
-import axios from 'axios';
-
-const api = axios.create({ baseURL: '/api', withCredentials: true });
+//
+// auth-session-refresh: usa la instancia base compartida (interceptor de refresh).
+// login/register llevan `_skipAuthRefresh` porque su 401 significa "credenciales
+// inválidas" (aún no hay sesión), NO "access token caducado": no debe dispararse
+// el flujo de renovación.
+import { api } from './httpClient';
 
 export interface RegisterRequest {
   firstName: string;
@@ -38,16 +41,22 @@ export interface ApiError {
 }
 
 export async function loginApi(req: LoginRequest): Promise<LoginResponse> {
-  const { data } = await api.post<LoginResponse>('/auth/login', req);
+  const { data } = await api.post<LoginResponse>('/auth/login', req, {
+    _skipAuthRefresh: true,
+  });
   return data;
 }
 
 export async function registerApi(req: RegisterRequest): Promise<RegisterResponse> {
-  const { data } = await api.post<RegisterResponse>('/auth/register', {
-    first_name: req.firstName,
-    last_name: req.lastName,
-    email: req.email,
-    password: req.password,
-  });
+  const { data } = await api.post<RegisterResponse>(
+    '/auth/register',
+    {
+      first_name: req.firstName,
+      last_name: req.lastName,
+      email: req.email,
+      password: req.password,
+    },
+    { _skipAuthRefresh: true }
+  );
   return data;
 }

@@ -1,7 +1,5 @@
 // T-144 — usuariosApi — GET/PATCH /api/usuarios/me
-import axios from 'axios';
-
-const api = axios.create({ baseURL: '/api', withCredentials: true });
+import { api } from './httpClient';
 
 export interface UsuarioMe {
   id: number;
@@ -47,7 +45,10 @@ export async function changeMyPasswordApi(
   token: string,
   req: ChangePasswordRequest
 ): Promise<void> {
+  // `_skipAuthRefresh`: un 401 aquí significa "contraseña actual incorrecta"
+  // (auth-session-refresh), no sesión caducada — no debe disparar el refresh.
   await api.post('/usuarios/me/password', req, {
     headers: { Authorization: `Bearer ${token}` },
+    _skipAuthRefresh: true,
   });
 }
