@@ -29,10 +29,9 @@
 
 ## 5. QA
 
-- [ ] 5.1 **[Refactor]** Limpieza manteniendo verde
-- [ ] 5.2 `verification-specialist`: build + tests (backend maven, frontend vitest) + lint; probes de concurrencia y validaciones
-- [x] 5.3 `security-auditor`: acceso al listado (no PII), autorización de unirse/abandonar, no exponer datos de otros socios (RN-RGPD-03)
-- [ ] 5.4 `reality-checker`: journey end-to-end (ver partidas abiertas → unirse → aparece en mis reservas → abandonar) — live E2E puede diferirse si requiere despliegue
+- [x] 5.1 **[Refactor]** Limpieza manteniendo verde — sin deuda; helpers reutilizados del módulo reservas
+- [x] 5.2 `verification-specialist`: PASS — unit backend + IT de partidas (concurrencia 8 hilos → 1×200/7×422, acaba 4/4) + regresión reservas (31 IT) verdes contra PG real; frontend 167/167; tsc/eslint limpios. security-auditor: 0 críticos/altos; MEDIO (fuga PII en detalle tras auto-unión) corregido; BAJO (índice único) añadido
+- [ ] 5.4 `reality-checker`: journey end-to-end (ver partidas abiertas → unirse → aparece en mis reservas → abandonar) — **PENDIENTE de live E2E: requiere desplegar el build; cubierto por IT backend (incl. concurrencia) + tests MSW frontend**
 - [x] 5.5 Actualizar `docs/openapi.yaml` y verificar coherencia del contrato de `/unirse`, listado y abandono
 
 ### Notas de correcciones (pasada de fixes backend, 2026-07-05)
