@@ -22,8 +22,8 @@
 
 ## 3. Compañero registrado vs. externo (D4, D5)
 
-- [ ] 3.1 **[Red]** Test backend del endpoint de búsqueda de usuarios: coincidencias devuelven id+nombre; sin coincidencias 200 vacío; sin auth 401; no expone datos sensibles
-- [ ] 3.2 **[Green]** Endpoint `GET` de búsqueda de usuarios por nombre/email, autenticado, término mínimo, resultados mínimos (id+nombre) y acotados; documentar en `docs/openapi.yaml`
+- [x] 3.1 **[Red]** Test backend del endpoint de búsqueda de usuarios: coincidencias devuelven id+nombre; sin coincidencias 200 vacío; sin auth 401; no expone datos sensibles
+- [x] 3.2 **[Green]** Endpoint `GET` de búsqueda de usuarios por nombre/email, autenticado, término mínimo, resultados mínimos (id+nombre) y acotados; documentar en `docs/openapi.yaml`
 - [ ] 3.3 **[Red]** Test frontend: socio → payload con `userId` sin `externalName`; externo → `externalName`(+phone) sin `userId`; participante ambiguo/vacío bloquea el submit (XOR)
 - [ ] 3.4 **[Green]** Componente de participante con conmutador "socio registrado / invitado externo"; modo socio (buscador de socios → `userId`) y modo externo (nombre + teléfono → `externalName`/`externalPhone`); construir payload XOR
 
