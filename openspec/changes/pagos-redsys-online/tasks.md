@@ -29,9 +29,9 @@
 
 ## 6. Frontend — checkout + confirmación (D6)
 
-- [ ] 6.1 **[Red]** Tests (MSW): iniciar pago devuelve redsysUrl+params → `CheckoutRedsysPage` construye el form y (mock) auto-submit; `PagoConfirmadoPage` consulta el estado del pago del backend (no confía en la URL de retorno) y muestra PAID/FAILED/procesando
-- [ ] 6.2 **[Green]** `CheckoutRedsysPage` (mockup 09, auto-submit del form firmado al TPV; datos de tarjeta fuera) + `PagoConfirmadoPage` (mockup 10, UrlOK/UrlKO → estado real por backend) + service de pagos + rutas
-- [ ] 6.3 **[Green]** Activar "pagar ahora" en `MisReservasPage` (hoy deshabilitado): llama a iniciar pago y redirige al checkout
+- [x] 6.1 **[Red]** Tests (MSW): iniciar pago devuelve redsysUrl+params → `CheckoutRedsysPage` construye el form y (mock) auto-submit; `PagoConfirmadoPage` consulta el estado del pago del backend (no confía en la URL de retorno) y muestra PAID/FAILED/procesando
+- [x] 6.2 **[Green]** `CheckoutRedsysPage` (mockup 09, auto-submit del form firmado al TPV; datos de tarjeta fuera) + `PagoConfirmadoPage` (mockup 10, UrlOK/UrlKO → estado real por backend) + service de pagos + rutas
+- [x] 6.3 **[Green]** Activar "pagar ahora" en `MisReservasPage` (hoy deshabilitado): llama a iniciar pago y redirige al checkout
 
 ## 7. QA
 

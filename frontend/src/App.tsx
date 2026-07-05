@@ -17,6 +17,8 @@ import { MisReservasPage } from './pages/MisReservasPage';
 import { DetalleReservaPage } from './pages/DetalleReservaPage';
 import { PartidasAbiertasPage } from './pages/PartidasAbiertasPage';
 import { ConfirmarUnionPage } from './pages/ConfirmarUnionPage';
+import { CheckoutRedsysPage } from './pages/CheckoutRedsysPage';
+import { PagoConfirmadoPage } from './pages/PagoConfirmadoPage';
 import { reservasPaths } from './pages/reservasPaths';
 
 function App() {
@@ -30,6 +32,13 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+
+          {/* Retorno del TPV Redsys (pagos-redsys-online). Público: al volver del TPV
+              el access token en memoria puede haberse perdido (recarga completa,
+              RN-AUTH-09); la página consulta el estado real al backend (webhook =
+              fuente de verdad) y el interceptor del httpClient restaura la sesión. */}
+          <Route path={reservasPaths.pagoOk} element={<PagoConfirmadoPage />} />
+          <Route path={reservasPaths.pagoKo} element={<PagoConfirmadoPage />} />
 
           {/* Rutas privadas */}
           <Route element={<PrivateRoute />}>
@@ -47,6 +56,10 @@ function App() {
             {/* Partidas — unirse a reservas con plazas libres (partidas-unirse) */}
             <Route path={reservasPaths.partidas} element={<PartidasAbiertasPage />} />
             <Route path={reservasPaths.confirmarUnion(':id')} element={<ConfirmarUnionPage />} />
+
+            {/* Checkout Redsys (pagos-redsys-online): se inicia desde la app con el
+                response de iniciar pago en el state de navegación. */}
+            <Route path={reservasPaths.checkout} element={<CheckoutRedsysPage />} />
           </Route>
 
           {/* Rutas de administración — guard de rol ADMIN (D6) */}

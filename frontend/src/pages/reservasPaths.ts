@@ -15,7 +15,25 @@ export const reservasPaths = {
   partidas: '/reservas/partidas',
   /** Confirmar la unión a una partida concreta (por `reservaId`). */
   confirmarUnion: (id: string): string => `/reservas/partidas/${id}/unirse`,
+  /** Checkout Redsys (pagos-redsys-online): auto-envía el form firmado al TPV.
+   *  Se llega con el response de iniciar pago en el `state` de navegación. */
+  checkout: '/pagos/checkout',
+  /** Retorno del TPV: pago aceptado (Redsys UrlOK). El estado real lo fija el
+   *  webhook; la página lo consulta al backend, no confía en la URL. */
+  pagoOk: '/pagos/ok',
+  /** Retorno del TPV: pago cancelado/rechazado (Redsys UrlKO). */
+  pagoKo: '/pagos/ko',
 } as const;
+
+/**
+ * Construye el path de retorno del TPV (UrlOK/UrlKO) propagando la `reservaId` en
+ * la query, para que `PagoConfirmadoPage` localice el pago al consultar el estado
+ * real al backend (no confía en parámetros de resultado de la URL de Redsys).
+ */
+export function pagoRetornoPath(base: string, reservaId: string): string {
+  const params = new URLSearchParams({ reservaId });
+  return `${base}?${params.toString()}`;
+}
 
 /**
  * Construye el path de "Confirmar unión" a una partida, propagando la `fecha` en la

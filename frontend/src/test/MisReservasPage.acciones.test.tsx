@@ -108,14 +108,17 @@ describe('MisReservasPage — acciones (Grupo 5)', () => {
     expect(pagoCalled).toBe(false);
   });
 
-  it('"pagar ahora" está deshabilitado (disponible próximamente)', async () => {
+  // pagos-redsys-online (Grupo 6): "pagar ahora" ya NO está deshabilitado; se activa
+  // para el owner con pago PENDING. El flujo completo (iniciar + navegar al checkout)
+  // se cubre en MisReservasPage.pagar.test.tsx.
+  it('"pagar ahora" está activo para el owner con pago PENDING', async () => {
     server.use(http.get('/api/reservas', () => HttpResponse.json([reserva()])));
     renderPage();
 
     await screen.findByText('20:00');
     const btn = screen.getByRole('button', { name: /pagar ahora/i });
-    expect(btn).toBeDisabled();
-    expect(btn).toHaveTextContent(/próximamente/i);
+    expect(btn).toBeEnabled();
+    expect(btn).not.toHaveTextContent(/próximamente/i);
   });
 
   it('oculta acciones cuando la reserva no es cancelable (CANCELLED)', async () => {

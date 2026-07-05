@@ -16,6 +16,7 @@ import {
   ReservaResponse,
   ReservationStatus,
 } from '../services/reservasApi';
+import { iniciarPago } from '../services/pagosApi';
 import { EstadoBadge } from '../components/EstadoBadge';
 import { reservasPaths } from './reservasPaths';
 import './pages.css';
@@ -38,6 +39,8 @@ export function MisReservasPage() {
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [cancelError, setCancelError] = useState<{ id: string; msg: string } | null>(null);
   const [diferidoId, setDiferidoId] = useState<string | null>(null);
+  const [pagandoId, setPagandoId] = useState<string | null>(null);
+  const [pagoError, setPagoError] = useState<{ id: string; msg: string } | null>(null);
 
   // Id del usuario (D8) para decidir la propiedad de cada reserva (botón cancelar).
   useEffect(() => {
@@ -65,6 +68,25 @@ export function MisReservasPage() {
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+
+  // "Pagar ahora" (pagos-redsys-online, D6): inicia el pago online y navega al
+  // checkout Redsys con el form firmado en el state. Solo owner con pago PENDING.
+  async function handlePagar(id: string) {
+    if (!accessToken) return;
+    setPagandoId(id);
+    setPagoError(null);
+    try {
+      const pago = await iniciarPago(accessToken, id);
+      navigate(reservasPaths.checkout, { state: { pago } });
+    } catch (err) {
+      const msg =
+        isReservaApiError(err) && err.code === 'CONFLICT'
+          ? 'Este pago ya está en curso o completado.'
+          : 'No se pudo iniciar el pago. Inténtalo de nuevo.';
+      setPagoError({ id, msg });
+      setPagandoId(null);
+    }
   }
 
   async function handleCancel(id: string) {
@@ -134,6 +156,8 @@ export function MisReservasPage() {
             const pagoPendiente =
               r.pago != null && (r.pago.status === 'PENDING' || r.pago.status === 'IN_PROGRESS');
             const mostrarPago = pagoPendiente && r.status !== 'CANCELLED';
+            // "Pagar ahora": solo el owner y solo con pago PENDING (RN-AUTH-04).
+            const puedePagar = isOwner && r.pago?.status === 'PENDING' && r.status !== 'CANCELLED';
 
             return (
               <li key={r.id} className={styles.card}>
@@ -169,19 +193,26 @@ export function MisReservasPage() {
                           >
                             Pago en diferido
                           </button>
-                          <button
-                            type="button"
-                            className={styles.pagoBtnDisabled}
-                            disabled
-                            title="El pago online estará disponible próximamente"
-                          >
-                            Pagar ahora (disponible próximamente)
-                          </button>
+                          {puedePagar && (
+                            <button
+                              type="button"
+                              className={styles.pagarBtn}
+                              onClick={() => handlePagar(r.id)}
+                              disabled={pagandoId === r.id}
+                            >
+                              {pagandoId === r.id ? 'Iniciando…' : 'Pagar ahora'}
+                            </button>
+                          )}
                         </div>
                         {diferidoId === r.id && (
                           <p className={styles.pagoInfo} role="status">
                             El cobro se realizará de forma presencial en el club. No es necesario
                             pagar ahora.
+                          </p>
+                        )}
+                        {pagoError?.id === r.id && (
+                          <p className="p-error" role="alert">
+                            {pagoError.msg}
                           </p>
                         )}
                       </div>

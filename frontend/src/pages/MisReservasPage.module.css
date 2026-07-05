@@ -196,6 +196,30 @@
   cursor: not-allowed;
 }
 
+.pagarBtn {
+  flex: 1;
+  min-width: 130px;
+  padding: 10px 12px;
+  border: 1.5px solid var(--ink);
+  border-radius: 10px;
+  background: var(--ink);
+  color: var(--cream);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.pagarBtn:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.pagarBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .pagoInfo {
   font-size: 13px;
   line-height: 1.4;
