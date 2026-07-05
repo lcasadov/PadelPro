@@ -50,6 +50,16 @@ public interface UserRepositoryPort {
     Optional<User> findById(Long id);
 
     /**
+     * Batch-load users by id (anti-N+1). Used to resolve participant display names for the
+     * open-matches listing without one query per participant. The signature coincides with
+     * {@code JpaRepository.findAllById} under type erasure, so the Spring Data proxy supplies it.
+     *
+     * @param ids the user ids to fetch
+     * @return the matching users (order/size not guaranteed to match {@code ids})
+     */
+    List<User> findAllById(Iterable<Long> ids);
+
+    /**
      * Check if another user (different id) already uses this email.
      * Used to detect email conflicts on profile updates.
      */
