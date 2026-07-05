@@ -4,6 +4,7 @@ import com.padelpro.auth.domain.exception.AccountNotActiveException;
 import com.padelpro.auth.domain.exception.AuthenticationException;
 import com.padelpro.auth.domain.exception.EmailAlreadyExistsException;
 import com.padelpro.auth.domain.exception.InvalidPasswordException;
+import com.padelpro.auth.domain.exception.RefreshTokenInvalidException;
 import com.padelpro.auth.domain.exception.TokenExpiredException;
 import com.padelpro.auth.domain.exception.TokenInvalidException;
 import com.padelpro.auth.domain.exception.ValidationException;
@@ -101,6 +102,20 @@ public class GlobalExceptionHandler {
                 .status(HttpStatus.FORBIDDEN)
                 .body(new ErrorResponse("ACCOUNT_NOT_ACTIVE",
                         "Account is not active"));
+    }
+
+    /**
+     * A missing, unknown, expired or revoked refresh token presented to
+     * {@code POST /api/auth/refresh}. Returns 401 with the standard error body
+     * {@code {error: "AUTH_REFRESH_INVALID", message, timestamp}} — never echoing the token
+     * (RN-RGPD-04).
+     */
+    @ExceptionHandler(RefreshTokenInvalidException.class)
+    public ResponseEntity<ErrorResponse> handleRefreshTokenInvalid(RefreshTokenInvalidException ex) {
+        return ResponseEntity
+                .status(HttpStatus.UNAUTHORIZED)
+                .body(new ErrorResponse("AUTH_REFRESH_INVALID",
+                        "Refresh token is missing, invalid, expired or revoked"));
     }
 
     @ExceptionHandler(TokenExpiredException.class)

@@ -5,11 +5,11 @@
 ## 1. Backend — endpoint `POST /api/auth/refresh`
 
 - [x] 1.1 Verificar la entidad `RefreshToken` y el esquema: ¿existe campo de revocación? → **Sí, existe `revoked` (boolean, NOT NULL, default false) en `RefreshToken.java`. No hace falta migración.**
-- [ ] 1.2 **[Red]** Test del caso de uso `refresh`: cookie válida → nuevo access token + rotación (viejo revocado); ausente/expirado/revocado → 401; reuso del revocado → 401
-- [ ] 1.3 **[Green]** Caso de uso `refresh(rawRefreshToken)` en la capa de aplicación: lookup por hash SHA-256, validar expiración/revocación, revocar el usado, emitir nuevo refresh (ventana 7 días) + nuevo access token
-- [ ] 1.4 **[Red]** Test de integración web: `POST /api/auth/refresh` con/ sin cookie, esquema de respuesta `{access_token, token_type, expires_in}` + `Set-Cookie`
-- [ ] 1.5 **[Green]** `AuthController.refresh` (lee cookie `refresh_token`, setea nueva cookie); allowlist en la config de seguridad para `/api/auth/refresh` sin access token; rate limiting como el resto de auth público
-- [ ] 1.6 **[Green]** Mapear refresh inválido a 401 en `GlobalExceptionHandler`; documentar en `docs/openapi.yaml`
+- [x] 1.2 **[Red]** Test del caso de uso `refresh`: cookie válida → nuevo access token + rotación (viejo revocado); ausente/expirado/revocado → 401; reuso del revocado → 401
+- [x] 1.3 **[Green]** Caso de uso `refresh(rawRefreshToken)` en la capa de aplicación: lookup por hash SHA-256, validar expiración/revocación, revocar el usado, emitir nuevo refresh (ventana 7 días) + nuevo access token
+- [x] 1.4 **[Red]** Test de integración web: `POST /api/auth/refresh` con/ sin cookie, esquema de respuesta `{access_token, token_type, expires_in}` + `Set-Cookie`
+- [x] 1.5 **[Green]** `AuthController.refresh` (lee cookie `refresh_token`, setea nueva cookie); allowlist en la config de seguridad para `/api/auth/refresh` sin access token; rate limiting como el resto de auth público
+- [x] 1.6 **[Green]** Mapear refresh inválido a 401 en `GlobalExceptionHandler`; documentar en `docs/openapi.yaml`
 
 ## 2. Frontend — interceptor de renovación silenciosa
 

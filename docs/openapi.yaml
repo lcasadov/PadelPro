@@ -186,26 +186,50 @@ paths:
       operationId: refreshToken
       summary: Renovar access token
       description: |
-        Obtiene un nuevo access token usando el refresh token almacenado en la cookie httpOnly,
-        o pasándolo explícitamente en el cuerpo. Devuelve nuevos tokens.
+        Renueva el access token a partir del refresh token almacenado en la cookie httpOnly
+        `refresh_token` (enviada automáticamente por el navegador a `Path=/api/auth/refresh`).
+        NO requiere cabecera `Authorization` (el access token ha caducado por diseño) ni cuerpo.
+
+        Rota el refresh token: el token usado queda revocado y se emite uno nuevo con una nueva
+        ventana de 7 días, devuelto en una nueva cookie `Set-Cookie`. Responde 401
+        `AUTH_REFRESH_INVALID` si la cookie falta, es desconocida, ha expirado o está revocada.
+        Sujeto al mismo rate limiting que el login (5 req/min/IP).
       security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RefreshRequest'
       responses:
         '200':
-          description: Tokens renovados correctamente
+          description: Access token renovado y refresh token rotado
+          headers:
+            Set-Cookie:
+              description: Nueva cookie httpOnly con el refresh token rotado (7 días)
+              schema:
+                type: string
+                example: "refresh_token=dGhpcy...; HttpOnly; Secure; SameSite=Strict; Max-Age=604800; Path=/api/auth/refresh"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/LoginResponse'
-        '400':
-          $ref: '#/components/responses/ValidationError'
+                $ref: '#/components/schemas/TokenPairResponse'
+              examples:
+                ejemplo:
+                  summary: Renovación exitosa
+                  value:
+                    access_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                    token_type: "Bearer"
+                    expires_in: 900
+                    must_change_password: false
+                    role: "USER"
         '401':
-          $ref: '#/components/responses/Unauthorized'
+          description: Refresh token ausente, inválido, expirado o revocado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalido:
+                  summary: Refresh inválido
+                  value:
+                    error: "AUTH_REFRESH_INVALID"
+                    message: "Refresh token is missing, invalid, expired or revoked"
+                    timestamp: "2026-07-05T10:00:00Z"
 
   /auth/logout:
     post:
@@ -1459,6 +1483,37 @@ components:
         role:
           type: string
           description: Rol del usuario autenticado (p. ej. `USER`, `ADMIN`). El cliente lo usa para mostrar u ocultar la UI de administración.
+          example: "USER"
+
+    TokenPairResponse:
+      type: object
+      description: |
+        Cuerpo real devuelto por `POST /auth/login` y `POST /auth/refresh` (claves snake_case).
+        El refresh token NUNCA aparece en el cuerpo — viaja solo en la cookie httpOnly.
+      required:
+        - access_token
+        - token_type
+        - expires_in
+      properties:
+        access_token:
+          type: string
+          description: Token JWT de acceso (HS256, duración 15 min / 900 s)
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        token_type:
+          type: string
+          description: Tipo de token — siempre `Bearer`
+          example: "Bearer"
+        expires_in:
+          type: integer
+          description: Segundos hasta la expiración del access token
+          example: 900
+        must_change_password:
+          type: boolean
+          description: '`true` si la cuenta debe cambiar la contraseña antes de usar la app.'
+          example: false
+        role:
+          type: string
+          description: Rol del usuario autenticado (`USER`, `ADMIN`).
           example: "USER"
 
     RefreshRequest:

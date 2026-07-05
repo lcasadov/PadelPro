@@ -46,6 +46,10 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(EndpointRequest.to("health", "info")).permitAll()
                         .requestMatchers("/api/bot/telegram", "/api/pagos/webhook").permitAll()
+                        // /api/auth/refresh must be reachable WITHOUT an access token: the access
+                        // token has expired by design and renewal relies on the httpOnly cookie
+                        // (auth-session-refresh D2). Explicit here even though /api/auth/** covers it.
+                        .requestMatchers("/api/auth/refresh").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/usuarios/me").authenticated()

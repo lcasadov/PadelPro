@@ -3,8 +3,10 @@ package com.padelpro.auth.application.service;
 import com.padelpro.auth.application.dto.LoginCommand;
 import com.padelpro.auth.application.dto.TokenPair;
 import com.padelpro.auth.application.port.in.LoginUseCase;
+import com.padelpro.auth.application.port.in.RefreshTokenUseCase;
 import com.padelpro.auth.domain.exception.AccountNotActiveException;
 import com.padelpro.auth.domain.exception.AuthenticationException;
+import com.padelpro.auth.domain.exception.RefreshTokenInvalidException;
 import com.padelpro.auth.domain.model.AccountAccessPolicy;
 import com.padelpro.auth.domain.model.AuditLog;
 import com.padelpro.auth.domain.model.RefreshToken;
@@ -48,7 +50,7 @@ import java.util.Optional;
  * (which do not declare those mocks) do not NPE.
  */
 @Service
-public class AuthService implements LoginUseCase {
+public class AuthService implements LoginUseCase, RefreshTokenUseCase {
 
     private final UserRepositoryPort userRepository;
 
@@ -157,6 +159,48 @@ public class AuthService implements LoginUseCase {
 
         return new TokenPair(accessToken, "Bearer", jwtService.getExpirySeconds(),
                 user.isMustChangePassword(), user.getRole(), rawRefreshToken);
+    }
+
+    // -------------------------------------------------------------------------
+    // RefreshTokenUseCase
+    // -------------------------------------------------------------------------
+
+    @Override
+    public TokenPair refresh(String rawRefreshToken) {
+        // Missing cookie / empty value → invalid (RN-RGPD-04: never log the token or its hash).
+        if (rawRefreshToken == null || rawRefreshToken.isBlank()) {
+            throw new RefreshTokenInvalidException();
+        }
+        if (refreshTokenRepository == null) {
+            throw new RefreshTokenInvalidException();
+        }
+
+        String tokenHash = sha256Hex(rawRefreshToken);
+        RefreshToken stored = refreshTokenRepository.findByTokenHash(tokenHash)
+                .orElseThrow(RefreshTokenInvalidException::new);
+
+        OffsetDateTime now = OffsetDateTime.now();
+        if (stored.isRevoked() || stored.getExpiresAt().isBefore(now)) {
+            throw new RefreshTokenInvalidException();
+        }
+
+        User user = stored.getUser();
+
+        // Rotation: revoke the token that was used so it cannot be replayed (D1).
+        stored.setRevoked(true);
+        refreshTokenRepository.save(stored);
+
+        // Issue a brand-new refresh token with a fresh 7-day sliding window (D1).
+        String newRawRefreshToken = generateRawRefreshToken();
+        RefreshToken rotated = new RefreshToken(
+                user, sha256Hex(newRawRefreshToken), now.plusSeconds(604800), null, now);
+        refreshTokenRepository.save(rotated);
+
+        // New JWT access token (900s, RN-AUTH-09).
+        String accessToken = jwtService.generateAccessToken(user);
+
+        return new TokenPair(accessToken, "Bearer", jwtService.getExpirySeconds(),
+                user.isMustChangePassword(), user.getRole(), newRawRefreshToken);
     }
 
     // -------------------------------------------------------------------------
