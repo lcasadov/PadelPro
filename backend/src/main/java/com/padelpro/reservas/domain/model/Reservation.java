@@ -119,6 +119,22 @@ public class Reservation {
         this.participants.add(participant);
     }
 
+    /**
+     * Detach a participant from this reservation (capability partidas, D3 — abandon). With
+     * {@code orphanRemoval=true} the removed row is deleted on flush, freeing its seat.
+     */
+    public void removeParticipant(Participant participant) {
+        this.participants.remove(participant);
+    }
+
+    /** Next free {@code slot_position} for a new participant: {@code max(slot) + 1} (D2). */
+    public int nextSlotPosition() {
+        return participants.stream()
+                .mapToInt(Participant::getSlotPosition)
+                .max()
+                .orElse(0) + 1;
+    }
+
     @PrePersist
     protected void onCreate() {
         if (id == null) {
