@@ -673,6 +673,41 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  /partidas:
+    get:
+      tags: [Reservas]
+      operationId: listarPartidasAbiertas
+      summary: Listar partidas abiertas (reservas con plazas libres)
+      description: |
+        Devuelve las partidas abiertas de una fecha: reservas activas
+        (PENDING_CONFIRMATION o CONFIRMED) con al menos una plaza libre, cada una identificada por
+        su `reservaId` para poder unirse. Solo se exponen nombres de display de los participantes
+        (sin email ni teléfono, RN-RGPD-03). Las reservas completas no aparecen. El importe es
+        informativo (el total de la reserva); unirse no cobra online. Requiere autenticación
+        (USER o ADMIN).
+      parameters:
+        - name: fecha
+          in: query
+          description: Fecha para la que se listan las partidas abiertas (formato YYYY-MM-DD)
+          required: true
+          schema:
+            type: string
+            format: date
+            example: "2025-06-15"
+      responses:
+        '200':
+          description: Listado de partidas abiertas devuelto correctamente
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PartidaAbierta'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
   /reservas:
     get:
       tags: [Reservas]
@@ -861,9 +896,43 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
-          $ref: '#/components/responses/Conflict'
+          description: |
+            El usuario ya participa en la reserva (RN-AUTH-03). Error code `CONFLICT`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '422':
-          description: La reserva está completa o no admite nuevos participantes
+          description: |
+            La reserva está completa (`PARTICIPANTS_LIMIT_EXCEEDED`, RN-RES-02) o su estado no admite
+            unión (`RESERVA_NOT_JOINABLE`; CANCELLED/COMPLETED).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /reservas/{id}/participacion:
+    delete:
+      tags: [Reservas]
+      operationId: abandonarReserva
+      summary: Abandonar una partida (participante no-owner)
+      description: |
+        Permite a un participante no-owner abandonar una reserva a la que se unió, liberando su plaza.
+        El titular (owner) NO puede abandonar: debe cancelar la reserva mediante el flujo de
+        cancelación. Requiere ROLE_USER o ROLE_ADMIN.
+      parameters:
+        - $ref: '#/components/parameters/ReservationIdParam'
+      responses:
+        '204':
+          description: El participante ha abandonado la reserva (plaza liberada)
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: |
+            El titular no puede abandonar (`OWNER_CANNOT_ABANDON`), el usuario no participa en la
+            reserva (`NOT_A_PARTICIPANT`) o la reserva no está activa (`RESERVA_NOT_JOINABLE`).
           content:
             application/json:
               schema:
@@ -2205,6 +2274,75 @@ components:
           example: "Jane Smith"
         statusPago:
           $ref: '#/components/schemas/PaymentStatus'
+
+    PartidaParticipante:
+      type: object
+      description: |
+        Participante de una partida abierta. Solo datos no sensibles (RN-RGPD-03): nombre de display,
+        posición de plaza y flag de titular. Nunca email ni teléfono.
+      required:
+        - nombre
+        - slotPosition
+        - owner
+      properties:
+        nombre:
+          type: string
+          description: Nombre de display del participante
+          example: "Jane Smith"
+        slotPosition:
+          type: integer
+          description: Posición de la plaza (1..4)
+          example: 1
+        owner:
+          type: boolean
+          description: Si el participante es el titular de la reserva
+          example: true
+
+    PartidaAbierta:
+      type: object
+      description: |
+        Partida abierta: reserva activa con al menos una plaza libre, identificable por `reservaId`
+        para poder unirse. `priceTotal` es el total informativo de la reserva; unirse no cobra online.
+      required:
+        - reservaId
+        - reservationDate
+        - startTime
+        - durationMinutes
+        - plazasLibres
+        - participantes
+      properties:
+        reservaId:
+          type: string
+          format: uuid
+          description: UUID de la reserva
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        reservationDate:
+          type: string
+          format: date
+          description: Fecha de la partida
+          example: "2025-06-15"
+        startTime:
+          type: string
+          description: Hora de inicio (HH:mm:ss)
+          example: "18:00:00"
+        durationMinutes:
+          type: integer
+          description: Duración en minutos
+          example: 60
+        plazasLibres:
+          type: integer
+          description: Plazas libres restantes (max_participants − participantes actuales)
+          example: 3
+        priceTotal:
+          type: number
+          format: double
+          description: Importe total informativo de la reserva
+          example: 15.00
+        participantes:
+          type: array
+          description: Participantes actuales (solo nombres de display)
+          items:
+            $ref: '#/components/schemas/PartidaParticipante'
 
     PaginatedReservasResponse:
       allOf:

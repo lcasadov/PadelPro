@@ -4,21 +4,21 @@
 
 ## 1. Backend — listado de partidas abiertas (D1)
 
-- [ ] 1.1 **[Red]** Test: listar partidas abiertas de una fecha devuelve reservas activas con plazas libres, cada una con `reservaId`, hora, duración, plazas, participantes (display), importe informativo; sin auth → 401; reserva completa no aparece
-- [ ] 1.2 **[Green]** Endpoint de listado de partidas abiertas (dedicado `GET /api/partidas` o extensión acordada) + servicio que reutiliza el cálculo de ocupación/plazas; proyección sin PII (solo nombres de display); documentar en `docs/openapi.yaml`
+- [x] 1.1 **[Red]** Test: listar partidas abiertas de una fecha devuelve reservas activas con plazas libres, cada una con `reservaId`, hora, duración, plazas, participantes (display), importe informativo; sin auth → 401; reserva completa no aparece
+- [x] 1.2 **[Green]** Endpoint de listado de partidas abiertas (dedicado `GET /api/partidas` o extensión acordada) + servicio que reutiliza el cálculo de ocupación/plazas; proyección sin PII (solo nombres de display); documentar en `docs/openapi.yaml`
 
 ## 2. Backend — unirse a una partida (D2)
 
-- [ ] 2.1 **[Red]** Tests del caso de uso `UnirseReserva`: unión exitosa (participante no-owner, siguiente slot); ya participante → 409 (RN-AUTH-03); reserva completa → 422 (RN-RES-02); estado CANCELLED/COMPLETED → 422; reserva inexistente → 404
-- [ ] 2.2 **[Red]** Test de concurrencia: dos uniones simultáneas a la última plaza → una 200, otra 422 (no supera `max_participants`)
-- [ ] 2.3 **[Green]** `UnirseReservaService`: carga reserva (404), valida estado activo (422), duplicado (409), plazas atómicamente bajo transacción/bloqueo (422), calcula siguiente `slot_position`, persiste `Participant.registered(is_owner=false)`; invalida caché de disponibilidad
-- [ ] 2.4 **[Green]** Puerto/adapter para añadir participante a reserva existente (hoy solo hay `save` de creación completa)
-- [ ] 2.5 **[Green]** `POST /api/reservas/{id}/unirse` en `ReservaController` + DTO `UnirseResponse` (participanteId, reservaId, userId, nombre, statusPago); alinear `docs/openapi.yaml` con lo implementado
+- [x] 2.1 **[Red]** Tests del caso de uso `UnirseReserva`: unión exitosa (participante no-owner, siguiente slot); ya participante → 409 (RN-AUTH-03); reserva completa → 422 (RN-RES-02); estado CANCELLED/COMPLETED → 422; reserva inexistente → 404
+- [x] 2.2 **[Red]** Test de concurrencia: dos uniones simultáneas a la última plaza → una 200, otra 422 (no supera `max_participants`)
+- [x] 2.3 **[Green]** `UnirseReservaService`: carga reserva (404), valida estado activo (422), duplicado (409), plazas atómicamente bajo transacción/bloqueo (422), calcula siguiente `slot_position`, persiste `Participant.registered(is_owner=false)`; invalida caché de disponibilidad
+- [x] 2.4 **[Green]** Puerto/adapter para añadir participante a reserva existente (hoy solo hay `save` de creación completa)
+- [x] 2.5 **[Green]** `POST /api/reservas/{id}/unirse` en `ReservaController` + DTO `UnirseResponse` (participanteId, reservaId, userId, nombre, statusPago); alinear `docs/openapi.yaml` con lo implementado
 
 ## 3. Backend — abandonar una partida (D3)
 
-- [ ] 3.1 **[Red]** Tests: participante no-owner abandona → plaza liberada; owner intenta abandonar → rechazo (debe cancelar); no participante → error
-- [ ] 3.2 **[Green]** Endpoint de abandono (`DELETE /api/reservas/{id}/participacion`) + servicio que elimina la fila de `participants` del usuario; invalida caché de disponibilidad; documentar en openapi
+- [x] 3.1 **[Red]** Tests: participante no-owner abandona → plaza liberada; owner intenta abandonar → rechazo (debe cancelar); no participante → error
+- [x] 3.2 **[Green]** Endpoint de abandono (`DELETE /api/reservas/{id}/participacion`) + servicio que elimina la fila de `participants` del usuario; invalida caché de disponibilidad; documentar en openapi
 
 ## 4. Frontend — pantallas de partidas
 

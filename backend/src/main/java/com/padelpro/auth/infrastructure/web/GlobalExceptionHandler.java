@@ -10,6 +10,7 @@ import com.padelpro.auth.domain.exception.TokenInvalidException;
 import com.padelpro.auth.domain.exception.ValidationException;
 import com.padelpro.auth.infrastructure.web.dto.ErrorResponse;
 import com.padelpro.reservas.domain.exception.InvalidReservaStateException;
+import com.padelpro.reservas.domain.exception.ParticipacionDuplicadaException;
 import com.padelpro.reservas.domain.exception.ReservaForbiddenException;
 import com.padelpro.reservas.domain.exception.ReservaNotFoundException;
 import com.padelpro.reservas.domain.exception.SlotConflictException;
@@ -181,6 +182,16 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(SlotConflictException.class)
     public ResponseEntity<ErrorResponse> handleSlotConflict(SlotConflictException ex) {
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse("CONFLICT", ex.getMessage()));
+    }
+
+    /**
+     * A user trying to join a reservation they already participate in (RN-AUTH-03) → 409 CONFLICT.
+     */
+    @ExceptionHandler(ParticipacionDuplicadaException.class)
+    public ResponseEntity<ErrorResponse> handleParticipacionDuplicada(ParticipacionDuplicadaException ex) {
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
                 .body(new ErrorResponse("CONFLICT", ex.getMessage()));
