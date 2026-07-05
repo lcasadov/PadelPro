@@ -13,4 +13,7 @@ public interface PaymentCommandPort {
     Payment save(Payment payment);
 
     Optional<Payment> findByReservationId(UUID reservationId);
+
+    /** Locate a payment by its unique Redsys order id (webhook path, pagos-redsys-online). */
+    Optional<Payment> findByRedsysOrderId(String redsysOrderId);
 }

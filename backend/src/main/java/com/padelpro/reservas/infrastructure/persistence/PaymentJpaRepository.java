@@ -22,4 +22,10 @@ public interface PaymentJpaRepository extends JpaRepository<Payment, UUID> {
 
     /** Batch-load payments for a set of reservations (anti-N+1 for list endpoints, §7.2). */
     List<Payment> findByReservationIdIn(Collection<UUID> reservationIds);
+
+    /** Locate a payment by its unique Redsys order id (webhook idempotency, RN-PAY-02). */
+    Optional<Payment> findByRedsysOrderId(String redsysOrderId);
+
+    /** All payments most-recent first (ADMIN history, pagos-redsys-online group 5). */
+    List<Payment> findAllByOrderByCreatedAtDesc();
 }

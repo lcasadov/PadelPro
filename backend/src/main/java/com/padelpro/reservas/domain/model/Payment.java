@@ -115,6 +115,46 @@ public class Payment {
         this.status = PaymentStatus.REFUNDED;
     }
 
+    /**
+     * Move a PENDING payment to IN_PROGRESS when the owner starts the Redsys checkout
+     * (pagos-redsys-online, D5). Records the generated Redsys order id and the TPV URL used for the
+     * browser redirect. Card data never touches this entity (RN-PAY-03).
+     */
+    public void markInProgress(String redsysOrderId, String paymentUrl) {
+        this.status = PaymentStatus.IN_PROGRESS;
+        this.method = PaymentMethod.REDSYS;
+        this.gateway = PaymentGateway.REDSYS;
+        this.redsysOrderId = redsysOrderId;
+        this.paymentUrl = paymentUrl;
+    }
+
+    /**
+     * Confirm a Redsys payment from a valid webhook with an approved {@code Ds_Response}
+     * (pagos-redsys-online, D3). Only {@code transaction_id} (Ds_AuthorisationCode) is stored — never
+     * card data (RN-PAY-03).
+     */
+    public void markPaid(String transactionId, OffsetDateTime paidAt) {
+        this.status = PaymentStatus.PAID;
+        this.transactionId = transactionId;
+        this.paidAt = paidAt;
+    }
+
+    /** Mark a Redsys payment as FAILED from a valid webhook with a rejection {@code Ds_Response} (D3). */
+    public void markFailed() {
+        this.status = PaymentStatus.FAILED;
+    }
+
+    /**
+     * Register a manual cash payment by an ADMIN (pagos-redsys-online, group 5): PAID / CASH with the
+     * registering admin id (DB CHECK {@code chk_pay_cash_admin} requires {@code registered_by_id}).
+     */
+    public void markCashPaid(Long registeredById, OffsetDateTime paidAt) {
+        this.status = PaymentStatus.PAID;
+        this.method = PaymentMethod.CASH;
+        this.registeredById = registeredById;
+        this.paidAt = paidAt;
+    }
+
     public UUID getId() {
         return id;
     }

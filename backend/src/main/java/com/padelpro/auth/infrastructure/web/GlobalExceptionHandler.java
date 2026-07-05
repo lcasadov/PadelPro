@@ -9,6 +9,10 @@ import com.padelpro.auth.domain.exception.TokenExpiredException;
 import com.padelpro.auth.domain.exception.TokenInvalidException;
 import com.padelpro.auth.domain.exception.ValidationException;
 import com.padelpro.auth.infrastructure.web.dto.ErrorResponse;
+import com.padelpro.pagos.domain.exception.PagoConflictException;
+import com.padelpro.pagos.domain.exception.PagoForbiddenException;
+import com.padelpro.pagos.domain.exception.PagoNotFoundException;
+import com.padelpro.pagos.domain.exception.PagoUnprocessableException;
 import com.padelpro.reservas.domain.exception.InvalidReservaStateException;
 import com.padelpro.reservas.domain.exception.ParticipacionDuplicadaException;
 import com.padelpro.reservas.domain.exception.ReservaForbiddenException;
@@ -219,6 +223,38 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(InvalidReservaStateException.class)
     public ResponseEntity<ErrorResponse> handleInvalidReservaState(InvalidReservaStateException ex) {
+        return ResponseEntity
+                .status(HttpStatus.UNPROCESSABLE_ENTITY)
+                .body(new ErrorResponse(ex.getCode(), ex.getMessage()));
+    }
+
+    // -------------------------------------------------------------------------
+    // pagos-redsys-online capability
+    // -------------------------------------------------------------------------
+
+    @ExceptionHandler(PagoNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handlePagoNotFound(PagoNotFoundException ex) {
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(new ErrorResponse("PAGO_NOT_FOUND", ex.getMessage()));
+    }
+
+    @ExceptionHandler(PagoForbiddenException.class)
+    public ResponseEntity<ErrorResponse> handlePagoForbidden(PagoForbiddenException ex) {
+        return ResponseEntity
+                .status(HttpStatus.FORBIDDEN)
+                .body(new ErrorResponse("FORBIDDEN", ex.getMessage()));
+    }
+
+    @ExceptionHandler(PagoConflictException.class)
+    public ResponseEntity<ErrorResponse> handlePagoConflict(PagoConflictException ex) {
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse("CONFLICT", ex.getMessage()));
+    }
+
+    @ExceptionHandler(PagoUnprocessableException.class)
+    public ResponseEntity<ErrorResponse> handlePagoUnprocessable(PagoUnprocessableException ex) {
         return ResponseEntity
                 .status(HttpStatus.UNPROCESSABLE_ENTITY)
                 .body(new ErrorResponse(ex.getCode(), ex.getMessage()));
