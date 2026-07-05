@@ -25,6 +25,9 @@ import java.util.concurrent.ConcurrentHashMap;
  *   <li>POST /api/auth/login — 5 requests / minute / IP</li>
  *   <li>POST /api/auth/register — 3 requests / minute / IP</li>
  *   <li>POST /api/auth/refresh — 5 requests / minute / IP (same public-auth budget as login)</li>
+ *   <li>POST /api/pagos/webhook — 60 requests / minute / IP (public, unauthenticated Redsys
+ *       notification; the ceiling is high enough to tolerate legitimate Redsys retries yet caps a
+ *       flood of forged notifications that would otherwise hammer signature verification, D3).</li>
  * </ul>
  *
  * <p>When a bucket is exhausted the filter returns HTTP 429 Too Many Requests
@@ -41,10 +44,12 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private static final String LOGIN_PATH    = "/api/auth/login";
     private static final String REGISTER_PATH = "/api/auth/register";
     private static final String REFRESH_PATH  = "/api/auth/refresh";
+    private static final String WEBHOOK_PATH  = "/api/pagos/webhook";
 
     private static final int LOGIN_CAPACITY    = 5;
     private static final int REGISTER_CAPACITY = 3;
     private static final int REFRESH_CAPACITY  = 5;
+    private static final int WEBHOOK_CAPACITY  = 60;
     private static final Duration REFILL_PERIOD = Duration.ofMinutes(1);
 
     private final ConcurrentHashMap<String, Bucket> buckets = new ConcurrentHashMap<>();
@@ -75,6 +80,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
             capacity = REGISTER_CAPACITY;
         } else if (REFRESH_PATH.equals(path)) {
             capacity = REFRESH_CAPACITY;
+        } else if (WEBHOOK_PATH.equals(path)) {
+            capacity = WEBHOOK_CAPACITY;
         }
 
         if (capacity == null) {
