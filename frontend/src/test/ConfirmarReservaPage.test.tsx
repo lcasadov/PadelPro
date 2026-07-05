@@ -62,9 +62,9 @@ describe('ConfirmarReservaPage (Grupo 5)', () => {
     server.use(http.post('/api/reservas', () => HttpResponse.json(reservaResponse(), { status: 201 })));
     renderPage();
 
-    // Resumen del tramo elegido (query params).
+    // Resumen del tramo elegido (query params); la duración por defecto es 60 min.
     expect(screen.getByText(/20:00/)).toBeInTheDocument();
-    expect(screen.getByText(/60/)).toBeInTheDocument();
+    expect(screen.getByTestId('resumen-duracion')).toHaveTextContent('60 min');
     expect(screen.getByText(/2026-07-10/)).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: /confirmar|reservar/i }));
