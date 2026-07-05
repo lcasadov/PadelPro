@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
@@ -37,6 +38,24 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long
      * @return the matching token entry, or empty if not found or already revoked
      */
     Optional<RefreshToken> findByTokenHash(String tokenHash);
+
+    /**
+     * Atomically revoke a single refresh token by its hash, only if it is still active.
+     *
+     * <p>The {@code AND r.revoked = false} predicate makes this a compare-and-set: the database
+     * updates exactly one row for the first request that reaches it and zero rows for any later
+     * request carrying the same (now-revoked) token. This is the concurrency gate that decides the
+     * winner of a rotation race — two concurrent refreshes with the same token can no longer both
+     * mint a new valid token (MEDIO-1).
+     *
+     * @param tokenHash the hex-encoded SHA-256 hash of the raw refresh token
+     * @return {@code 1} if the token was active and is now revoked, {@code 0} otherwise
+     */
+    @Override
+    @Transactional
+    @Modifying
+    @Query("UPDATE RefreshToken r SET r.revoked = true WHERE r.tokenHash = :tokenHash AND r.revoked = false")
+    int revokeByTokenHashIfActive(@Param("tokenHash") String tokenHash);
 
     /**
      * Revoke all active refresh tokens for a given user.

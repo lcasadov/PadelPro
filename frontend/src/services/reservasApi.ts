@@ -15,9 +15,8 @@
 // `Tramo` es el delta aditivo del backend (D7): true sii el tramo no tiene
 // ocupación y admite crear reserva. Se trata como false si el backend no lo
 // envía (fail-safe): nunca se ofrece crear en un tramo no marcado.
-import axios, { AxiosError } from 'axios';
-
-const api = axios.create({ baseURL: '/api', withCredentials: true });
+import { type AxiosError } from 'axios';
+import { api } from './httpClient';
 
 function authHeader(token: string) {
   return { Authorization: `Bearer ${token}` };

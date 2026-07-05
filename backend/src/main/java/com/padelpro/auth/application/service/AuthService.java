@@ -3,8 +3,10 @@ package com.padelpro.auth.application.service;
 import com.padelpro.auth.application.dto.LoginCommand;
 import com.padelpro.auth.application.dto.TokenPair;
 import com.padelpro.auth.application.port.in.LoginUseCase;
+import com.padelpro.auth.application.port.in.RefreshTokenUseCase;
 import com.padelpro.auth.domain.exception.AccountNotActiveException;
 import com.padelpro.auth.domain.exception.AuthenticationException;
+import com.padelpro.auth.domain.exception.RefreshTokenInvalidException;
 import com.padelpro.auth.domain.model.AccountAccessPolicy;
 import com.padelpro.auth.domain.model.AuditLog;
 import com.padelpro.auth.domain.model.RefreshToken;
@@ -15,6 +17,7 @@ import com.padelpro.auth.domain.port.out.UserRepositoryPort;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -48,7 +51,7 @@ import java.util.Optional;
  * (which do not declare those mocks) do not NPE.
  */
 @Service
-public class AuthService implements LoginUseCase {
+public class AuthService implements LoginUseCase, RefreshTokenUseCase {
 
     private final UserRepositoryPort userRepository;
 
@@ -157,6 +160,55 @@ public class AuthService implements LoginUseCase {
 
         return new TokenPair(accessToken, "Bearer", jwtService.getExpirySeconds(),
                 user.isMustChangePassword(), user.getRole(), rawRefreshToken);
+    }
+
+    // -------------------------------------------------------------------------
+    // RefreshTokenUseCase
+    // -------------------------------------------------------------------------
+
+    @Override
+    @Transactional
+    public TokenPair refresh(String rawRefreshToken) {
+        // Missing cookie / empty value → invalid (RN-RGPD-04: never log the token or its hash).
+        if (rawRefreshToken == null || rawRefreshToken.isBlank()) {
+            throw new RefreshTokenInvalidException();
+        }
+        if (refreshTokenRepository == null) {
+            throw new RefreshTokenInvalidException();
+        }
+
+        String tokenHash = sha256Hex(rawRefreshToken);
+        RefreshToken stored = refreshTokenRepository.findByTokenHash(tokenHash)
+                .orElseThrow(RefreshTokenInvalidException::new);
+
+        OffsetDateTime now = OffsetDateTime.now();
+        if (stored.isRevoked() || stored.getExpiresAt().isBefore(now)) {
+            throw new RefreshTokenInvalidException();
+        }
+
+        User user = stored.getUser();
+
+        // Rotation must be atomic (MEDIO-1). The prior check-then-set on the loaded entity was a
+        // race: two concurrent refreshes with the same token could both pass isRevoked()==false and
+        // each mint a valid new token (double-spend), defeating the replay mitigation. Instead we
+        // let a single conditional UPDATE decide the winner: it revokes exactly one row and returns
+        // 1 only for the request that arrives first. Any concurrent reuse gets 0 rows → invalid.
+        int revoked = refreshTokenRepository.revokeByTokenHashIfActive(tokenHash);
+        if (revoked == 0) {
+            throw new RefreshTokenInvalidException();
+        }
+
+        // Issue a brand-new refresh token with a fresh 7-day sliding window (D1).
+        String newRawRefreshToken = generateRawRefreshToken();
+        RefreshToken rotated = new RefreshToken(
+                user, sha256Hex(newRawRefreshToken), now.plusSeconds(604800), null, now);
+        refreshTokenRepository.save(rotated);
+
+        // New JWT access token (900s, RN-AUTH-09).
+        String accessToken = jwtService.generateAccessToken(user);
+
+        return new TokenPair(accessToken, "Bearer", jwtService.getExpirySeconds(),
+                user.isMustChangePassword(), user.getRole(), newRawRefreshToken);
     }
 
     // -------------------------------------------------------------------------
