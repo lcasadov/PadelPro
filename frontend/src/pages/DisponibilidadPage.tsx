@@ -8,7 +8,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getDisponibilidad, Tramo } from '../services/reservasApi';
-import { confirmarReservaPath } from './reservasPaths';
+import { confirmarReservaPath, reservasPaths } from './reservasPaths';
 import './pages.css';
 import styles from './DisponibilidadPage.module.css';
 
@@ -19,6 +19,32 @@ function todayISO(): string {
   const m = String(now.getMonth() + 1).padStart(2, '0');
   const d = String(now.getDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
+}
+
+/** "HH:MM" → minutos desde medianoche. */
+function toMinutes(hhmm: string): number {
+  const [h, m] = hhmm.split(':').map(Number);
+  return (h || 0) * 60 + (m || 0);
+}
+
+/** Duración máxima contigua reservable desde un tramo (D3): suma los tramos
+ *  siguientes `creable` que arrancan justo donde termina el anterior, con tope de
+ *  120 min (máximo ofrecido por la UI). Acota las opciones del selector de duración
+ *  en la confirmación; el 409 del backend sigue siendo la autoridad. */
+function maxDuracionContigua(tramos: Tramo[], index: number): number {
+  const base = tramos[index];
+  let total = base.duracionMinutos;
+  let endMin = toMinutes(base.horaInicio) + base.duracionMinutos;
+  for (let i = index + 1; i < tramos.length; i++) {
+    const t = tramos[i];
+    if (t.creable === true && toMinutes(t.horaInicio) === endMin) {
+      total += t.duracionMinutos;
+      endMin += t.duracionMinutos;
+    } else {
+      break;
+    }
+  }
+  return Math.min(total, 120);
 }
 
 export function DisponibilidadPage() {
@@ -53,8 +79,15 @@ export function DisponibilidadPage() {
     return <Navigate to="/login" replace />;
   }
 
-  function handleReservar(tramo: Tramo) {
-    navigate(confirmarReservaPath(fecha, tramo.horaInicio, tramo.duracionMinutos));
+  function handleReservar(tramo: Tramo, index: number) {
+    navigate(
+      confirmarReservaPath(
+        fecha,
+        tramo.horaInicio,
+        tramo.duracionMinutos,
+        maxDuracionContigua(tramos, index)
+      )
+    );
   }
 
   return (
@@ -64,6 +97,13 @@ export function DisponibilidadPage() {
           <span className="p-dot" />
           PadelPro
         </div>
+        <button
+          type="button"
+          className={styles.homeBtn}
+          onClick={() => navigate(reservasPaths.home)}
+        >
+          Inicio
+        </button>
       </header>
 
       <div className={styles.titleBlock}>
@@ -101,7 +141,7 @@ export function DisponibilidadPage() {
         <p className={styles.empty}>No hay tramos disponibles para esta fecha.</p>
       ) : (
         <ul className={styles.tramoList}>
-          {tramos.map((tramo) => {
+          {tramos.map((tramo, index) => {
             const creable = tramo.creable === true; // fail-safe (D7)
             return (
               <li
@@ -117,7 +157,7 @@ export function DisponibilidadPage() {
                   <button
                     type="button"
                     className={`p-btn p-btn-primary ${styles.reservarBtn}`}
-                    onClick={() => handleReservar(tramo)}
+                    onClick={() => handleReservar(tramo, index)}
                   >
                     Reservar {tramo.horaInicio}
                   </button>

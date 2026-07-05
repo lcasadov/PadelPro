@@ -19,6 +19,23 @@
   gap: 12px;
 }
 
+.homeBtn {
+  background: transparent;
+  border: 1.5px solid rgba(13, 13, 13, 0.25);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.homeBtn:hover {
+  border-color: var(--ink);
+}
+
 .titleBlock {
   padding: 24px 0 16px;
 }
@@ -115,6 +132,134 @@
   font-size: 11px;
   letter-spacing: 0.06em;
   color: var(--muted);
+}
+
+/* --- Acciones inline por tarjeta (D6) --- */
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 18px 16px;
+  border-top: 1px solid var(--line, #e5e3d8);
+}
+
+.actionsLabel {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.pagoBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pagoBtns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pagoBtn {
+  flex: 1;
+  min-width: 130px;
+  padding: 10px 12px;
+  border: 1.5px solid rgba(13, 13, 13, 0.2);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.pagoBtn:hover {
+  border-color: var(--ink);
+}
+
+.pagoBtnDisabled {
+  flex: 1;
+  min-width: 130px;
+  padding: 10px 12px;
+  border: 1.5px dashed rgba(13, 13, 13, 0.2);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted-light, #a8a49a);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: not-allowed;
+}
+
+.pagoInfo {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--muted);
+  background: rgba(13, 13, 13, 0.03);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.cancelBtn {
+  align-self: flex-start;
+  padding: 9px 16px;
+  border: 1.5px solid var(--error);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--error);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.cancelBtn:hover:not(:disabled) {
+  background: var(--error);
+  color: var(--white);
+}
+
+.cancelBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.confirmRow {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.confirmText {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.confirmBtns {
+  display: flex;
+  gap: 8px;
+}
+
+.volverBtn {
+  padding: 9px 16px;
+  border: 1.5px solid rgba(13, 13, 13, 0.25);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.volverBtn:hover:not(:disabled) {
+  border-color: var(--ink);
 }
 
 .empty {
