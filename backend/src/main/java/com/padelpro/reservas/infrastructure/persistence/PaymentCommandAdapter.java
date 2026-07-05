@@ -33,4 +33,9 @@ public class PaymentCommandAdapter implements PaymentCommandPort {
     public Optional<Payment> findByRedsysOrderId(String redsysOrderId) {
         return paymentRepository.findByRedsysOrderId(redsysOrderId);
     }
+
+    @Override
+    public Optional<Payment> findByRedsysOrderIdForUpdate(String redsysOrderId) {
+        return paymentRepository.findByRedsysOrderIdForUpdate(redsysOrderId);
+    }
 }

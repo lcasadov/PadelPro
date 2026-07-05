@@ -26,6 +26,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -89,7 +90,7 @@ class ProcesarWebhookServiceTest {
         credsAvailable();
         String p = params(ORDER, "0000", "ABC123");
         Payment payment = payment(PaymentStatus.IN_PROGRESS);
-        when(paymentCommandPort.findByRedsysOrderId(ORDER)).thenReturn(Optional.of(payment));
+        when(paymentCommandPort.findByRedsysOrderIdForUpdate(ORDER)).thenReturn(Optional.of(payment));
         when(paymentCommandPort.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         service.procesar("HMAC_SHA256_V1", p, sign(p));
@@ -109,7 +110,7 @@ class ProcesarWebhookServiceTest {
         credsAvailable();
         String p = params(ORDER, "0184", null);
         Payment payment = payment(PaymentStatus.IN_PROGRESS);
-        when(paymentCommandPort.findByRedsysOrderId(ORDER)).thenReturn(Optional.of(payment));
+        when(paymentCommandPort.findByRedsysOrderIdForUpdate(ORDER)).thenReturn(Optional.of(payment));
         when(paymentCommandPort.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         service.procesar("HMAC_SHA256_V1", p, sign(p));
@@ -128,7 +129,7 @@ class ProcesarWebhookServiceTest {
 
         service.procesar("HMAC_SHA256_V1", p, "not-a-valid-signature");
 
-        verify(paymentCommandPort, never()).findByRedsysOrderId(any());
+        verify(paymentCommandPort, never()).findByRedsysOrderIdForUpdate(any());
         verify(paymentCommandPort, never()).save(any());
         verify(auditRecorder).record(eq(PagoAuditActions.PAYMENT_WEBHOOK_INVALID_SIGNATURE), isNull(), any());
     }
@@ -138,7 +139,7 @@ class ProcesarWebhookServiceTest {
     void duplicate_on_paid_is_noop() {
         credsAvailable();
         String p = params(ORDER, "0000", "ABC123");
-        when(paymentCommandPort.findByRedsysOrderId(ORDER))
+        when(paymentCommandPort.findByRedsysOrderIdForUpdate(ORDER))
                 .thenReturn(Optional.of(payment(PaymentStatus.PAID)));
 
         service.procesar("HMAC_SHA256_V1", p, sign(p));
@@ -152,7 +153,7 @@ class ProcesarWebhookServiceTest {
     void unknown_order_audited() {
         credsAvailable();
         String p = params(ORDER, "0000", "ABC123");
-        when(paymentCommandPort.findByRedsysOrderId(ORDER)).thenReturn(Optional.empty());
+        when(paymentCommandPort.findByRedsysOrderIdForUpdate(ORDER)).thenReturn(Optional.empty());
 
         service.procesar("HMAC_SHA256_V1", p, sign(p));
 
@@ -170,5 +171,44 @@ class ProcesarWebhookServiceTest {
 
         verify(paymentCommandPort, never()).save(any());
         verify(auditRecorder).record(eq(PagoAuditActions.PAYMENT_WEBHOOK_INVALID_SIGNATURE), isNull(), any());
+    }
+
+    // =========================================================================
+    // MEDIO-2 — idempotencia bajo carrera: bloqueo pesimista de la fila
+    // =========================================================================
+
+    @Test
+    @DisplayName("MEDIO-2: el webhook localiza el pago con el finder que bloquea la fila (FOR UPDATE)")
+    void webhook_locates_payment_with_locking_finder() {
+        credsAvailable();
+        String p = params(ORDER, "0000", "ABC123");
+        when(paymentCommandPort.findByRedsysOrderIdForUpdate(ORDER))
+                .thenReturn(Optional.of(payment(PaymentStatus.IN_PROGRESS)));
+        when(paymentCommandPort.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        service.procesar("HMAC_SHA256_V1", p, sign(p));
+
+        // Debe usar el finder con lock pesimista, NUNCA la lectura sin lock (evita la carrera).
+        verify(paymentCommandPort).findByRedsysOrderIdForUpdate(ORDER);
+        verify(paymentCommandPort, never()).findByRedsysOrderId(any());
+    }
+
+    @Test
+    @DisplayName("MEDIO-2: dos notificaciones del mismo webhook → un solo markPaid / un solo PAYMENT_CONFIRMED")
+    void concurrent_duplicate_confirms_once() {
+        credsAvailable();
+        String p = params(ORDER, "0000", "ABC123");
+        // Bajo el lock las dos notificaciones se serializan sobre la MISMA fila: la 1ª la deja PAID,
+        // la 2ª re-lee ese estado PAID ya confirmado.
+        Payment shared = payment(PaymentStatus.IN_PROGRESS);
+        when(paymentCommandPort.findByRedsysOrderIdForUpdate(ORDER)).thenReturn(Optional.of(shared));
+        when(paymentCommandPort.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        service.procesar("HMAC_SHA256_V1", p, sign(p)); // 1ª notificación
+        service.procesar("HMAC_SHA256_V1", p, sign(p)); // 2ª notificación (duplicada)
+
+        assertThat(shared.getStatus()).isEqualTo(PaymentStatus.PAID);
+        verify(paymentCommandPort, times(1)).save(any());
+        verify(auditRecorder, times(1)).record(eq(PagoAuditActions.PAYMENT_CONFIRMED), isNull(), any());
     }
 }

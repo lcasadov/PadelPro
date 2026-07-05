@@ -68,8 +68,9 @@ public class ProcesarWebhookService {
             return;
         }
 
-        // 3. Locate the payment (idempotency anchor, RN-PAY-02).
-        Optional<Payment> found = paymentCommandPort.findByRedsysOrderId(order);
+        // 3. Locate the payment under a pessimistic write lock so concurrent notifications for the same
+        //    order serialise (MEDIO-2): the second waits, re-reads PAID below, and skips reprocessing.
+        Optional<Payment> found = paymentCommandPort.findByRedsysOrderIdForUpdate(order);
         if (found.isEmpty()) {
             auditRecorder.record(PagoAuditActions.PAYMENT_WEBHOOK_ORDER_NOT_FOUND, null,
                     "orderId=" + order);
@@ -77,7 +78,8 @@ public class ProcesarWebhookService {
         }
         Payment payment = found.get();
 
-        // 4. Idempotent: an already-PAID payment is never reprocessed (RN-PAY-02).
+        // 4. Idempotent: an already-PAID payment is never reprocessed (RN-PAY-02). Under the lock
+        //    above, a concurrent duplicate reaches this branch and no-ops.
         if (payment.getStatus() == PaymentStatus.PAID) {
             return;
         }
