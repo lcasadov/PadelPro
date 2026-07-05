@@ -22,11 +22,11 @@
 
 ## 3. Integración con reservas-ui-jugador-fixes
 
-- [ ] 3.1 Verificar que, con el interceptor activo, crear reserva tras >15 min ya no muestra "sesión caducada" sino que se renueva transparentemente (el manejo local del 401 de reservas queda como fallback)
+- [ ] 3.1 Verificar que, con el interceptor activo, crear reserva tras >15 min ya no muestra "sesión caducada" sino que se renueva transparentemente (el manejo local del 401 de reservas queda como fallback) — **PENDIENTE de live E2E: requiere desplegar el build de la rama (el stack de dev corre un build previo sin el endpoint). Cubierto a nivel de contrato por el IT del refresh + tests MSW del interceptor.**
 
 ## 4. QA
 
-- [ ] 4.1 **[Refactor]** Limpieza manteniendo verde
-- [ ] 4.2 `security-auditor`: rotación/revocación correcta, cookie flags, no exposición de tokens en logs (RN-RGPD-04), rate limiting del endpoint
-- [ ] 4.3 `verification-specialist`: build + tests (frontend vitest, backend maven) + lint
-- [ ] 4.4 `reality-checker`: sesión larga end-to-end (login → esperar caducidad del access → acción autenticada → renovación transparente) contra el stack real
+- [x] 4.1 **[Refactor]** Limpieza manteniendo verde — código en verde, sin deuda pendiente
+- [x] 4.2 `security-auditor`: sin CRÍTICOS ni ALTOS; MEDIO-1 (rotación no atómica) corregido con revocación compare-and-set + @Transactional (commit 8bf023d); hallazgos BAJO (revalidar estado de cuenta en refresh, cota absoluta de sesión, auditoría TOKEN_REFRESHED) documentados como endurecimiento futuro
+- [x] 4.3 `verification-specialist`: 5/5 unit backend + 130/130 frontend + tsc/eslint limpios; IT del refresh verde contra Postgres real (:5433). Veredicto: PASS (los ITs bloqueados por Testcontainers se corrieron vía perfil de PG real)
+- [ ] 4.4 `reality-checker`: sesión larga end-to-end (login → caducidad del access → acción → renovación transparente) — **PENDIENTE de live E2E: requiere desplegar el build de la rama**
