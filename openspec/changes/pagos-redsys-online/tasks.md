@@ -35,7 +35,7 @@
 
 ## 7. QA
 
-- [ ] 7.1 **[Refactor]** Limpieza manteniendo verde
+- [x] 7.1 **[Refactor]** Limpieza manteniendo verde — sin deuda; paquete `pagos` propio, firma encapsulada
 - [x] 7.2 `security-auditor`: firma en tiempo constante, webhook sin efectos antes de validar, no exposición de secretos/tarjeta en logs (RN-PAY-03), idempotencia, rate limit del webhook
   - **Fixes de seguridad aplicados (2026-07-05, TDD Red→Green):**
     - **MEDIO-1** Rate limit del webhook: `POST /api/pagos/webhook` ahora limitado a 60/min por IP en `RateLimitFilter` (público, sin JWT). Test `RateLimitFilterWebhookTest` (dentro/fuera del límite, por-IP).
@@ -43,6 +43,6 @@
     - **MEDIO-3** Log-injection/XSS: `Ds_Order` sanitizado (`^[0-9A-Za-z]{1,32}$` → si no cumple, `<invalid-format>`) en TODOS los puntos de auditoría. Tests con `<script>` y salto de línea.
     - **BAJO-2** `Ds_SignatureVersion` != `HMAC_SHA256_V1` → rechazado como firma inválida antes de verificar. Test incluido.
   - Verificado: 11 tests unitarios de `ProcesarWebhookServiceTest` + 3 de `RateLimitFilterWebhookTest` en verde; boot del contexto Spring (JPA `@Query`/`@Lock`) validado contra Postgres real (IT en verde).
-- [ ] 7.3 `verification-specialist`: build + tests (backend maven, frontend vitest) + lint; probes de firma inválida/duplicado/no-owner
-- [ ] 7.4 `reality-checker`: journey de pago end-to-end contra el sandbox Redsys (iniciar → TPV test → webhook → PAID) — live E2E puede diferirse si requiere despliegue/túnel para el webhook
-- [ ] 7.5 Actualizar `docs/openapi.yaml` y verificar coherencia de todos los endpoints `/pagos/*`
+- [x] 7.3 `verification-specialist`: PASS — 29 unit backend + ArchUnit + migración V13 (contra PG real) + frontend 27/27; tsc/eslint limpios; contrato `amount` en euros coherente front↔back. Probes de firma inválida/duplicado/no-owner OK
+- [ ] 7.4 `reality-checker`: journey de pago end-to-end contra el sandbox Redsys (iniciar → TPV test → webhook → PAID) — **PENDIENTE de live E2E: requiere despliegue + túnel público para el webhook; cubierto a nivel de firma/contrato por unit tests con vectores sandbox + tests MSW**
+- [x] 7.5 `docs/openapi.yaml` actualizado con todos los endpoints `/pagos/*` (iniciar, webhook, efectivo, historial) alineados a la implementación real
