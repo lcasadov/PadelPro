@@ -2019,6 +2019,19 @@ components:
           type: string
           description: Nombre del participante (registrado o externo)
           example: "Carlos García"
+        externalName:
+          type: string
+          description: Nombre del invitado externo (null si es usuario registrado)
+          nullable: true
+          example: "Invitado Externo"
+        externalPhone:
+          type: string
+          description: >-
+            Teléfono del invitado externo. RN-RGPD-03: solo el titular (owner) y ADMIN reciben
+            este campo. A un co-participante que se unió a la partida se le devuelve `null`
+            (minimización de datos personales).
+          nullable: true
+          example: "+34611223344"
         statusPago:
           $ref: '#/components/schemas/PaymentStatus'
         isOwner:
@@ -2134,7 +2147,10 @@ components:
           example: 15.00
         notes:
           type: string
-          description: Observaciones libres del titular
+          description: >-
+            Observaciones libres del titular. RN-RGPD-03: solo el titular (owner) y ADMIN reciben
+            este campo. A un co-participante que se unió a la partida se le devuelve `null`
+            (minimización de datos personales).
           nullable: true
           example: "Reserva para partido de entrenamiento"
         participants:

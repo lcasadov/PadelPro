@@ -40,13 +40,14 @@ public class ReservaQueryService {
     public List<ReservaResponse> listForUser(Long userId) {
         List<Reservation> reservations =
                 reservationRepository.findVisibleToUserWithParticipants(userId);
-        return mapWithPayments(reservations);
+        // RN-RGPD-03 — a co-participant (not owner) must not see guest phones / notes.
+        return mapWithPayments(reservations, false, userId);
     }
 
     /** All reservations (ADMIN). */
     @Transactional(readOnly = true)
     public List<ReservaResponse> listAll() {
-        return mapWithPayments(reservationRepository.findAllWithParticipants());
+        return mapWithPayments(reservationRepository.findAllWithParticipants(), true, null);
     }
 
     /**
@@ -62,7 +63,9 @@ public class ReservaQueryService {
             throw new ReservaForbiddenException("No tiene acceso a esta reserva");
         }
         Payment payment = paymentRepository.findByReservationId(id).orElse(null);
-        return ReservaMapper.toResponse(reservation, payment);
+        // RN-RGPD-03 — only owner and ADMIN see guest phones / notes; a co-participant does not.
+        boolean includePii = admin || userId.equals(reservation.getOwnerId());
+        return ReservaMapper.toResponse(reservation, payment, includePii);
     }
 
     private boolean isOwnerOrParticipant(Reservation reservation, Long userId) {
@@ -74,7 +77,13 @@ public class ReservaQueryService {
                 .anyMatch(userId::equals);
     }
 
-    private List<ReservaResponse> mapWithPayments(List<Reservation> reservations) {
+    /**
+     * @param adminView   when {@code true} (ADMIN listing) every reservation exposes full PII
+     * @param requesterId requesting user id (null for ADMIN); PII is only exposed for reservations
+     *                   they own (RN-RGPD-03) — a co-participant gets guest phones / notes nulled
+     */
+    private List<ReservaResponse> mapWithPayments(List<Reservation> reservations,
+                                                  boolean adminView, Long requesterId) {
         if (reservations.isEmpty()) {
             return List.of();
         }
@@ -82,7 +91,11 @@ public class ReservaQueryService {
         Map<UUID, Payment> paymentsByReservation = paymentRepository.findByReservationIdIn(ids).stream()
                 .collect(Collectors.toMap(Payment::getReservationId, Function.identity()));
         return reservations.stream()
-                .map(r -> ReservaMapper.toResponse(r, paymentsByReservation.get(r.getId())))
+                .map(r -> {
+                    boolean includePii = adminView
+                            || (requesterId != null && requesterId.equals(r.getOwnerId()));
+                    return ReservaMapper.toResponse(r, paymentsByReservation.get(r.getId()), includePii);
+                })
                 .toList();
     }
 }

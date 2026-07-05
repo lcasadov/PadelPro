@@ -67,7 +67,8 @@ public class AdminReservaService {
             cacheInvalidator.invalidate(reservation.getReservationDate());
         }
 
-        return ReservaMapper.toResponse(saved, payment);
+        // ADMIN path → full PII.
+        return ReservaMapper.toResponse(saved, payment, true);
     }
 
     private ReservationStatus parseStatus(String raw) {

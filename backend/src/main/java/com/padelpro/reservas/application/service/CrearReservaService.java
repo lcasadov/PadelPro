@@ -105,7 +105,8 @@ public class CrearReservaService {
         // Invalidate availability cache for the affected date (D5 / data-model §7.3).
         cacheInvalidator.invalidate(reservationDate);
 
-        return ReservaMapper.toResponse(saved, payment);
+        // The creator is the owner → full PII in the returned detail.
+        return ReservaMapper.toResponse(saved, payment, true);
     }
 
     private ReservaResponse loadExisting(java.util.UUID reservationId) {
@@ -113,7 +114,8 @@ public class CrearReservaService {
                 .orElseThrow(() -> new IllegalStateException(
                         "Idempotency key references a missing reservation: " + reservationId));
         Payment payment = paymentCommandPort.findByReservationId(reservationId).orElse(null);
-        return ReservaMapper.toResponse(r, payment);
+        // Idempotency replay for the same owner → full PII.
+        return ReservaMapper.toResponse(r, payment, true);
     }
 
     private SystemConfig loadConfig() {
