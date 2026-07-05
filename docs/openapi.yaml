@@ -1023,19 +1023,19 @@ paths:
       operationId: listarMisPagos
       summary: Listar pagos del usuario autenticado
       description: |
-        Lista los pagos vinculados al usuario autenticado con paginación.
-        Solo se devuelven pagos del propio usuario.
+        Lista los pagos de las reservas de las que el usuario autenticado es titular,
+        ordenados del más reciente al más antiguo. Devuelve un array plano (sin paginación).
+        Nunca expone datos de tarjeta: solo `redsysOrderId` y `transactionId` (RN-PAY-03).
         Requiere ROLE_USER o ROLE_ADMIN.
-      parameters:
-        - $ref: '#/components/parameters/PageParam'
-        - $ref: '#/components/parameters/PageSizeParam'
       responses:
         '200':
           description: Lista de pagos devuelta correctamente
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaginatedPagosResponse'
+                type: array
+                items:
+                  $ref: '#/components/schemas/PagoHistorialResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
 
@@ -1077,6 +1077,43 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+
+  /pagos/webhook:
+    post:
+      tags: [Pagos]
+      operationId: webhookRedsys
+      summary: Notificación server-to-server de Redsys
+      description: |
+        Endpoint público (sin JWT) que recibe la notificación de Redsys tras el pago. Está
+        allowlisted en `SecurityConfig` y protegido por rate limiting; su única validación de
+        autenticidad es la **firma HMAC SHA-256**, verificada en tiempo constante (RN-PAY-01) ANTES
+        de modificar nada.
+
+        Comportamiento (D3): firma inválida → 200 sin cambios + auditoría
+        `PAYMENT_WEBHOOK_INVALID_SIGNATURE`; firma válida + `Ds_Response` 0000–0099 → pago a `PAID` con
+        `transaction_id` + `PAYMENT_CONFIRMED`; rechazo → `FAILED` + `PAYMENT_REJECTED`; pago ya `PAID`
+        → idempotente sin reproceso (RN-PAY-02). **Siempre responde 200.** Nunca persiste ni registra
+        el cuerpo crudo ni datos de tarjeta (RN-PAY-03).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                Ds_SignatureVersion:
+                  type: string
+                  example: HMAC_SHA256_V1
+                Ds_MerchantParameters:
+                  type: string
+                  description: Base64 (URL-safe) del JSON de parámetros de la notificación
+                Ds_Signature:
+                  type: string
+                  description: Firma HMAC-SHA256 (Base64 URL-safe)
+      responses:
+        '200':
+          description: Notificación procesada (siempre 200, incluso ante firma inválida)
 
   /admin/pagos/{reservaId}/efectivo:
     post:
@@ -1121,23 +1158,18 @@ paths:
       tags: [Pagos]
       operationId: listarTodosPagos
       summary: Listar todos los pagos (ADMIN)
-      description: Lista todos los pagos del sistema con filtros y paginación. Requiere ROLE_ADMIN.
-      parameters:
-        - $ref: '#/components/parameters/PageParam'
-        - $ref: '#/components/parameters/PageSizeParam'
-        - name: status
-          in: query
-          description: Filtrar por estado del pago
-          required: false
-          schema:
-            $ref: '#/components/schemas/PaymentStatus'
+      description: |
+        Lista todos los pagos del sistema, ordenados del más reciente al más antiguo. Devuelve un
+        array plano (sin paginación). Requiere ROLE_ADMIN.
       responses:
         '200':
           description: Lista de pagos devuelta correctamente
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaginatedPagosResponse'
+                type: array
+                items:
+                  $ref: '#/components/schemas/PagoHistorialResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -2448,80 +2480,172 @@ components:
 
     IniciarPagoRequest:
       type: object
-      description: Datos para iniciar un pago online vía Redsys
+      description: |
+        Datos para iniciar un pago online vía Redsys. Solo `reservaId` es relevante; cualquier importe
+        enviado por el cliente se ignora — el importe cobrado es siempre el congelado en backend
+        (RN-RES-03). Solo el titular de la reserva puede iniciar el pago (RN-AUTH-04).
       required:
         - reservaId
-        - participanteId
       properties:
         reservaId:
           type: string
           format: uuid
           description: UUID de la reserva a pagar
           example: "550e8400-e29b-41d4-a716-446655440000"
-        participanteId:
-          type: integer
-          format: int64
-          description: ID del participante que realiza el pago (debe corresponder al usuario autenticado)
-          example: 3
 
     IniciarPagoResponse:
       type: object
-      description: Datos para redirigir al usuario al TPV virtual de Redsys
+      description: |
+        Datos para que el frontend construya un formulario oculto y lo auto-envíe al TPV de Redsys
+        (D6). Los datos de tarjeta nunca pasan por PadelPro (RN-PAY-03).
       required:
         - pagoId
         - redsysOrderId
         - redsysUrl
         - amount
         - status
+        - dsSignatureVersion
+        - dsMerchantParameters
+        - dsSignature
       properties:
         pagoId:
           type: string
           format: uuid
-          description: UUID del registro de pago creado
+          description: UUID del registro de pago
           example: "7c9e6679-7425-40de-944b-e07fc1f90ae7"
         redsysOrderId:
           type: string
-          description: Referencia de orden generada para Redsys
-          example: "ORDER-20250615-001"
+          description: Referencia de orden generada para Redsys (Ds_Merchant_Order)
+          example: "0001AB23CD45"
         redsysUrl:
           type: string
           format: uri
-          description: URL del TPV virtual Redsys al que redirigir al usuario
+          description: URL del TPV de Redsys a la que se envía el formulario
           example: "https://sis-t.redsys.es:25443/sis/realizarPago"
         amount:
           type: number
           format: double
-          description: Importe del pago en EUR
+          description: Importe del pago en EUR (congelado en backend)
           example: 15.00
         status:
           type: string
           enum:
             - IN_PROGRESS
-          description: Estado inicial del pago tras iniciar el proceso
+          description: Estado del pago tras iniciar el proceso
           example: IN_PROGRESS
+        dsSignatureVersion:
+          type: string
+          description: Versión de firma Redsys
+          example: HMAC_SHA256_V1
+        dsMerchantParameters:
+          type: string
+          description: Base64 del JSON de parámetros firmados (campo de formulario Ds_MerchantParameters)
+        dsSignature:
+          type: string
+          description: Firma HMAC-SHA256 (Base64) del campo Ds_Signature
 
     EfectivoPagoResponse:
       type: object
-      description: Confirmación del registro de pago en efectivo
+      description: Confirmación del registro de pago en efectivo por un ADMIN
       required:
+        - pagoId
         - reservaId
-        - pagosActualizados
-        - totalCobrado
+        - amount
+        - status
       properties:
+        pagoId:
+          type: string
+          format: uuid
+          description: UUID del registro de pago
+          example: "7c9e6679-7425-40de-944b-e07fc1f90ae7"
         reservaId:
           type: string
           format: uuid
           description: UUID de la reserva
           example: "550e8400-e29b-41d4-a716-446655440000"
-        pagosActualizados:
-          type: integer
-          description: Número de registros de pago actualizados
-          example: 1
-        totalCobrado:
+        amount:
           type: number
           format: double
-          description: Importe total cobrado en efectivo
+          description: Importe cobrado en EUR
           example: 15.00
+        method:
+          $ref: '#/components/schemas/PaymentMethod'
+        status:
+          $ref: '#/components/schemas/PaymentStatus'
+        registeredById:
+          type: integer
+          format: int64
+          description: ID del ADMIN que registró el pago en efectivo
+          nullable: true
+          example: 99
+        paidAt:
+          type: string
+          format: date-time
+          description: Instante del cobro
+          nullable: true
+          example: "2026-07-05T10:30:00Z"
+
+    PagoHistorialResponse:
+      type: object
+      description: |
+        Fila del historial de pagos. Nunca expone datos de tarjeta: solo `redsysOrderId` y
+        `transactionId` (RN-PAY-03).
+      required:
+        - pagoId
+        - reservaId
+        - amount
+        - status
+      properties:
+        pagoId:
+          type: string
+          format: uuid
+          example: "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+        reservaId:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        ownerId:
+          type: integer
+          format: int64
+          nullable: true
+          example: 3
+        amount:
+          type: number
+          format: double
+          example: 15.00
+        method:
+          allOf:
+            - $ref: '#/components/schemas/PaymentMethod'
+          nullable: true
+        status:
+          $ref: '#/components/schemas/PaymentStatus'
+        redsysOrderId:
+          type: string
+          nullable: true
+          example: "0001AB23CD45"
+        transactionId:
+          type: string
+          nullable: true
+          example: "123456"
+        reservationDate:
+          type: string
+          format: date
+          nullable: true
+          example: "2026-07-12"
+        startTime:
+          type: string
+          nullable: true
+          example: "18:00"
+        paidAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2026-07-05T10:30:00Z"
+        createdAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2026-07-05T09:00:00Z"
 
     PaginatedPagosResponse:
       allOf:
