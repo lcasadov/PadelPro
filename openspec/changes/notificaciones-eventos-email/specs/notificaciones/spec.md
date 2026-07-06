@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Email de confirmación de reserva
-El sistema SHALL enviar un email al titular cuando su reserva pase a `CONFIRMED`, con fecha, hora, duración e importe, y SHALL registrar el envío en `notification_log`. El envío es asíncrono y post-commit; un fallo NO revierte ni bloquea la confirmación. (La notificación Telegram de este evento queda diferida a `auth-otp-telegram`.)
+El sistema SHALL enviar un email al titular cuando su reserva pase a `CONFIRMED`, con fecha, hora, duración e importe, y SHALL registrar el envío en `notification_log`. El envío es asíncrono y post-commit; un fallo NO revierte ni bloquea la confirmación. El sistema NO SHALL enviar la notificación si el titular está `INACTIVE` (dado de baja/anonimizado, RN-RGPD). (La notificación Telegram de este evento queda diferida a `auth-otp-telegram`.)
 
 #### Scenario: Reserva confirmada envía email al titular
 - **WHEN** una reserva pasa a `CONFIRMED`
@@ -11,15 +11,19 @@ El sistema SHALL enviar un email al titular cuando su reserva pase a `CONFIRMED`
 - **WHEN** el SMTP no está disponible al confirmar una reserva
 - **THEN** la reserva permanece `CONFIRMED` y se registra la notificación con `status=FAILED` y `error_message`, sin propagar excepción al flujo de negocio
 
+#### Scenario: Titular inactivo no recibe notificación
+- **WHEN** el titular de la reserva/pago está `INACTIVE` (dado de baja)
+- **THEN** el sistema NO envía ninguna notificación y no se crea entrada en `notification_log` para ese titular
+
 ### Requirement: Email de cancelación de reserva
-El sistema SHALL enviar un email al titular cuando su reserva pase a `CANCELLED`, indicando el motivo si está disponible, y SHALL registrar el envío en `notification_log`. Solo se notifica al titular en v1 (no a participantes).
+El sistema SHALL enviar un email al titular cuando su reserva pase a `CANCELLED`, indicando el motivo si está disponible, y SHALL registrar el envío en `notification_log`. Solo se notifica al titular en v1 (no a participantes). El sistema NO SHALL enviar la notificación si el titular está `INACTIVE`.
 
 #### Scenario: Reserva cancelada notifica al titular
 - **WHEN** una reserva pasa a `CANCELLED`
 - **THEN** el sistema envía un email de cancelación al titular y registra la entrada en `notification_log`; no se notifica a los participantes no-titulares
 
 ### Requirement: Email de recibo de pago confirmado
-El sistema SHALL enviar un email de recibo al titular de la reserva cuando su `Payment` pase a `PAID` (por webhook Redsys o por registro de efectivo del ADMIN), con importe, fecha y referencia, y SHALL registrar el envío en `notification_log`.
+El sistema SHALL enviar un email de recibo al titular de la reserva cuando su `Payment` pase a `PAID` (por webhook Redsys o por registro de efectivo del ADMIN), con importe, fecha y referencia, y SHALL registrar el envío en `notification_log`. El sistema NO SHALL enviar la notificación si el titular está `INACTIVE`.
 
 #### Scenario: Pago confirmado envía recibo
 - **WHEN** un pago pasa a `PAID`
