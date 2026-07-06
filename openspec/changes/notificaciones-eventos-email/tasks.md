@@ -4,8 +4,8 @@
 
 ## 1. Persistencia — notification_log
 
-- [ ] 1.1 **[Red]** Test del repositorio/puerto de `notification_log`: guardar una entrada (PENDING→SENT/FAILED), buscar FAILED con `attempts < 3` para el job
-- [ ] 1.2 **[Green]** Migración Flyway `Vn__create_notification_log.sql` (campos de la spec + `attempts`, índices por `status` y `related_entity`) + entidad + puerto/adaptador de persistencia
+- [x] 1.1 **[Red]** Test del repositorio/puerto de `notification_log`: guardar una entrada (PENDING→SENT/FAILED), buscar FAILED con `attempts < 3` para el job
+- [x] 1.2 **[Green]** Migración Flyway `Vn__create_notification_log.sql` (campos de la spec + `attempts`, índices por `status` y `related_entity`) + entidad + puerto/adaptador de persistencia
 
 ## 2. Servicio de notificación + registro
 
