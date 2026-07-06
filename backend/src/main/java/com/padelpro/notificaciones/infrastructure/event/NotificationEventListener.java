@@ -1,6 +1,7 @@
 package com.padelpro.notificaciones.infrastructure.event;
 
 import com.padelpro.auth.domain.model.User;
+import com.padelpro.auth.domain.model.UserStatus;
 import com.padelpro.auth.domain.port.out.UserRepositoryPort;
 import com.padelpro.notificaciones.application.service.EmailNotificationService;
 import com.padelpro.notificaciones.domain.event.PaymentPaidEmailEvent;
@@ -81,14 +82,28 @@ public class NotificationEventListener {
         });
     }
 
-    /** Resolve the owner and require a non-blank email; otherwise skip (logged, no send). */
+    /**
+     * Resolve the owner and require an active account with a non-blank email; otherwise skip
+     * (logged, no send). A soft-deleted (RGPD) account is stored as {@link UserStatus#INACTIVE} while
+     * keeping its email, so it must be filtered here to avoid mailing users who exercised their right
+     * to erasure/deactivation.
+     */
     private Optional<User> resolveOwner(Long ownerId) {
         if (ownerId == null) {
             return Optional.empty();
         }
         Optional<User> owner = userRepositoryPort.findById(ownerId);
-        if (owner.isEmpty() || owner.get().getEmail() == null || owner.get().getEmail().isBlank()) {
-            log.warn("Skipping notification: owner {} not resolvable or has no email", ownerId);
+        if (owner.isEmpty()) {
+            log.warn("Skipping notification: owner {} not resolvable", ownerId);
+            return Optional.empty();
+        }
+        User user = owner.get();
+        if (user.getStatus() == UserStatus.INACTIVE) {
+            log.warn("Skipping notification: owner {} is INACTIVE (RGPD soft-delete)", ownerId);
+            return Optional.empty();
+        }
+        if (user.getEmail() == null || user.getEmail().isBlank()) {
+            log.warn("Skipping notification: owner {} has no email", ownerId);
             return Optional.empty();
         }
         return owner;

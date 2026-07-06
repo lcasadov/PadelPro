@@ -54,8 +54,12 @@ class NotificationEventListenerTest {
     }
 
     private User owner() {
+        return ownerWithStatus(UserStatus.ACTIVE);
+    }
+
+    private User ownerWithStatus(UserStatus status) {
         User u = new User("ana", "$2a$hash", "Ana", "García", "ana@example.com",
-                UserRole.USER, UserStatus.ACTIVE, OffsetDateTime.now(), OffsetDateTime.now());
+                UserRole.USER, status, OffsetDateTime.now(), OffsetDateTime.now());
         org.springframework.test.util.ReflectionTestUtils.setField(u, "id", OWNER_ID);
         return u;
     }
@@ -115,6 +119,43 @@ class NotificationEventListenerTest {
 
         listener.onReservationConfirmed(new ReservationConfirmedEmailEvent(
                 RES_ID, OWNER_ID, LocalDate.of(2030, 1, 10), LocalTime.of(18, 0), 60, null));
+
+        verify(emailNotificationService, never()).dispatch(any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("RGPD: INACTIVE (soft-deleted) owner → confirmation email is NOT dispatched")
+    void inactive_owner_skips_confirmed_dispatch() {
+        when(userRepositoryPort.findById(OWNER_ID))
+                .thenReturn(Optional.of(ownerWithStatus(UserStatus.INACTIVE)));
+
+        listener.onReservationConfirmed(new ReservationConfirmedEmailEvent(
+                RES_ID, OWNER_ID, LocalDate.of(2030, 1, 10), LocalTime.of(18, 0), 60,
+                new BigDecimal("15.00")));
+
+        verify(emailNotificationService, never()).dispatch(any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("RGPD: INACTIVE (soft-deleted) owner → cancellation email is NOT dispatched")
+    void inactive_owner_skips_cancelled_dispatch() {
+        when(userRepositoryPort.findById(OWNER_ID))
+                .thenReturn(Optional.of(ownerWithStatus(UserStatus.INACTIVE)));
+
+        listener.onReservationCancelled(new ReservationCancelledEmailEvent(
+                RES_ID, OWNER_ID, "Lluvia"));
+
+        verify(emailNotificationService, never()).dispatch(any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("RGPD: INACTIVE (soft-deleted) owner → payment receipt is NOT dispatched")
+    void inactive_owner_skips_paid_dispatch() {
+        when(userRepositoryPort.findById(OWNER_ID))
+                .thenReturn(Optional.of(ownerWithStatus(UserStatus.INACTIVE)));
+
+        listener.onPaymentPaid(new PaymentPaidEmailEvent(
+                RES_ID, OWNER_ID, new BigDecimal("15.00"), OffsetDateTime.now(), "AUTH-777"));
 
         verify(emailNotificationService, never()).dispatch(any(), any(), any(), any());
     }
