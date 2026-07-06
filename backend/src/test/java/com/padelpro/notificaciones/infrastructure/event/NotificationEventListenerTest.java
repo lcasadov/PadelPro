@@ -79,7 +79,7 @@ class NotificationEventListenerTest {
         EmailMessage msg = captor.getValue();
         assertThat(msg.recipient()).isEqualTo("ana@example.com");
         assertThat(msg.subject()).contains("confirmada");
-        assertThat(msg.body()).contains("15.00");
+        assertThat(msg.body()).contains("15,00");
     }
 
     @Test
