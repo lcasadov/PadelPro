@@ -28,8 +28,8 @@
 
 ## 5. QA
 
-- [ ] 5.1 **[Refactor]** Limpieza manteniendo verde
-- [ ] 5.2 `verification-specialist`: build + tests (backend maven) + lint; probes de tolerancia a fallo (SMTP caído no revierte negocio), no-PII en log, tope de reintentos
-- [ ] 5.3 `security-auditor`: no exposición de datos sensibles en `notification_log`/logs (RN-RGPD-04), no envío a usuarios anonimizados
-- [ ] 5.4 `reality-checker`: journey (confirmar reserva / cancelar / pagar → llega email + registro) — live E2E puede diferirse (requiere SMTP real); cubierto por unit/IT con SMTP mock/fake
-- [ ] 5.5 Verificar que no hay endpoints REST nuevos (event-driven) y que la doc refleja el alcance email (Telegram diferido)
+- [x] 5.1 **[Refactor]** Limpieza manteniendo verde
+- [x] 5.2 `verification-specialist`: build + tests (backend maven) + lint; probes de tolerancia a fallo (SMTP caído no revierte negocio), no-PII en log, tope de reintentos — PARTIAL: compila, 0 fallos lógicos, todos los unit verdes; los IT Testcontainers no ejecutables por incompatibilidad Docker 29 ↔ docker-java de la máquina (afecta a todo el suite del proyecto), diferidos a CI Linux
+- [x] 5.3 `security-auditor`: no exposición de datos sensibles en `notification_log`/logs (RN-RGPD-04), no envío a usuarios anonimizados — 1 MEDIA + 2 BAJA corregidos (commits 810891d filtro INACTIVE RGPD, 7cc9393 no-PII en logs, e7a34d5 paginar findRetriable)
+- [x] 5.4 `reality-checker`: journey (confirmar reserva / cancelar / pagar → llega email + registro) — READY (A-); 6 journeys verificados por código + unit; gap de cobertura de PaymentPaidEmailEvent cerrado (commit 419d2d1); E2E live diferido a CI
+- [x] 5.5 Verificar que no hay endpoints REST nuevos (event-driven) y que la doc refleja el alcance email (Telegram diferido) — confirmado sin controllers nuevos
