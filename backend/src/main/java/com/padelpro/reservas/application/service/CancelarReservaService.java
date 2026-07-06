@@ -12,6 +12,8 @@ import com.padelpro.reservas.domain.model.ReservationStateMachine;
 import com.padelpro.reservas.domain.model.ReservationStatus;
 import com.padelpro.reservas.domain.port.out.PaymentCommandPort;
 import com.padelpro.reservas.domain.port.out.ReservationCommandPort;
+import com.padelpro.notificaciones.domain.event.ReservationCancelledEmailEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -31,15 +33,18 @@ public class CancelarReservaService {
     private final PaymentCommandPort paymentCommandPort;
     private final SystemConfigRepositoryPort systemConfigRepositoryPort;
     private final DisponibilidadCacheInvalidator cacheInvalidator;
+    private final ApplicationEventPublisher eventPublisher;
 
     public CancelarReservaService(ReservationCommandPort reservationCommandPort,
                                   PaymentCommandPort paymentCommandPort,
                                   SystemConfigRepositoryPort systemConfigRepositoryPort,
-                                  DisponibilidadCacheInvalidator cacheInvalidator) {
+                                  DisponibilidadCacheInvalidator cacheInvalidator,
+                                  ApplicationEventPublisher eventPublisher) {
         this.reservationCommandPort = reservationCommandPort;
         this.paymentCommandPort = paymentCommandPort;
         this.systemConfigRepositoryPort = systemConfigRepositoryPort;
         this.cacheInvalidator = cacheInvalidator;
+        this.eventPublisher = eventPublisher;
     }
 
     /**
@@ -86,5 +91,11 @@ public class CancelarReservaService {
         });
 
         cacheInvalidator.invalidate(reservation.getReservationDate());
+
+        // Notification trigger (change notificaciones-eventos-email, D1): email the titular that their
+        // reservation was cancelled, with the reason if present. Delivered post-commit; only the owner
+        // is notified (non-owner participants are not, per spec v1).
+        eventPublisher.publishEvent(new ReservationCancelledEmailEvent(
+                reservation.getId(), reservation.getOwnerId(), reservation.getCancellationReason()));
     }
 }

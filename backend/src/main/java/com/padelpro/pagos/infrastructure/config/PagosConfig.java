@@ -18,6 +18,7 @@ import com.padelpro.reservas.domain.port.out.ReservationCommandPort;
 import com.padelpro.reservas.infrastructure.persistence.PaymentJpaRepository;
 import com.padelpro.reservas.infrastructure.persistence.ReservationJpaRepository;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -69,20 +70,23 @@ public class PagosConfig {
 
     @Bean
     public ProcesarWebhookService procesarWebhookService(PaymentCommandPort paymentCommandPort,
+                                                         ReservationCommandPort reservationCommandPort,
                                                          RedsysConfigService redsysConfigService,
                                                          PagoAuditRecorder pagoAuditRecorder,
-                                                         ObjectMapper objectMapper) {
-        return new ProcesarWebhookService(paymentCommandPort, redsysConfigService, pagoAuditRecorder,
-                objectMapper);
+                                                         ObjectMapper objectMapper,
+                                                         ApplicationEventPublisher eventPublisher) {
+        return new ProcesarWebhookService(paymentCommandPort, reservationCommandPort,
+                redsysConfigService, pagoAuditRecorder, objectMapper, eventPublisher);
     }
 
     @Bean
     public RegistrarPagoEfectivoService registrarPagoEfectivoService(
             ReservationCommandPort reservationCommandPort,
             PaymentCommandPort paymentCommandPort,
-            PagoAuditRecorder pagoAuditRecorder) {
+            PagoAuditRecorder pagoAuditRecorder,
+            ApplicationEventPublisher eventPublisher) {
         return new RegistrarPagoEfectivoService(reservationCommandPort, paymentCommandPort,
-                pagoAuditRecorder);
+                pagoAuditRecorder, eventPublisher);
     }
 
     @Bean

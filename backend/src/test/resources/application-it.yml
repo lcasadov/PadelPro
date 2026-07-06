@@ -12,6 +12,13 @@ spring:
     enabled: true
     clean-on-validation-error: true   # Only in tests — never in production
 
+# The mail health contributor inspects JavaMailSenderImpl beans; when a test @MockBeans the
+# JavaMailSender the contributor map is empty and actuator fails to start. Disable it for ITs.
+management:
+  health:
+    mail:
+      enabled: false
+
 app:
   jwt:
     secret: test-secret-key-padelpro-256-bits-minimum-length-padding-here

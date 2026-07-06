@@ -43,16 +43,18 @@ class ProcesarWebhookServiceTest {
     private static final UUID RES_ID = UUID.fromString("550e8400-e29b-41d4-a716-446655440000");
 
     @Mock private PaymentCommandPort paymentCommandPort;
+    @Mock private com.padelpro.reservas.domain.port.out.ReservationCommandPort reservationCommandPort;
     @Mock private RedsysConfigService redsysConfigService;
     @Mock private PagoAuditRecorder auditRecorder;
+    @Mock private org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     private ProcesarWebhookService service;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @BeforeEach
     void setUp() {
-        service = new ProcesarWebhookService(paymentCommandPort, redsysConfigService, auditRecorder,
-                objectMapper);
+        service = new ProcesarWebhookService(paymentCommandPort, reservationCommandPort,
+                redsysConfigService, auditRecorder, objectMapper, eventPublisher);
     }
 
     private void credsAvailable() {

@@ -6,7 +6,11 @@ import com.padelpro.pagos.domain.audit.PagoAuditActions;
 import com.padelpro.pagos.domain.model.RedsysSignature;
 import com.padelpro.reservas.domain.model.Payment;
 import com.padelpro.reservas.domain.model.PaymentStatus;
+import com.padelpro.reservas.domain.model.Reservation;
 import com.padelpro.reservas.domain.port.out.PaymentCommandPort;
+import com.padelpro.reservas.domain.port.out.ReservationCommandPort;
+import com.padelpro.notificaciones.domain.event.PaymentPaidEmailEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
@@ -44,18 +48,24 @@ public class ProcesarWebhookService {
     private static final Pattern ORDER_PATTERN = Pattern.compile("^[0-9A-Za-z]{1,32}$");
 
     private final PaymentCommandPort paymentCommandPort;
+    private final ReservationCommandPort reservationCommandPort;
     private final RedsysConfigService redsysConfigService;
     private final PagoAuditRecorder auditRecorder;
     private final ObjectMapper objectMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     public ProcesarWebhookService(PaymentCommandPort paymentCommandPort,
+                                  ReservationCommandPort reservationCommandPort,
                                   RedsysConfigService redsysConfigService,
                                   PagoAuditRecorder auditRecorder,
-                                  ObjectMapper objectMapper) {
+                                  ObjectMapper objectMapper,
+                                  ApplicationEventPublisher eventPublisher) {
         this.paymentCommandPort = paymentCommandPort;
+        this.reservationCommandPort = reservationCommandPort;
         this.redsysConfigService = redsysConfigService;
         this.auditRecorder = auditRecorder;
         this.objectMapper = objectMapper;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional
@@ -107,9 +117,17 @@ public class ProcesarWebhookService {
         Integer response = parseResponse(text(params, "Ds_Response"));
         if (response != null && response >= 0 && response <= 99) {
             payment.markPaid(text(params, "Ds_AuthorisationCode"), OffsetDateTime.now());
-            paymentCommandPort.save(payment);
+            Payment saved = paymentCommandPort.save(payment);
             auditRecorder.record(PagoAuditActions.PAYMENT_CONFIRMED, null,
                     "orderId=" + safeOrder(order) + ", reservationId=" + payment.getReservationId());
+
+            // Notification trigger (change notificaciones-eventos-email, D1): receipt email to the
+            // titular. Published inside the tx; delivered post-commit. Reference is the transaction id
+            // (Ds_AuthorisationCode) — never card data (RN-PAY-03). Owner resolved via the reservation.
+            reservationCommandPort.findById(saved.getReservationId()).ifPresent(reservation ->
+                    eventPublisher.publishEvent(new PaymentPaidEmailEvent(
+                            reservation.getId(), reservation.getOwnerId(), saved.getAmount(),
+                            saved.getPaidAt(), saved.getTransactionId())));
         } else {
             payment.markFailed();
             paymentCommandPort.save(payment);

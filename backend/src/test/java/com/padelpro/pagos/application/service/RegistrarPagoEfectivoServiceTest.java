@@ -48,13 +48,14 @@ class RegistrarPagoEfectivoServiceTest {
     @Mock private ReservationCommandPort reservationCommandPort;
     @Mock private PaymentCommandPort paymentCommandPort;
     @Mock private PagoAuditRecorder auditRecorder;
+    @Mock private org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     private RegistrarPagoEfectivoService service;
 
     @BeforeEach
     void setUp() {
         service = new RegistrarPagoEfectivoService(reservationCommandPort, paymentCommandPort,
-                auditRecorder);
+                auditRecorder, eventPublisher);
     }
 
     private Reservation reservation() {

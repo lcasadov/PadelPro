@@ -14,12 +14,12 @@
 
 ## 3. Disparadores en reserva y pago (D1)
 
-- [ ] 3.1 **[Red]** Test: al pasar una reserva a `CONFIRMED` se dispara el email de confirmación (post-commit) y queda registro; SMTP caído → reserva sigue CONFIRMED + registro FAILED
-- [ ] 3.2 **[Green]** Enganche de confirmación en el servicio de reserva (evento de dominio + `@TransactionalEventListener(AFTER_COMMIT)`)
-- [ ] 3.3 **[Red]** Test: al pasar una reserva a `CANCELLED` se envía email de cancelación al titular (con motivo si existe); no se notifica a participantes no-titulares
-- [ ] 3.4 **[Green]** Enganche de cancelación en `CancelarReservaService`
-- [ ] 3.5 **[Red]** Test: al pasar un `Payment` a `PAID` (webhook Redsys y efectivo ADMIN) se envía recibo al titular con importe/fecha/referencia
-- [ ] 3.6 **[Green]** Enganche de recibo en `ProcesarWebhookService` y `RegistrarPagoEfectivoService`
+- [x] 3.1 **[Red]** Test: al pasar una reserva a `CONFIRMED` se dispara el email de confirmación (post-commit) y queda registro; SMTP caído → reserva sigue CONFIRMED + registro FAILED
+- [x] 3.2 **[Green]** Enganche de confirmación en el servicio de reserva (evento de dominio + `@TransactionalEventListener(AFTER_COMMIT)`)
+- [x] 3.3 **[Red]** Test: al pasar una reserva a `CANCELLED` se envía email de cancelación al titular (con motivo si existe); no se notifica a participantes no-titulares
+- [x] 3.4 **[Green]** Enganche de cancelación en `CancelarReservaService`
+- [x] 3.5 **[Red]** Test: al pasar un `Payment` a `PAID` (webhook Redsys y efectivo ADMIN) se envía recibo al titular con importe/fecha/referencia
+- [x] 3.6 **[Green]** Enganche de recibo en `ProcesarWebhookService` y `RegistrarPagoEfectivoService`
 
 ## 4. Reintentos (Req 3, D3)
 
