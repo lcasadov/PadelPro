@@ -15,6 +15,9 @@ spring:
     enabled: false
 
 app:
+  notifications:
+    retry:
+      enabled: false   # deterministic tests — retry logic is exercised directly on the service
   jwt:
     secret: test-secret-key-padelpro-256-bits-minimum-length
     access-token-expiration-ms: 900000

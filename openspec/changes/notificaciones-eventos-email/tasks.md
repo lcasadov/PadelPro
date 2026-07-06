@@ -23,8 +23,8 @@
 
 ## 4. Reintentos (Req 3, D3)
 
-- [ ] 4.1 **[Red]** Test: el job recoge entradas `FAILED` con `attempts<3` y reintenta; éxito → `SENT`; 3 fallos → queda `FAILED` sin más reintentos; respeta el backoff
-- [ ] 4.2 **[Green]** Job `@Scheduled` de reintentos con backoff y tope 3 (habilitar `@EnableScheduling` si no está)
+- [x] 4.1 **[Red]** Test: el job recoge entradas `FAILED` con `attempts<3` y reintenta; éxito → `SENT`; 3 fallos → queda `FAILED` sin más reintentos; respeta el backoff
+- [x] 4.2 **[Green]** Job `@Scheduled` de reintentos con backoff y tope 3 (habilitar `@EnableScheduling` si no está)
 
 ## 5. QA
 
