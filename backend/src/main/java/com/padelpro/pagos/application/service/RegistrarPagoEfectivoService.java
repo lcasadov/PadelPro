@@ -9,6 +9,8 @@ import com.padelpro.reservas.domain.model.PaymentStatus;
 import com.padelpro.reservas.domain.model.Reservation;
 import com.padelpro.reservas.domain.port.out.PaymentCommandPort;
 import com.padelpro.reservas.domain.port.out.ReservationCommandPort;
+import com.padelpro.notificaciones.domain.event.PaymentPaidEmailEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
@@ -27,13 +29,16 @@ public class RegistrarPagoEfectivoService {
     private final ReservationCommandPort reservationCommandPort;
     private final PaymentCommandPort paymentCommandPort;
     private final PagoAuditRecorder auditRecorder;
+    private final ApplicationEventPublisher eventPublisher;
 
     public RegistrarPagoEfectivoService(ReservationCommandPort reservationCommandPort,
                                         PaymentCommandPort paymentCommandPort,
-                                        PagoAuditRecorder auditRecorder) {
+                                        PagoAuditRecorder auditRecorder,
+                                        ApplicationEventPublisher eventPublisher) {
         this.reservationCommandPort = reservationCommandPort;
         this.paymentCommandPort = paymentCommandPort;
         this.auditRecorder = auditRecorder;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional
@@ -55,6 +60,13 @@ public class RegistrarPagoEfectivoService {
 
         auditRecorder.record(PagoAuditActions.PAYMENT_CASH_REGISTERED, adminId,
                 "reservationId=" + reservaId + ", paymentId=" + saved.getId());
+
+        // Notification trigger (change notificaciones-eventos-email, D1): receipt email to the titular.
+        // Published inside the tx; delivered post-commit. Reference is the payment id (no card data).
+        String reference = saved.getId() != null ? saved.getId().toString() : null;
+        eventPublisher.publishEvent(new PaymentPaidEmailEvent(
+                reservation.getId(), reservation.getOwnerId(), saved.getAmount(),
+                saved.getPaidAt(), reference));
 
         return new EfectivoPagoResponse(
                 saved.getId() != null ? saved.getId().toString() : null,

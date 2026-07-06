@@ -16,6 +16,7 @@ import com.padelpro.reservas.domain.port.out.ReservationCommandPort;
 import com.padelpro.reservas.infrastructure.persistence.PaymentJpaRepository;
 import com.padelpro.reservas.infrastructure.persistence.ReservationJpaRepository;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -44,17 +45,20 @@ public class ReservasConfig {
             ReservationCommandPort reservationCommandPort,
             PaymentCommandPort paymentCommandPort,
             SystemConfigRepositoryPort systemConfigRepositoryPort,
-            @Qualifier("disponibilidadCacheInvalidator") DisponibilidadCacheInvalidator cacheInvalidator) {
+            @Qualifier("disponibilidadCacheInvalidator") DisponibilidadCacheInvalidator cacheInvalidator,
+            ApplicationEventPublisher eventPublisher) {
         return new CancelarReservaService(reservationCommandPort, paymentCommandPort,
-                systemConfigRepositoryPort, cacheInvalidator);
+                systemConfigRepositoryPort, cacheInvalidator, eventPublisher);
     }
 
     @Bean
     public AdminReservaService adminReservaService(
             ReservationCommandPort reservationCommandPort,
             PaymentCommandPort paymentCommandPort,
-            @Qualifier("disponibilidadCacheInvalidator") DisponibilidadCacheInvalidator cacheInvalidator) {
-        return new AdminReservaService(reservationCommandPort, paymentCommandPort, cacheInvalidator);
+            @Qualifier("disponibilidadCacheInvalidator") DisponibilidadCacheInvalidator cacheInvalidator,
+            ApplicationEventPublisher eventPublisher) {
+        return new AdminReservaService(reservationCommandPort, paymentCommandPort, cacheInvalidator,
+                eventPublisher);
     }
 
     @Bean

@@ -1,6 +1,9 @@
 -- cleanup.sql — executed @BeforeEach in integration tests to isolate state
 -- Order respects FK constraints: child tables before parent tables
 
+-- notificaciones capability (#197): notification_log has a nullable FK to users (ON DELETE SET NULL)
+DELETE FROM notification_log;
+
 -- reservas capability (US-007 / #14): child rows before reservations, reservations before users
 DELETE FROM idempotency_keys;
 DELETE FROM payments;

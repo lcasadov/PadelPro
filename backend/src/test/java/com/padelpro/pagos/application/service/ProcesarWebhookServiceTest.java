@@ -3,8 +3,12 @@ package com.padelpro.pagos.application.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.padelpro.pagos.domain.audit.PagoAuditActions;
 import com.padelpro.pagos.domain.model.RedsysSignature;
+import com.padelpro.notificaciones.domain.event.PaymentPaidEmailEvent;
 import com.padelpro.reservas.domain.model.Payment;
 import com.padelpro.reservas.domain.model.PaymentStatus;
+import com.padelpro.reservas.domain.model.Reservation;
+import com.padelpro.reservas.domain.model.ReservationChannel;
+import com.padelpro.reservas.domain.model.ReservationStatus;
 import com.padelpro.reservas.domain.port.out.PaymentCommandPort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -16,6 +20,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.Base64;
 import java.util.Optional;
 import java.util.UUID;
@@ -43,16 +49,18 @@ class ProcesarWebhookServiceTest {
     private static final UUID RES_ID = UUID.fromString("550e8400-e29b-41d4-a716-446655440000");
 
     @Mock private PaymentCommandPort paymentCommandPort;
+    @Mock private com.padelpro.reservas.domain.port.out.ReservationCommandPort reservationCommandPort;
     @Mock private RedsysConfigService redsysConfigService;
     @Mock private PagoAuditRecorder auditRecorder;
+    @Mock private org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     private ProcesarWebhookService service;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @BeforeEach
     void setUp() {
-        service = new ProcesarWebhookService(paymentCommandPort, redsysConfigService, auditRecorder,
-                objectMapper);
+        service = new ProcesarWebhookService(paymentCommandPort, reservationCommandPort,
+                redsysConfigService, auditRecorder, objectMapper, eventPublisher);
     }
 
     private void credsAvailable() {
@@ -84,6 +92,14 @@ class ProcesarWebhookServiceTest {
         return p;
     }
 
+    private Reservation reservation() {
+        return Reservation.builder()
+                .id(RES_ID).ownerId(1L).reservationDate(LocalDate.now().plusDays(3))
+                .startTime(LocalTime.of(18, 0)).endTime(LocalTime.of(19, 0))
+                .durationMinutes(60).status(ReservationStatus.CONFIRMED)
+                .channel(ReservationChannel.WEB).build();
+    }
+
     @Test
     @DisplayName("firma válida + aprobado (0000) → PAID + transaction_id + PAYMENT_CONFIRMED")
     void valid_approved_marks_paid() {
@@ -92,6 +108,8 @@ class ProcesarWebhookServiceTest {
         Payment payment = payment(PaymentStatus.IN_PROGRESS);
         when(paymentCommandPort.findByRedsysOrderIdForUpdate(ORDER)).thenReturn(Optional.of(payment));
         when(paymentCommandPort.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        // Owner resolved via the reservation so the receipt-email event can be published.
+        when(reservationCommandPort.findById(RES_ID)).thenReturn(Optional.of(reservation()));
 
         service.procesar("HMAC_SHA256_V1", p, sign(p));
 
@@ -102,6 +120,8 @@ class ProcesarWebhookServiceTest {
         assertThat(saved.getTransactionId()).isEqualTo("ABC123");
         assertThat(saved.getPaidAt()).isNotNull();
         verify(auditRecorder).record(eq(PagoAuditActions.PAYMENT_CONFIRMED), isNull(), any());
+        // Notification trigger (change notificaciones-eventos-email, D1): receipt email to the titular.
+        verify(eventPublisher).publishEvent(any(PaymentPaidEmailEvent.class));
     }
 
     @Test

@@ -1,5 +1,6 @@
 package com.padelpro.notificaciones.domain.port.out;
 
+import com.padelpro.notificaciones.domain.model.EmailMessage;
 import com.padelpro.notificaciones.domain.model.WelcomeEmail;
 
 /**
@@ -24,4 +25,19 @@ public interface NotificationPort {
      * @param email the welcome email content (with or without a temporary password, per the flow)
      */
     void sendWelcomeEmail(WelcomeEmail email);
+
+    /**
+     * Deliver a transactional event email (reservation confirmed/cancelled, payment receipt — change
+     * {@code notificaciones-eventos-email}).
+     *
+     * <p><b>Contract differs from {@link #sendWelcomeEmail}:</b> this method is <em>synchronous</em>
+     * and <em>propagates</em> a delivery failure so the caller ({@code EmailNotificationService}) can
+     * record the outcome ({@code SENT} vs {@code FAILED}) in {@code notification_log} and let the retry
+     * job re-attempt it. The asynchrony and fault-tolerance (RN-NOT-01/02 — a failure never blocks nor
+     * reverts the business transaction) live one level up, in the {@code @Async} notification service.
+     *
+     * @param email the message to send (no sensitive data in subject/body — RN-RGPD-04)
+     * @throws org.springframework.mail.MailException if delivery fails
+     */
+    void sendEmail(EmailMessage email);
 }

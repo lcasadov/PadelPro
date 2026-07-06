@@ -4,6 +4,7 @@ import com.padelpro.pagos.application.dto.EfectivoPagoResponse;
 import com.padelpro.pagos.domain.audit.PagoAuditActions;
 import com.padelpro.pagos.domain.exception.PagoNotFoundException;
 import com.padelpro.pagos.domain.exception.PagoUnprocessableException;
+import com.padelpro.notificaciones.domain.event.PaymentPaidEmailEvent;
 import com.padelpro.reservas.domain.model.Payment;
 import com.padelpro.reservas.domain.model.PaymentMethod;
 import com.padelpro.reservas.domain.model.PaymentStatus;
@@ -48,13 +49,14 @@ class RegistrarPagoEfectivoServiceTest {
     @Mock private ReservationCommandPort reservationCommandPort;
     @Mock private PaymentCommandPort paymentCommandPort;
     @Mock private PagoAuditRecorder auditRecorder;
+    @Mock private org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     private RegistrarPagoEfectivoService service;
 
     @BeforeEach
     void setUp() {
         service = new RegistrarPagoEfectivoService(reservationCommandPort, paymentCommandPort,
-                auditRecorder);
+                auditRecorder, eventPublisher);
     }
 
     private Reservation reservation() {
@@ -93,6 +95,8 @@ class RegistrarPagoEfectivoServiceTest {
         assertThat(saved.getRegisteredById()).isEqualTo(ADMIN_ID);
         assertThat(saved.getPaidAt()).isNotNull();
         verify(auditRecorder).record(eq(PagoAuditActions.PAYMENT_CASH_REGISTERED), eq(ADMIN_ID), any());
+        // Notification trigger (change notificaciones-eventos-email, D1): receipt email to the titular.
+        verify(eventPublisher).publishEvent(any(PaymentPaidEmailEvent.class));
     }
 
     @Test

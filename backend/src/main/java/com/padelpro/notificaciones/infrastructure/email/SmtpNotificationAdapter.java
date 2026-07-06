@@ -1,5 +1,6 @@
 package com.padelpro.notificaciones.infrastructure.email;
 
+import com.padelpro.notificaciones.domain.model.EmailMessage;
 import com.padelpro.notificaciones.domain.model.WelcomeEmail;
 import com.padelpro.notificaciones.domain.port.out.NotificationPort;
 import org.slf4j.Logger;
@@ -57,5 +58,46 @@ public class SmtpNotificationAdapter implements NotificationPort {
             log.warn("Failed to send welcome email to {} (withPassword={}): {}",
                     email.recipientEmail(), email.hasPassword(), ex.getClass().getSimpleName());
         }
+    }
+
+    /**
+     * Send a transactional event email synchronously (change {@code notificaciones-eventos-email}).
+     *
+     * <p>Unlike {@link #sendWelcomeEmail}, delivery failures are <b>not</b> swallowed here: the
+     * exception propagates so {@code EmailNotificationService} can mark the {@code notification_log}
+     * entry {@code FAILED} and the retry job can pick it up. RN-RGPD-04: only the recipient is logged,
+     * never the body (which carries no secrets by construction, but stays out of the logs regardless).
+     */
+    @Override
+    public void sendEmail(EmailMessage email) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(from);
+        message.setTo(email.recipient());
+        message.setSubject(email.subject());
+        message.setText(email.body());
+
+        mailSender.send(message);
+
+        // RN-RGPD-04: do not log the recipient email in clear — mask the local part.
+        log.info("Notification email sent to {} (subject='{}')", maskEmail(email.recipient()),
+                email.subject());
+    }
+
+    /**
+     * Mask an email for logging (RN-RGPD-04): keep the first two characters of the local part and the
+     * domain, e.g. {@code ana@example.com → an***@example.com}. Never logs the address in clear.
+     */
+    private static String maskEmail(String email) {
+        if (email == null || email.isBlank()) {
+            return "<none>";
+        }
+        int at = email.indexOf('@');
+        if (at <= 0) {
+            return "***";
+        }
+        String local = email.substring(0, at);
+        String domain = email.substring(at);
+        String visible = local.length() <= 2 ? local.substring(0, 1) : local.substring(0, 2);
+        return visible + "***" + domain;
     }
 }

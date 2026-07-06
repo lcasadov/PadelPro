@@ -10,8 +10,12 @@ import com.padelpro.reservas.domain.model.ReservationStateMachine;
 import com.padelpro.reservas.domain.model.ReservationStatus;
 import com.padelpro.reservas.domain.port.out.PaymentCommandPort;
 import com.padelpro.reservas.domain.port.out.ReservationCommandPort;
+import com.padelpro.notificaciones.domain.event.ReservationCancelledEmailEvent;
+import com.padelpro.notificaciones.domain.event.ReservationConfirmedEmailEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 /**
@@ -27,13 +31,16 @@ public class AdminReservaService {
     private final ReservationCommandPort reservationCommandPort;
     private final PaymentCommandPort paymentCommandPort;
     private final DisponibilidadCacheInvalidator cacheInvalidator;
+    private final ApplicationEventPublisher eventPublisher;
 
     public AdminReservaService(ReservationCommandPort reservationCommandPort,
                                PaymentCommandPort paymentCommandPort,
-                               DisponibilidadCacheInvalidator cacheInvalidator) {
+                               DisponibilidadCacheInvalidator cacheInvalidator,
+                               ApplicationEventPublisher eventPublisher) {
         this.reservationCommandPort = reservationCommandPort;
         this.paymentCommandPort = paymentCommandPort;
         this.cacheInvalidator = cacheInvalidator;
+        this.eventPublisher = eventPublisher;
     }
 
     /**
@@ -65,6 +72,18 @@ public class AdminReservaService {
         // Availability changes when a reservation leaves the active set (CANCELLED/COMPLETED).
         if (target == ReservationStatus.CANCELLED || target == ReservationStatus.COMPLETED) {
             cacheInvalidator.invalidate(reservation.getReservationDate());
+        }
+
+        // Notification triggers (change notificaciones-eventos-email, D1): published inside the tx and
+        // delivered by an AFTER_COMMIT listener, so a rolled-back transition sends no email.
+        if (target == ReservationStatus.CONFIRMED) {
+            BigDecimal amount = payment != null ? payment.getAmount() : null;
+            eventPublisher.publishEvent(new ReservationConfirmedEmailEvent(
+                    saved.getId(), saved.getOwnerId(), saved.getReservationDate(),
+                    saved.getStartTime(), saved.getDurationMinutes(), amount));
+        } else if (target == ReservationStatus.CANCELLED) {
+            eventPublisher.publishEvent(new ReservationCancelledEmailEvent(
+                    saved.getId(), saved.getOwnerId(), saved.getCancellationReason()));
         }
 
         // ADMIN path → full PII.
