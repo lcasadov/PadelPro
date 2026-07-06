@@ -44,7 +44,7 @@ public class NotificationRetryJob {
             }
         } catch (Exception ex) {
             // A scheduled job must never let an exception escape and kill the scheduler thread.
-            log.warn("Notification retry cycle failed: {}", ex.getClass().getSimpleName());
+            log.warn("Notification retry cycle failed: {}", ex.getMessage(), ex);
         }
     }
 }
