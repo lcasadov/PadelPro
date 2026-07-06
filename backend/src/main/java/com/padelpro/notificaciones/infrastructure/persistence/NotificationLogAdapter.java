@@ -2,6 +2,7 @@ package com.padelpro.notificaciones.infrastructure.persistence;
 
 import com.padelpro.notificaciones.domain.model.NotificationLog;
 import com.padelpro.notificaciones.domain.port.out.NotificationLogPort;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -14,6 +15,9 @@ import java.util.UUID;
  */
 @Component
 public class NotificationLogAdapter implements NotificationLogPort {
+
+    /** Max FAILED entries loaded per retry cycle, to bound memory/DB load on a large backlog. */
+    static final int RETRY_BATCH_SIZE = 100;
 
     private final NotificationLogJpaRepository repository;
 
@@ -33,6 +37,6 @@ public class NotificationLogAdapter implements NotificationLogPort {
 
     @Override
     public List<NotificationLog> findRetriable(int maxAttempts) {
-        return repository.findRetriable(maxAttempts);
+        return repository.findRetriable(maxAttempts, PageRequest.of(0, RETRY_BATCH_SIZE));
     }
 }
