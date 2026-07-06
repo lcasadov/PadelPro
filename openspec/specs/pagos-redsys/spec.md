@@ -150,6 +150,22 @@ Gestión del ciclo de pago online mediante la pasarela Redsys (HMAC SHA-256) y d
 - **WHEN** el ADMIN envía `POST /api/admin/pagos/UUID-E/efectivo`
 - **THEN** el sistema responde 422 indicando que todos los pagos de la reserva ya están completados
 
+### Requirement 6: Protección de datos de tarjeta y del webhook *(añadido — pagos-redsys-online)*
+
+**El sistema NO DEBE almacenar ni registrar en logs datos de tarjeta (PAN, CVV, caducidad, titular) ni la clave secreta ni `Ds_MerchantParameters` crudo; solo persiste `redsys_order_id` y `transaction_id`. La comparación de firma HMAC DEBE realizarse en tiempo constante y validarse ANTES de cualquier efecto de negocio. El webhook (sin JWT) DEBE estar sujeto a rate limiting y ser idempotente bajo concurrencia (bloqueo del pago), y el `Ds_Order` recibido DEBE sanitizarse antes de auditarse.**
+
+#### Scenario: Ningún dato de tarjeta persiste ni se loguea
+- **WHEN** se procesa cualquier operación de pago (iniciar/webhook/efectivo)
+- **THEN** no se almacena ni aparece en logs ningún dato de tarjeta, clave secreta ni `Ds_MerchantParameters` crudo; solo `redsys_order_id`/`transaction_id`
+
+#### Scenario: Webhook idempotente bajo concurrencia
+- **WHEN** llegan dos notificaciones válidas del mismo pago casi simultáneamente
+- **THEN** el pago se marca `PAID` una sola vez (bloqueo pesimista) y no se duplica el evento `PAYMENT_CONFIRMED`
+
+#### Scenario: Order malicioso no llega crudo a auditoría
+- **WHEN** un webhook con firma inválida trae un `Ds_Order` con formato inesperado (p.ej. contenido HTML/script o saltos de línea)
+- **THEN** la auditoría registra `<invalid-format>` en lugar del valor crudo
+
 ## Casos límite
 - Iniciar pago para una reserva en estado `CANCELLED`: el sistema responde 422 indicando que la reserva no admite pagos en ese estado (RN-PAY-04).
 - Iniciar pago cuando el pago ya está en `status: IN_PROGRESS` o `PAID`: el sistema responde 409 (conflicto, ya existe un pago activo o completado).
