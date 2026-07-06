@@ -75,8 +75,9 @@ public class EmailNotificationService {
                     message.subject(), message.body(), relatedEntityType, relatedEntityId));
         } catch (Exception persistenceError) {
             // If we cannot even record the PENDING entry, do not blow up the async thread.
+            // RN-RGPD-04: never log the recipient email in clear — mask it.
             log.warn("Could not record notification for {} — delivery skipped: {}",
-                    message.recipient(), persistenceError.getClass().getSimpleName());
+                    maskEmail(message.recipient()), persistenceError.getClass().getSimpleName());
             return;
         }
         attemptSend(entry);
@@ -91,12 +92,13 @@ public class EmailNotificationService {
             notificationPort.sendEmail(new EmailMessage(
                     entry.getRecipient(), entry.getSubject(), entry.getMessage()));
             entry.markSent(clock.get());
-            log.info("Notification {} delivered to {} (attempt {})",
-                    entry.getId(), entry.getRecipient(), entry.getAttempts());
+            // RN-RGPD-04: identify the notification by its log id, never by the recipient email.
+            log.info("Notification {} delivered (attempt {})",
+                    entry.getId(), entry.getAttempts());
         } catch (Exception ex) {
             entry.markFailed(ex.getClass().getSimpleName(), clock.get());
-            log.warn("Notification {} to {} failed (attempt {}): {}",
-                    entry.getId(), entry.getRecipient(), entry.getAttempts(),
+            log.warn("Notification {} failed (attempt {}): {}",
+                    entry.getId(), entry.getAttempts(),
                     ex.getClass().getSimpleName());
         }
         try {
@@ -138,5 +140,23 @@ public class EmailNotificationService {
         }
         long backoffMinutes = 1L << Math.min(entry.getAttempts(), 16); // 2^attempts, capped
         return !now.isBefore(last.plusMinutes(backoffMinutes));
+    }
+
+    /**
+     * Mask an email for logging (RN-RGPD-04): keep the first two characters of the local part and the
+     * domain, e.g. {@code ana@example.com → an***@example.com}. Never logs the address in clear.
+     */
+    static String maskEmail(String email) {
+        if (email == null || email.isBlank()) {
+            return "<none>";
+        }
+        int at = email.indexOf('@');
+        if (at <= 0) {
+            return "***";
+        }
+        String local = email.substring(0, at);
+        String domain = email.substring(at);
+        String visible = local.length() <= 2 ? local.substring(0, 1) : local.substring(0, 2);
+        return visible + "***" + domain;
     }
 }

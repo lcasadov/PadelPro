@@ -78,6 +78,26 @@ public class SmtpNotificationAdapter implements NotificationPort {
 
         mailSender.send(message);
 
-        log.info("Notification email sent to {} (subject='{}')", email.recipient(), email.subject());
+        // RN-RGPD-04: do not log the recipient email in clear — mask the local part.
+        log.info("Notification email sent to {} (subject='{}')", maskEmail(email.recipient()),
+                email.subject());
+    }
+
+    /**
+     * Mask an email for logging (RN-RGPD-04): keep the first two characters of the local part and the
+     * domain, e.g. {@code ana@example.com → an***@example.com}. Never logs the address in clear.
+     */
+    private static String maskEmail(String email) {
+        if (email == null || email.isBlank()) {
+            return "<none>";
+        }
+        int at = email.indexOf('@');
+        if (at <= 0) {
+            return "***";
+        }
+        String local = email.substring(0, at);
+        String domain = email.substring(at);
+        String visible = local.length() <= 2 ? local.substring(0, 1) : local.substring(0, 2);
+        return visible + "***" + domain;
     }
 }
