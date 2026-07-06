@@ -33,7 +33,7 @@ class EventEmailTemplatesTest {
                 .contains("10/01/2030")
                 .contains("18:30")
                 .contains("90")
-                .contains("22.50");
+                .contains("22,50");
     }
 
     @Test
@@ -58,7 +58,7 @@ class EventEmailTemplatesTest {
 
         assertThat(m.subject()).contains("Recibo");
         assertThat(m.body())
-                .contains("15.00")
+                .contains("15,00")
                 .contains("10/01/2030")
                 .contains("AUTH-9988");
         String lower = m.body().toLowerCase();
