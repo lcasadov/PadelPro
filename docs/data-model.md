@@ -17,7 +17,7 @@
 | 5 | Pago | `payments` | Transacción económica asociada a cada reserva | `UUID` | EP-03 |
 | 6 | Código OTP | `otp_codes` | Códigos de un solo uso para operaciones críticas (TTL 10 min) | `BIGSERIAL` | EP-01/EP-02/EP-04 |
 | 7 | Log de auditoría | `audit_log` | Registro inmutable de todas las acciones del sistema | `BIGSERIAL` | EP-05 |
-| 8 | Log de notificaciones | `notification_log` | Registro de mensajes enviados (email / Telegram) | `BIGSERIAL` | EP-06 |
+| 8 | Log de notificaciones | `notification_log` | Registro de mensajes enviados (email; Telegram diferido) | `UUID` | EP-06 |
 | 9 | Configuración del sistema | `system_config` | Parámetros globales del club (singleton, id=1) | `BIGSERIAL` | EP-05 |
 
 **Decisiones de modelado clave:**
@@ -25,7 +25,7 @@
 | Decisión | Elección | Justificación |
 |---|---|---|
 | PK de entidades externas | `UUID` (`gen_random_uuid()`) | `reservations` y `payments` aparecen en URLs y webhooks externos (Redsys). UUID evita la enumeración secuencial y la correlación de volumen. |
-| PK de entidades internas | `BIGSERIAL` | `users`, `participants`, `otp_codes`, `audit_log`, `notification_log`, `refresh_tokens`, `system_config` nunca se exponen directamente en rutas públicas. BIGSERIAL es más eficiente en índices B-tree. |
+| PK de entidades internas | `BIGSERIAL` (excepto `notification_log`, que usa `UUID`) | `users`, `participants`, `otp_codes`, `audit_log`, `refresh_tokens`, `system_config` nunca se exponen directamente en rutas públicas. BIGSERIAL es más eficiente en índices B-tree. `notification_log` se implementó con PK `UUID` (`gen_random_uuid()`). |
 | Enumeraciones | Tipos `ENUM` de PostgreSQL | Garantizan integridad a nivel de BD sin CHECK; el catálogo `pg_type` sirve de documentación viva. |
 | Campos monetarios | `NUMERIC(12,2)` | Precisión decimal exacta; nunca `FLOAT` ni `DOUBLE` para importes. |
 | Timestamps | `TIMESTAMPTZ` | Todos los instantes se almacenan con zona horaria (UTC). Nunca `TIMESTAMP` sin zona. |
@@ -131,17 +131,19 @@ erDiagram
     }
 
     notification_log {
-        bigserial id PK
+        uuid id PK
         bigint user_id FK
-        notification_type type
+        varchar(20) type
         varchar(255) recipient
         varchar(255) subject
         text message
-        notification_status status
-        varchar(500) error_message
+        varchar(20) status
+        text error_message
         varchar(50) related_entity_type
-        varchar(36) related_entity_id
+        varchar(64) related_entity_id
+        integer attempts
         timestamptz sent_at
+        timestamptz last_attempt_at
         timestamptz created_at
     }
 
@@ -609,31 +611,28 @@ CREATE TYPE audit_channel AS ENUM ('WEB', 'TELEGRAM', 'SYSTEM');
 
 **Tabla SQL:** `notification_log`
 
+> **Implementado en `V14__create_notification_log.sql`** (change `notificaciones-eventos-email`, #197). El diseño real difiere del boceto original: PK `UUID`, `type`/`status` como `VARCHAR + CHECK` (no enums nativos, para que el mapeo `EnumType.STRING` de JPA funcione igual en PostgreSQL y H2), y por ahora solo el canal `EMAIL` (Telegram diferido a `auth-otp-telegram`).
+
 **Columnas:**
 
 | Nombre | Tipo SQL | Nullable | Default | Constraint | Descripción |
 |---|---|---|---|---|---|
-| `id` | `BIGSERIAL` | NO | autoincremento | PK | Clave primaria interna |
-| `user_id` | `BIGINT` | SÍ | NULL | FK → `users(id)` | Destinatario registrado. NULL para notificaciones al grupo. |
-| `type` | `notification_type` | NO | — | — | Canal de envío |
-| `recipient` | `VARCHAR(255)` | NO | — | — | Email, teléfono o telegram_group_id |
-| `subject` | `VARCHAR(255)` | SÍ | NULL | — | Asunto del email. NULL para Telegram. |
-| `message` | `TEXT` | NO | — | — | Contenido completo del mensaje enviado |
-| `status` | `notification_status` | NO | `'PENDING'` | — | Estado del envío |
-| `error_message` | `VARCHAR(500)` | SÍ | NULL | — | Detalle del error si `status = 'FAILED'` |
+| `id` | `UUID` | NO | `gen_random_uuid()` | PK | Clave primaria interna |
+| `user_id` | `BIGINT` | SÍ | NULL | FK → `users(id)` | Destinatario registrado. NULL para notificaciones sin titular. |
+| `type` | `VARCHAR(20)` | NO | — | CHECK IN (`'EMAIL'`) | Canal de envío (solo email en v1; Telegram diferido) |
+| `recipient` | `VARCHAR(255)` | NO | — | — | Email del destinatario |
+| `subject` | `VARCHAR(255)` | NO | — | — | Asunto del email |
+| `message` | `TEXT` | NO | — | — | Contenido del mensaje enviado (sin datos sensibles, RN-RGPD-04) |
+| `status` | `VARCHAR(20)` | NO | `'PENDING'` | CHECK IN (`'PENDING'`,`'SENT'`,`'FAILED'`) | Estado del envío |
+| `error_message` | `TEXT` | SÍ | NULL | — | Resumen saneado del error si `status = 'FAILED'` (nombre de clase, sin PII) |
 | `related_entity_type` | `VARCHAR(50)` | SÍ | NULL | — | Entidad relacionada: `RESERVATION`, `PAYMENT`, `USER` |
-| `related_entity_id` | `VARCHAR(36)` | SÍ | NULL | — | ID de la entidad relacionada |
+| `related_entity_id` | `VARCHAR(64)` | SÍ | NULL | — | ID de la entidad relacionada |
+| `attempts` | `INTEGER` | NO | `0` | CHECK `>= 0` | Nº de intentos de envío (tope 3 en el job de reintentos) |
 | `sent_at` | `TIMESTAMPTZ` | SÍ | NULL | — | Instante de entrega confirmada |
+| `last_attempt_at` | `TIMESTAMPTZ` | SÍ | NULL | — | Instante del último intento (para el backoff del job) |
 | `created_at` | `TIMESTAMPTZ` | NO | `now()` | — | Instante de creación del registro |
 
-**Enums usados:**
-
-```sql
-CREATE TYPE notification_type   AS ENUM ('EMAIL', 'TELEGRAM_DIRECT', 'TELEGRAM_GROUP');
-CREATE TYPE notification_status AS ENUM ('PENDING', 'SENT', 'FAILED');
-```
-
-**PK:** `id BIGSERIAL`
+**PK:** `id UUID` (`gen_random_uuid()`)
 
 **FKs:**
 
@@ -646,12 +645,10 @@ CREATE TYPE notification_status AS ENUM ('PENDING', 'SENT', 'FAILED');
 | Nombre | Columnas | Tipo | Justificación |
 |---|---|---|---|
 | `notification_log_pkey` | `id` | BTREE UNIQUE | PK automática |
-| `idx_notif_user_id` | `user_id` | BTREE | FK obligatorio |
-| `idx_notif_user_time` | `(user_id, created_at DESC)` | BTREE | Historial de notificaciones por usuario |
-| `idx_notif_failed` | `status` | BTREE parcial `WHERE status = 'FAILED'` | Detección y reintento de fallos de envío |
-| `idx_notif_entity` | `(related_entity_type, related_entity_id)` | BTREE | Trazabilidad de notificaciones por entidad |
+| `idx_notif_status` | `status` | BTREE | El job de reintentos escanea entradas `FAILED` por debajo del tope de intentos |
+| `idx_notif_related_entity` | `(related_entity_type, related_entity_id)` | BTREE | Trazabilidad de notificaciones por entidad (inspección ADMIN) |
 
-**Campos de auditoría:** `created_at`. No hay `updated_at` porque las entradas son casi inmutables; solo `status` y `sent_at` se actualizan en el job de reintento.
+**Campos de auditoría:** `created_at`. No hay `updated_at`; solo `status`, `attempts`, `sent_at` y `last_attempt_at` se actualizan durante el envío/reintento.
 
 ---
 
@@ -805,7 +802,7 @@ PAID → REFUNDED (solo si admin revierte)
 | `otp_codes` | Limpieza periódica de `used=true` o `expires_at < NOW()-7d` | Datos técnicos sin valor histórico |
 | `refresh_tokens` | ON DELETE CASCADE o limpieza de `revoked=true` | Infraestructura de seguridad |
 | `audit_log` | Nunca. Retención por política (ver §8) | Inmutable por definición |
-| `notification_log` | Purga tras 2 años | Datos operativos de rotación alta |
+| `notification_log` | Purga tras 2 años *(política definida; job de purga aún no implementado — follow-up #199)* | Datos operativos de rotación alta |
 
 ---
 
@@ -978,7 +975,7 @@ Los OTP, pagos en curso y el log de auditoría **no se cachean** (datos de segur
 | `payments` | 5 años (obligación fiscal / AEAT) | Nunca se borran. |
 | `participants` | Vinculado a la reserva (5 años) | ON DELETE CASCADE de reserva solo si permitido. |
 | `audit_log` | 2 años | Purga anual por job programado. Partición por año recomendada si > 500k filas. |
-| `notification_log` | 2 años | Purga anual por job programado. |
+| `notification_log` | 2 años | Purga anual por job programado *(aún no implementado — follow-up #199)*. |
 | `otp_codes` | 7 días tras expiración | Job nocturno: `DELETE WHERE expires_at < now() - INTERVAL '7 days'`. |
 | `refresh_tokens` | 30 días (TTL del token) + 7 días de gracia | Job nocturno: `DELETE WHERE expires_at < now() - INTERVAL '7 days'`. |
 

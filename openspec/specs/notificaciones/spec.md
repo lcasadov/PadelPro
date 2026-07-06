@@ -40,8 +40,8 @@ a través del puerto de salida `MensajeriaPort`. El job de recordatorios usa `@S
 
 ## Requirements
 
-### Requirement 1: Notificación de confirmación de reserva
-**El sistema DEBE enviar una notificación de confirmación cuando una reserva pase al estado `CONFIRMED`, incluyendo los datos de la pista, fecha, hora, duración e importe total.**
+### Requirement 1: Notificación de confirmación de reserva *(email ✅ implementado — notificaciones-eventos-email; Telegram diferido a auth-otp-telegram)*
+**El sistema DEBE enviar una notificación de confirmación cuando una reserva pase al estado `CONFIRMED`, incluyendo los datos de la pista, fecha, hora, duración e importe total. El sistema NO DEBE enviar la notificación si el titular está `INACTIVE` (dado de baja/anonimizado, RN-RGPD). El envío del email es asíncrono y post-commit; un fallo NO revierte ni bloquea la confirmación.**
 
 #### Scenario 1: Reserva confirmada con Telegram vinculado — se envían email y Telegram
 - **GIVEN** un usuario con `telegram_chat_id NOT NULL` y `status=ACTIVE` que acaba de confirmar una reserva
@@ -52,6 +52,11 @@ a través del puerto de salida `MensajeriaPort`. El job de recordatorios usa `@S
 - **GIVEN** un usuario con `telegram_chat_id IS NULL` que acaba de confirmar una reserva
 - **WHEN** `ReservaApplicationService` transiciona la reserva al estado `CONFIRMED`
 - **THEN** el sistema envía únicamente el email de confirmación, Y registra una entrada en `notification_log` con `type=EMAIL` y `status=SENT`, Y no se crea ningún intento de envío Telegram
+
+#### Scenario: Titular inactivo no recibe notificación
+- **GIVEN** una reserva cuyo titular está `INACTIVE` (dado de baja/anonimizado)
+- **WHEN** la reserva pasa a `CONFIRMED`
+- **THEN** el sistema NO envía ninguna notificación y no se crea entrada en `notification_log` para ese titular
 
 ### Requirement 2: Fallo en el envío de Telegram no bloquea el flujo principal
 **El sistema DEBE continuar el flujo de negocio normal aunque el envío de la notificación por Telegram falle, registrando el error en `notification_log`.**
@@ -66,29 +71,39 @@ a través del puerto de salida `MensajeriaPort`. El job de recordatorios usa `@S
 - **WHEN** la llamada a la API de Telegram supera el timeout configurado (10 s lectura)
 - **THEN** la transacción de negocio (reserva `CONFIRMED`) ya está commiteada, Y la notificación Telegram se registra en `notification_log` con `status=FAILED`, Y el sistema no lanza excepción no controlada al hilo principal
 
-### Requirement 3: Fallo SMTP — registro en `notification_log` y reintento
-**El sistema DEBE registrar en `notification_log` con `status=FAILED` cualquier fallo en el envío de email, y reintentarlo automáticamente hasta 3 veces con backoff exponencial.**
+### Requirement 3: Fallo SMTP — registro en `notification_log` y reintento *(✅ implementado — notificaciones-eventos-email)*
+**El sistema DEBE registrar en `notification_log` con `status=FAILED` cualquier fallo en el envío de email, y reintentarlo automáticamente (job `@Scheduled`) hasta 3 veces con backoff; tras el tercer intento fallido la entrada permanece `FAILED` sin más reintentos. Cada intento de envío deja una entrada en `notification_log`, y ni `message` ni `recipient` contienen contraseñas, tokens, OTP ni datos de tarjeta (RN-RGPD-04).**
 
 #### Scenario 5: SMTP caído — notificación pasa a FAILED y se reintenta
 - **GIVEN** una reserva recién confirmada Y el servidor SMTP está caído
 - **WHEN** `MensajeriaPort` intenta enviar el email de confirmación
 - **THEN** se crea una entrada en `notification_log` con `status=FAILED` y `error_message` describiendo el error SMTP, Y el job de reintentos (`@Scheduled`) detecta la entrada FAILED y reintenta el envío en el siguiente ciclo (máx. 3 intentos), Y si el tercer intento falla, `status` permanece `FAILED` sin más reintentos automáticos
 
-### Requirement 4: Notificación de cancelación de reserva
-**El sistema DEBE enviar una notificación de cancelación cuando una reserva pase al estado `CANCELLED`, indicando el motivo de cancelación si está disponible.**
+### Requirement 4: Notificación de cancelación de reserva *(email ✅ implementado — notificaciones-eventos-email; Telegram diferido a auth-otp-telegram)*
+**El sistema DEBE enviar una notificación de cancelación cuando una reserva pase al estado `CANCELLED`, indicando el motivo de cancelación si está disponible. El sistema NO DEBE enviar la notificación si el titular está `INACTIVE`.**
 
 #### Scenario 6: Reserva cancelada — notificación enviada al titular
 - **GIVEN** una reserva en estado `CONFIRMED` cuyo titular la cancela mediante `DELETE /api/reservas/{id}`
 - **WHEN** `ReservaApplicationService` transiciona la reserva al estado `CANCELLED`
 - **THEN** el sistema envía notificación de cancelación al titular (email siempre, Telegram si `telegram_chat_id NOT NULL`), Y registra las entradas correspondientes en `notification_log`, Y no se envían notificaciones a los participantes que no son titulares en v1.0
 
-### Requirement 5: Notificación de recibo de pago confirmado
-**El sistema DEBE enviar un recibo de pago al titular de la reserva cuando el estado de `payments` pase a `PAID`.**
+#### Scenario: Titular inactivo no recibe cancelación
+- **GIVEN** una reserva cuyo titular está `INACTIVE`
+- **WHEN** la reserva pasa a `CANCELLED`
+- **THEN** el sistema NO envía ninguna notificación y no se crea entrada en `notification_log` para ese titular
+
+### Requirement 5: Notificación de recibo de pago confirmado *(email ✅ implementado — notificaciones-eventos-email; Telegram diferido a auth-otp-telegram)*
+**El sistema DEBE enviar un recibo de pago al titular de la reserva cuando el estado de `payments` pase a `PAID` (por webhook Redsys o por registro de efectivo del ADMIN), con importe, fecha y referencia. El sistema NO DEBE enviar la notificación si el titular está `INACTIVE`.**
 
 #### Scenario 7: Pago confirmado vía webhook Redsys — recibo enviado
 - **GIVEN** un pago en estado `IN_PROGRESS` cuyo webhook Redsys válido llega al backend confirmando el pago (Ds_Response en rango 0000-0099)
 - **WHEN** `PagoApplicationService` transiciona el pago a `PAID`
 - **THEN** el sistema envía un recibo de pago al email del titular con importe, fecha y referencia Redsys, Y si el titular tiene `telegram_chat_id NOT NULL` también recibe confirmación por Telegram, Y se registran las entradas correspondientes en `notification_log`
+
+#### Scenario: Titular inactivo no recibe recibo
+- **GIVEN** un pago cuyo titular está `INACTIVE`
+- **WHEN** el pago pasa a `PAID`
+- **THEN** el sistema NO envía ninguna notificación y no se crea entrada en `notification_log` para ese titular
 
 ### Requirement 6: Notificación al grupo de Telegram tras confirmar reserva
 **El sistema DEBE publicar un mensaje en el grupo de Telegram configurado en `system_config.telegram_group_id` cuando una reserva pase a `CONFIRMED`, indicando la fecha, hora y plazas disponibles para que otros jugadores puedan unirse.**

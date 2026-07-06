@@ -1,9 +1,9 @@
 # Plan de ejecución — PadelPro OpenSpec
 
 **Generado:** 2026-05-31  
-**Última actualización:** 2026-07-05  
+**Última actualización:** 2026-07-06  
 **Base:** dependencias declaradas en `openspec/specs/*/spec.md`  
-**Estado:** 9/14 capabilities de producto implementadas (+ `notificaciones` parcial, + transversales: `ci-cd-deploy` ✅ y refuerzos de `auth-local`/`usuarios` en producción)
+**Estado:** 9/14 capabilities de producto implementadas (+ `notificaciones` parcial: email de eventos ✅, Telegram pendiente; + transversales: `ci-cd-deploy` ✅ y refuerzos de `auth-local`/`usuarios` en producción)
 
 ---
 
@@ -21,7 +21,7 @@
 | `auth-otp-telegram` | 📋 Pendiente | — |
 | `reservas` | ✅ Implementada (+ UI jugador: disponibilidad/confirmar/mis reservas + duración/compañero/cancelar) | `archive/2026-06-20-reservas`, `archive/2026-07-05-reservas-ui-jugador-fixes` (UI en #184, aún sin archivar) |
 | `pagos-redsys` | ✅ Implementada (iniciar pago firmado + webhook idempotente + efectivo ADMIN + historial; pago compartido diferido) | `archive/2026-07-05-pagos-redsys-online` |
-| `notificaciones` | 🔶 Parcial — email SMTP + bienvenida ✅; eventos de reserva y Telegram pendientes | `archive/2026-07-03-usuarios-alta-edicion-email` |
+| `notificaciones` | 🔶 Parcial — email SMTP + bienvenida ✅; email de eventos (confirmación/cancelación/recibo) + `notification_log` + reintentos ✅; Telegram pendiente | `archive/2026-07-03-usuarios-alta-edicion-email`, `archive/2026-07-06-notificaciones-eventos-email` |
 | `partidas` | ✅ Implementada (ver/unirse/abandonar partidas abiertas; pago compartido diferido a `pagos-redsys`) | `archive/2026-07-05-partidas-unirse` |
 | `exportaciones-rgpd` | 📋 Pendiente | — |
 | `administracion-club` | 📋 Pendiente (Fase 2) | — |
@@ -252,6 +252,6 @@ Wave 6  ────────└──── administracion-club  ← Fase 2
 > Estado 2026-07-05: la app está **desplegada y usable** (CI/CD a EC2 ✅, acceso/panel admin ✅). **UI reservas jugador ✅** (#188) + **refresh de sesión ✅** (#186) + **partidas ✅** (#191/#192) + **pago online Redsys ✅** (#194/#195: iniciar/webhook/efectivo, "pagar ahora" activo; gateway en CASH hasta configurar credenciales reales). Change activo: `reservas-ui-jugador` (#184) pendiente de archivar.
 > ⚠️ Pendiente reportado: crear reserva falla en el EC2 (sospecha: falta fila `SystemConfig` en la BD de prod → 500 sin mapear). Diagnóstico en curso.
 
-1. **Wave 4B — `notificaciones` (ampliación)**: la infra SMTP + email de bienvenida ya existen; añadir emails de eventos de reserva (creada/cancelada) y de unión a partida. La pata Telegram requiere `auth-otp-telegram`.
-2. **`auth-otp-telegram` (Wave 2B)** — pendiente e independiente; habilita confirmación por Telegram y las notificaciones Telegram.
+1. **`auth-otp-telegram` (Wave 2B)** — pendiente e independiente; habilita confirmación por Telegram y las notificaciones Telegram (la pata email de `notificaciones` ya está completa: `archive/2026-07-06-notificaciones-eventos-email`).
+2. **`notificaciones` — pata Telegram**: publicación en grupo + notificaciones de eventos por Telegram; bloqueada por `auth-otp-telegram`. Follow-ups no bloqueantes en #199 (`@Async` en handlers + retención RGPD de `notification_log`).
 3. **Deuda técnica** (tickets): #181 test flaky rate-limit; TTL/purga de `idempotency_keys`; migrar los 8 IT `@Testcontainers` restantes a la base portable; reconciliar `openapi.yaml` camelCase↔snake_case; TLS/dominio en el EC2; `docs/PROJECT.md` dice Java 21 vs pom 17.
