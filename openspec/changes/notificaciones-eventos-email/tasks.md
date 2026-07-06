@@ -9,8 +9,8 @@
 
 ## 2. Servicio de notificación + registro
 
-- [ ] 2.1 **[Red]** Test: enviar una notificación registra `PENDING`, luego `SENT` si el `NotificationPort` tiene éxito, o `FAILED`+`error_message` si lanza; nunca propaga la excepción; `message`/`recipient` sin datos sensibles (RN-RGPD-04)
-- [ ] 2.2 **[Green]** Servicio de notificación que orquesta: registra entrada, envía por `NotificationPort` (@Async), actualiza estado. Plantillas de confirmación, cancelación y recibo (patrón `WelcomeEmailTemplate`)
+- [x] 2.1 **[Red]** Test: enviar una notificación registra `PENDING`, luego `SENT` si el `NotificationPort` tiene éxito, o `FAILED`+`error_message` si lanza; nunca propaga la excepción; `message`/`recipient` sin datos sensibles (RN-RGPD-04)
+- [x] 2.2 **[Green]** Servicio de notificación que orquesta: registra entrada, envía por `NotificationPort` (@Async), actualiza estado. Plantillas de confirmación, cancelación y recibo (patrón `WelcomeEmailTemplate`)
 
 ## 3. Disparadores en reserva y pago (D1)
 
