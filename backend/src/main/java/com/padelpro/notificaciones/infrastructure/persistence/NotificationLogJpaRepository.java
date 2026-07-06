@@ -1,6 +1,7 @@
 package com.padelpro.notificaciones.infrastructure.persistence;
 
 import com.padelpro.notificaciones.domain.model.NotificationLog;
+import com.padelpro.notificaciones.domain.model.NotificationStatus;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -23,8 +24,9 @@ public interface NotificationLogJpaRepository extends JpaRepository<Notification
      * single retry cycle loads so a large backlog can never exhaust memory in one shot.
      */
     @Query("SELECT n FROM NotificationLog n "
-            + "WHERE n.status = com.padelpro.notificaciones.domain.model.NotificationStatus.FAILED "
+            + "WHERE n.status = :status "
             + "AND n.attempts < :maxAttempts "
             + "ORDER BY n.createdAt ASC")
-    List<NotificationLog> findRetriable(@Param("maxAttempts") int maxAttempts, Pageable pageable);
+    List<NotificationLog> findRetriable(@Param("status") NotificationStatus status,
+                                        @Param("maxAttempts") int maxAttempts, Pageable pageable);
 }
