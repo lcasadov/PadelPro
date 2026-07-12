@@ -205,6 +205,14 @@
                                             <value>COVEREDRATIO</value>
                                             <minimum>0.80</minimum>
                                         </limit>
+                                        <!-- Gate de ramas (change backend-branch-coverage). Fijado a 0.70:
+                                             la cobertura gate-scoped unit-only es 71.66% y el CI (unit+IT)
+                                             la supera, así que 0.70 blinda la mejora sin falsos rojos. -->
+                                        <limit>
+                                            <counter>BRANCH</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.70</minimum>
+                                        </limit>
                                     </limits>
                                 </rule>
                             </rules>

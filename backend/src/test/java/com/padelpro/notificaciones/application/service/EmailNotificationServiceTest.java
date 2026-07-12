@@ -3,12 +3,15 @@ package com.padelpro.notificaciones.application.service;
 import com.padelpro.notificaciones.domain.model.EmailMessage;
 import com.padelpro.notificaciones.domain.model.NotificationLog;
 import com.padelpro.notificaciones.domain.model.NotificationStatus;
+import com.padelpro.notificaciones.domain.model.NotificationType;
+import com.padelpro.notificaciones.domain.model.WelcomeEmail;
 import com.padelpro.notificaciones.domain.port.out.NotificationLogPort;
 import com.padelpro.notificaciones.domain.port.out.NotificationPort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -121,6 +124,110 @@ class EmailNotificationServiceTest {
                 .doesNotContain("tarjeta");
         // The stored error is a sanitized class name, not the raw body or a stack trace.
         assertThat(result.getErrorMessage()).doesNotContain("Importe");
+    }
+
+    // -------------------------------------------------------------------------
+    // additional branches (change backend-branch-coverage)
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("dispatch skips delivery when the PENDING entry cannot even be recorded")
+    void dispatch_skips_when_pending_not_recorded() {
+        final boolean[] attempted = {false};
+        NotificationLogPort throwingPort = new NotificationLogPort() {
+            @Override public NotificationLog save(NotificationLog e) {
+                throw new RuntimeException("db down");
+            }
+            @Override public Optional<NotificationLog> findById(UUID id) { return Optional.empty(); }
+            @Override public List<NotificationLog> findRetriable(int maxAttempts) { return List.of(); }
+        };
+        NotificationPort port = new NotificationPort() {
+            @Override public void sendWelcomeEmail(WelcomeEmail email) { }
+            @Override public void sendEmail(EmailMessage email) { attempted[0] = true; }
+        };
+        EmailNotificationService service = new EmailNotificationService(throwingPort, port);
+
+        assertThatCode(() -> service.dispatch(
+                new EmailMessage("ana@example.com", "s", "b"), 7L, "RESERVATION", "res-1"))
+                .doesNotThrowAnyException();
+        assertThat(attempted[0]).isFalse(); // delivery never attempted
+    }
+
+    @Test
+    @DisplayName("attemptSend swallows a failure to persist the delivery outcome")
+    void attempt_send_swallows_outcome_persistence_error() {
+        NotificationLogPort port = new NotificationLogPort() {
+            @Override public NotificationLog save(NotificationLog e) {
+                if (e.getStatus() == NotificationStatus.PENDING) return e; // first save ok
+                throw new RuntimeException("outcome save failed");          // outcome save fails
+            }
+            @Override public Optional<NotificationLog> findById(UUID id) { return Optional.empty(); }
+            @Override public List<NotificationLog> findRetriable(int maxAttempts) { return List.of(); }
+        };
+        EmailNotificationService service = new EmailNotificationService(port, new NoopNotificationPort());
+
+        assertThatCode(() -> service.dispatch(
+                new EmailMessage("ana@example.com", "s", "b"), 7L, "RESERVATION", "res-1"))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("retryFailed re-attempts a FAILED entry once its backoff window has elapsed")
+    void retry_reattempts_when_backoff_elapsed() {
+        FakeLogPort port = new FakeLogPort();
+        NotificationLog failed = NotificationLog.pending(NotificationType.EMAIL, 7L,
+                "ana@example.com", "s", "b", "RESERVATION", "res-1");
+        failed.markFailed("err", OffsetDateTime.now().minusHours(1)); // FAILED, attempts=1, old attempt
+        port.saved.add(failed);
+        EmailNotificationService service = new EmailNotificationService(
+                port, new NoopNotificationPort(), OffsetDateTime::now);
+
+        int attempted = service.retryFailed();
+
+        assertThat(attempted).isEqualTo(1);
+        assertThat(failed.getStatus()).isEqualTo(NotificationStatus.SENT);
+    }
+
+    @Test
+    @DisplayName("retryFailed skips a FAILED entry still inside its backoff window")
+    void retry_skips_within_backoff() {
+        FakeLogPort port = new FakeLogPort();
+        NotificationLog failed = NotificationLog.pending(NotificationType.EMAIL, 7L,
+                "ana@example.com", "s", "b", "RESERVATION", "res-1");
+        failed.markFailed("err", OffsetDateTime.now()); // attempts=1 → 2 min backoff, not elapsed
+        port.saved.add(failed);
+        EmailNotificationService service = new EmailNotificationService(
+                port, new NoopNotificationPort(), OffsetDateTime::now);
+
+        assertThat(service.retryFailed()).isZero();
+        assertThat(failed.getStatus()).isEqualTo(NotificationStatus.FAILED);
+    }
+
+    @Test
+    @DisplayName("retryFailed re-attempts an entry that was never attempted (no lastAttemptAt)")
+    void retry_reattempts_when_no_prior_attempt() {
+        NotificationLogPort port = new NotificationLogPort() {
+            @Override public NotificationLog save(NotificationLog e) { return e; }
+            @Override public Optional<NotificationLog> findById(UUID id) { return Optional.empty(); }
+            @Override public List<NotificationLog> findRetriable(int maxAttempts) {
+                // lastAttemptAt is null → backoff considered elapsed
+                return List.of(NotificationLog.pending(NotificationType.EMAIL, 7L,
+                        "ana@example.com", "s", "b", "RESERVATION", "res-1"));
+            }
+        };
+        EmailNotificationService service = new EmailNotificationService(port, new NoopNotificationPort());
+
+        assertThat(service.retryFailed()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("maskEmail covers all shapes (RN-RGPD-04)")
+    void mask_email_branches() {
+        assertThat(EmailNotificationService.maskEmail(null)).isEqualTo("<none>");
+        assertThat(EmailNotificationService.maskEmail("  ")).isEqualTo("<none>");
+        assertThat(EmailNotificationService.maskEmail("no-at-symbol")).isEqualTo("***");
+        assertThat(EmailNotificationService.maskEmail("ab@example.com")).isEqualTo("a***@example.com");
+        assertThat(EmailNotificationService.maskEmail("abcd@example.com")).isEqualTo("ab***@example.com");
     }
 
     private static final class NoopNotificationPort implements NotificationPort {

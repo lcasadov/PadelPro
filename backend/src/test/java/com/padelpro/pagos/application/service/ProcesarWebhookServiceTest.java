@@ -193,6 +193,77 @@ class ProcesarWebhookServiceTest {
         verify(auditRecorder).record(eq(PagoAuditActions.PAYMENT_WEBHOOK_INVALID_SIGNATURE), isNull(), any());
     }
 
+    private String rawParams(String json) {
+        return Base64.getEncoder().encodeToString(json.getBytes(StandardCharsets.UTF_8));
+    }
+
+    @Test
+    @DisplayName("Ds_Response ausente → parseResponse null → FAILED + PAYMENT_REJECTED")
+    void missing_ds_response_marks_failed() {
+        credsAvailable();
+        String p = params(ORDER, null, null); // no Ds_Response field at all
+        when(paymentCommandPort.findByRedsysOrderIdForUpdate(ORDER))
+                .thenReturn(Optional.of(payment(PaymentStatus.IN_PROGRESS)));
+        when(paymentCommandPort.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        service.procesar("HMAC_SHA256_V1", p, sign(p));
+
+        ArgumentCaptor<Payment> captor = ArgumentCaptor.forClass(Payment.class);
+        verify(paymentCommandPort).save(captor.capture());
+        assertThat(captor.getValue().getStatus()).isEqualTo(PaymentStatus.FAILED);
+        verify(auditRecorder).record(eq(PagoAuditActions.PAYMENT_REJECTED), isNull(), any());
+    }
+
+    @Test
+    @DisplayName("Ds_Response no numérico → parseResponse null → FAILED")
+    void non_numeric_ds_response_marks_failed() {
+        credsAvailable();
+        String p = params(ORDER, "ABCD", null);
+        when(paymentCommandPort.findByRedsysOrderIdForUpdate(ORDER))
+                .thenReturn(Optional.of(payment(PaymentStatus.IN_PROGRESS)));
+        when(paymentCommandPort.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        service.procesar("HMAC_SHA256_V1", p, sign(p));
+
+        ArgumentCaptor<Payment> captor = ArgumentCaptor.forClass(Payment.class);
+        verify(paymentCommandPort).save(captor.capture());
+        assertThat(captor.getValue().getStatus()).isEqualTo(PaymentStatus.FAILED);
+    }
+
+    @Test
+    @DisplayName("Ds_Order ausente → order null → tratado como firma inválida, sin tocar el pago")
+    void missing_order_treated_as_invalid_signature() {
+        credsAvailable();
+        String p = rawParams("{\"Ds_Response\":\"0000\",\"Ds_Amount\":\"1500\"}");
+
+        service.procesar("HMAC_SHA256_V1", p, "any-signature");
+
+        verify(paymentCommandPort, never()).findByRedsysOrderIdForUpdate(any());
+        verify(paymentCommandPort, never()).save(any());
+        verify(auditRecorder).record(eq(PagoAuditActions.PAYMENT_WEBHOOK_INVALID_SIGNATURE), isNull(), any());
+    }
+
+    @Test
+    @DisplayName("lookup de campos case-insensitive: ds_order/ds_response en minúscula → PAID")
+    void case_insensitive_field_lookup() {
+        credsAvailable();
+        // Redsys field names in a non-canonical case exercise the case-insensitive fallback in text().
+        String json = "{\"ds_order\":\"" + ORDER + "\",\"ds_response\":\"0000\","
+                + "\"Ds_AuthorisationCode\":\"ABC123\",\"Ds_Amount\":\"1500\"}";
+        String p = rawParams(json);
+        when(paymentCommandPort.findByRedsysOrderIdForUpdate(ORDER))
+                .thenReturn(Optional.of(payment(PaymentStatus.IN_PROGRESS)));
+        when(paymentCommandPort.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        // No owner resolvable → the receipt-email event is simply not published (ifPresent).
+        when(reservationCommandPort.findById(RES_ID)).thenReturn(Optional.empty());
+
+        service.procesar("HMAC_SHA256_V1", p, sign(p));
+
+        ArgumentCaptor<Payment> captor = ArgumentCaptor.forClass(Payment.class);
+        verify(paymentCommandPort).save(captor.capture());
+        assertThat(captor.getValue().getStatus()).isEqualTo(PaymentStatus.PAID);
+    }
+
     // =========================================================================
     // MEDIO-2 — idempotencia bajo carrera: bloqueo pesimista de la fila
     // =========================================================================
