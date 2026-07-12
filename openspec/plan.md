@@ -250,7 +250,8 @@ Wave 6  ────────└──── administracion-club  ← Fase 2
 ## Próximas acciones recomendadas
 
 > Estado 2026-07-05: la app está **desplegada y usable** (CI/CD a EC2 ✅, acceso/panel admin ✅). **UI reservas jugador ✅** (#188) + **refresh de sesión ✅** (#186) + **partidas ✅** (#191/#192) + **pago online Redsys ✅** (#194/#195: iniciar/webhook/efectivo, "pagar ahora" activo; gateway en CASH hasta configurar credenciales reales). Change activo: `reservas-ui-jugador` (#184) pendiente de archivar.
-> ⚠️ Pendiente reportado: crear reserva falla en el EC2 (sospecha: falta fila `SystemConfig` en la BD de prod → 500 sin mapear). Diagnóstico en curso.
+> ✅ Resuelto (2026-07-12): crear reserva fallaba en el EC2 por `crypto.randomUUID()` (no existe en HTTP plano / secure-context) — fix en #201/PR #202 (helper `uuid()` con fallback). La sospecha del `SystemConfig` quedó descartada.
+> 🔒 En curso (2026-07-12): endurecimiento de producción — TLS/HTTPS vía Caddy (change `tls-https-ec2`, #203), E2E Playwright (`e2e-smoke-tests`), `auth-otp-telegram` (Wave 2B) y reconciliación de `openapi.yaml`.
 
 1. **`auth-otp-telegram` (Wave 2B)** — pendiente e independiente; habilita confirmación por Telegram y las notificaciones Telegram (la pata email de `notificaciones` ya está completa: `archive/2026-07-06-notificaciones-eventos-email`).
 2. **`notificaciones` — pata Telegram**: publicación en grupo + notificaciones de eventos por Telegram; bloqueada por `auth-otp-telegram`. Follow-ups no bloqueantes en #199 (`@Async` en handlers + retención RGPD de `notification_log`).
