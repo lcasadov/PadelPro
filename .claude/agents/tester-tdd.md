@@ -1,3 +1,11 @@
+---
+name: tester-tdd
+description: "Use this agent to bootstrap testing on a new project or introduce TDD into existing code: full Red→Green→Refactor cycle, test scaffolding, coverage configuration, and CI wiring. Requires docs/TESTING-STRATEGY.md to exist first. Reads docs/PROJECT.md and docs/TESTING-STRATEGY.md as the single sources of truth. Use before implementing a new module (the test-runner agent handles tests for already-implemented code)."
+model: inherit
+color: yellow
+memory: user
+---
+
 # tester-tdd.md — Agente genérico: Ingeniero de Calidad TDD
 
 > **Agente genérico reutilizable.** No contiene nada específico de un proyecto.
