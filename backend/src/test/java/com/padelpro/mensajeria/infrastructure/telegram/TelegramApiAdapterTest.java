@@ -1,6 +1,7 @@
 package com.padelpro.mensajeria.infrastructure.telegram;
 
 import com.padelpro.mensajeria.application.service.TelegramConfigService;
+import com.padelpro.mensajeria.domain.port.out.TelegramSendResult;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -12,6 +13,7 @@ import org.springframework.web.client.RestClient;
 
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
@@ -45,34 +47,40 @@ class TelegramApiAdapterTest {
                 .andExpect(method(HttpMethod.POST))
                 .andRespond(withSuccess());
 
-        adapter.enviarMensaje("123", "hola");
+        TelegramSendResult result = adapter.enviarMensaje("123", "hola");
 
+        assertThat(result.isSent()).isTrue();
         server[0].verify();
     }
 
     @Test
-    @DisplayName("degrades to a no-op (no HTTP call) when no token is configured")
+    @DisplayName("degrades to a SKIPPED result (no HTTP call) when no token is configured")
     void noop_without_token() {
         when(configService.getBotToken()).thenReturn(Optional.empty());
         MockRestServiceServer[] server = new MockRestServiceServer[1];
         TelegramApiAdapter adapter = adapterWith(server);
 
-        adapter.enviarMensaje("123", "hola");
+        TelegramSendResult result = adapter.enviarMensaje("123", "hola");
 
         // No expectations set and none required — verify passes proving no request was made.
+        assertThat(result.isSkipped()).isTrue();
+        assertThat(result.isFailed()).isFalse();
         server[0].verify();
     }
 
     @Test
-    @DisplayName("swallows an HTTP failure — never breaks the business flow")
-    void swallows_http_failure() {
+    @DisplayName("an HTTP failure returns FAILED with a reason — never breaks the business flow")
+    void http_failure_returns_failed() {
         when(configService.getBotToken()).thenReturn(Optional.of("TESTTOKEN"));
         MockRestServiceServer[] server = new MockRestServiceServer[1];
         TelegramApiAdapter adapter = adapterWith(server);
         server[0].expect(requestTo(BASE + "/botTESTTOKEN/sendMessage"))
                 .andRespond(withServerError());
 
-        assertThatCode(() -> adapter.enviarMensaje("123", "hola")).doesNotThrowAnyException();
+        TelegramSendResult[] out = new TelegramSendResult[1];
+        assertThatCode(() -> out[0] = adapter.enviarMensaje("123", "hola")).doesNotThrowAnyException();
+        assertThat(out[0].isFailed()).isTrue();
+        assertThat(out[0].error()).isNotBlank();
     }
 
     @Test
@@ -81,7 +89,8 @@ class TelegramApiAdapterTest {
         lenient().when(configService.getBotToken()).thenReturn(Optional.empty());
         MockRestServiceServer[] server = new MockRestServiceServer[1];
         TelegramApiAdapter adapter = adapterWith(server);
-        adapter.enviarMensaje("456", "otro");
+        TelegramSendResult result = adapter.enviarMensaje("456", "otro");
+        assertThat(result.isSkipped()).isTrue();
         server[0].verify();
     }
 }

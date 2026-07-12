@@ -2,6 +2,7 @@ package com.padelpro.notificaciones.infrastructure.persistence;
 
 import com.padelpro.notificaciones.domain.model.NotificationLog;
 import com.padelpro.notificaciones.domain.model.NotificationStatus;
+import com.padelpro.notificaciones.domain.model.NotificationType;
 import com.padelpro.notificaciones.domain.port.out.NotificationLogPort;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
@@ -38,7 +39,8 @@ public class NotificationLogAdapter implements NotificationLogPort {
 
     @Override
     public List<NotificationLog> findRetriable(int maxAttempts) {
-        return repository.findRetriable(NotificationStatus.FAILED, maxAttempts,
+        // Email-only: Telegram FAILED entries are audit-only and must not be re-sent via SMTP.
+        return repository.findRetriable(NotificationStatus.FAILED, NotificationType.EMAIL, maxAttempts,
                 PageRequest.of(0, RETRY_BATCH_SIZE));
     }
 }

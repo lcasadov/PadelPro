@@ -1,6 +1,9 @@
 package com.padelpro.notificaciones.infrastructure.config;
 
+import com.padelpro.auth.domain.port.out.SystemConfigRepositoryPort;
+import com.padelpro.mensajeria.domain.port.out.TelegramPort;
 import com.padelpro.notificaciones.application.service.EmailNotificationService;
+import com.padelpro.notificaciones.application.service.TelegramNotificationService;
 import com.padelpro.notificaciones.domain.port.out.NotificationLogPort;
 import com.padelpro.notificaciones.domain.port.out.NotificationPort;
 import org.springframework.context.annotation.Bean;
@@ -21,5 +24,14 @@ public class NotificacionesConfig {
     public EmailNotificationService emailNotificationService(NotificationLogPort notificationLogPort,
                                                              NotificationPort notificationPort) {
         return new EmailNotificationService(notificationLogPort, notificationPort);
+    }
+
+    @Bean
+    public TelegramNotificationService telegramNotificationService(
+            NotificationLogPort notificationLogPort,
+            TelegramPort telegramPort,
+            SystemConfigRepositoryPort systemConfigRepositoryPort) {
+        return new TelegramNotificationService(notificationLogPort, telegramPort,
+                systemConfigRepositoryPort);
     }
 }

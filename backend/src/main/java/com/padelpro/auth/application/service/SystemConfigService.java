@@ -82,6 +82,12 @@ public class SystemConfigService {
             config.setTelegramWebhookSecret(encryptionService.encrypt(request.telegramWebhookSecret()));
         }
 
+        // notificaciones-telegram (D2): the group chat id is not a secret — stored in plain text.
+        // Optional on update: omitting it (null/blank) keeps the stored value.
+        if (request.telegramGroupId() != null && !request.telegramGroupId().isBlank()) {
+            config.setTelegramGroupId(request.telegramGroupId());
+        }
+
         if (request.redsysMerchantId() != null && !request.redsysMerchantId().isBlank()) {
             config.setRedsysMerchantId(encryptionService.encrypt(request.redsysMerchantId()));
         }

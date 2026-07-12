@@ -152,6 +152,37 @@ class SystemConfigServiceTest {
     }
 
     @Test
+    @DisplayName("notificaciones-telegram: telegram_group_id is stored in plain text (not encrypted)")
+    void should_store_telegram_group_id_in_plain_text() {
+        // Arrange
+        SystemConfig existingConfig = SystemConfig.builder()
+                .id(1L)
+                .clubName("Club")
+                .clubDescription("Desc")
+                .pistaState(PistaState.ACTIVA)
+                .paymentGateway(PaymentGateway.CASH)
+                .maxParticipantsPerPista(4)
+                .updatedAt(OffsetDateTime.now())
+                .build();
+
+        UpdateSystemConfigRequest request = new UpdateSystemConfigRequest(
+                "Club", "Desc", PistaState.ACTIVA, PaymentGateway.CASH,
+                null, null, null, 4, null, null, null, "-100999888");
+
+        when(repositoryPort.findById(1L)).thenReturn(java.util.Optional.of(existingConfig));
+        when(repositoryPort.save(org.mockito.ArgumentMatchers.any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        // Act
+        configService.updateConfig(request);
+
+        // Assert — the group id is persisted as-is (a chat id is not a secret, so no encryption)
+        assertThat(existingConfig.getTelegramGroupId()).isEqualTo("-100999888");
+        org.mockito.Mockito.verify(encryptionService, org.mockito.Mockito.never())
+                .encrypt("-100999888");
+    }
+
+    @Test
     @DisplayName("2.6: should not expose secrets when they are not configured")
     void should_not_expose_secrets_when_not_configured() {
         // Arrange
