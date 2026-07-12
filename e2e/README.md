@@ -40,6 +40,11 @@ docker compose down -v       # destruye la BD de prueba
   (`/api/reservas` solo exige autenticación, así que el ADMIN puede reservar).
 - **Fecha futura:** el smoke reserva para *mañana* porque el backend rechaza
   franjas en el pasado.
+- **Re-ejecutable sin resetear la BD:** el test crea una reserva real; para poder
+  correrlo varias veces seguidas sobre la misma BD, prueba franjas sucesivas y
+  salta el `409` ("La franja se acaba de ocupar") hasta encontrar una libre. Si el
+  día se llena (~15 slots), resetea con `docker compose down -v`. En CI la BD es
+  fresca y confirma al primer intento.
 - **Navegación por UI, no `page.goto`:** el access token vive solo en memoria
   (RN-AUTH-09); una recarga completa cerraría la sesión. El test navega con los
   controles de la app (routing cliente).

@@ -74,8 +74,11 @@ services:
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
       interval: 10s
-      timeout: 5s
-      retries: 5
+      timeout: 10s
+      retries: 10
+      # Spring Boot tarda en arrancar: durante start_period los fallos NO cuentan ni
+      # marcan unhealthy, evitando que el frontend (depends_on: healthy) no arranque.
+      start_period: 40s
     networks:
       - padelpro-network
     restart: unless-stopped
@@ -97,10 +100,16 @@ services:
       backend:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O- http://localhost:5173 > /dev/null 2>&1 || exit 1"]
+      # Usar 127.0.0.1 (IPv4) y NO localhost: dentro del contenedor localhost resuelve
+      # a ::1 (IPv6) pero `vite preview` bindea solo IPv4 (0.0.0.0) → con localhost el
+      # wget daba "connection refused" y el contenedor quedaba siempre unhealthy.
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:5173/ || exit 1"]
       interval: 10s
-      timeout: 5s
-      retries: 5
+      timeout: 10s
+      retries: 10
+      # `vite preview` tarda unos segundos en atender; sin start_period el healthcheck
+      # marcaba unhealthy de forma intermitente en local.
+      start_period: 20s
     networks:
       - padelpro-network
     restart: unless-stopped
