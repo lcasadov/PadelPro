@@ -76,7 +76,23 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Levantar el stack real (frontend build + backend + postgres)
-        run: docker compose up -d --build --wait
+        run: docker compose up -d --build
+
+      - name: Esperar a que el stack esté listo (backend + frontend)
+        run: |
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:8080/actuator/health >/dev/null 2>&1 \
+               && curl -sf http://localhost:5173/ >/dev/null 2>&1; then
+              echo "Stack listo tras $((i*5))s"
+              exit 0
+            fi
+            echo "Esperando stack... intento $i/60"
+            sleep 5
+          done
+          echo "::error::Timeout esperando el stack (backend/frontend)"
+          docker compose ps
+          docker compose logs --tail 120
+          exit 1
 
       - name: Configurar Node 20 + caché npm
         uses: actions/setup-node@v4
@@ -107,9 +123,11 @@ jobs:
           path: e2e/playwright-report/
           if-no-files-found: ignore
 
-      - name: Logs del backend (si falla)
+      - name: Estado y logs del stack (si falla)
         if: failure()
-        run: docker compose logs backend --tail 100
+        run: |
+          docker compose ps
+          docker compose logs --tail 120
 
       - name: Derribar el stack
         if: always()
