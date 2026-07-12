@@ -114,7 +114,7 @@ Los flujos E2E cubren únicamente los tres casos de uso principales (CU-01, CU-0
 
 ## 3. Stack de Testing por Capa
 
-### 3.1 Backend — Java 21 + Spring Boot 3.2
+### 3.1 Backend — Java 17 + Spring Boot 3.2
 
 #### Tests unitarios
 
@@ -496,6 +496,20 @@ export default defineConfig({
 | Tests de integración con solapamiento | **Testcontainers PostgreSQL 15** | Todo lo que toque `reservations` — OBLIGATORIO |
 | Tests de integración con Flyway | **Testcontainers PostgreSQL 15** | Verificar que las migraciones se aplican correctamente |
 | Tests de integración de controllers | **Testcontainers PostgreSQL 15** | MockMvc + BD real = máxima fidelidad |
+
+#### Limitación conocida — Docker Desktop 29 en local (Testcontainers)
+
+> **Los tests de integración (`*IntegrationTest`, `*IT`, `*E2ETest` que extienden `PostgresIntegrationTest`) fallan al arrancar en local sobre Docker Desktop 29.x** (Windows): `docker-java` (usado por Testcontainers 1.21.x) devuelve `HTTP 400` contra la API del daemon 29.2.1. Es una **incompatibilidad de entorno local, NO un fallo del código**.
+
+**Por qué no se "arregla" migrando a una base portable (H2):** los IT que tocan `reservations` dependen del `EXCLUDE USING gist` de PostgreSQL (anti-solapamiento) y de las migraciones Flyway con extensiones PG — **H2 no puede ejecutarlos** (ver la DECISIÓN CRÍTICA arriba). Migrar esos IT a H2 perdería la fidelidad que justifica su existencia. Por eso se mantienen en Testcontainers.
+
+**Fuente de verdad = CI.** El job `build-and-test` (GitHub Actions, `ubuntu-latest`) ejecuta el `mvn verify` completo con un Docker compatible; **todos los IT pasan en CI**. La verde de CI es la autoritativa para los IT.
+
+**Flujo local recomendado:**
+- Ejecutar solo la capa unitaria (rápida, sin Docker):
+  `mvn -q test "-Dtest=!*IntegrationTest,!*E2ETest,!*IT"`
+- Delegar los IT a CI (push / PR).
+- Si necesitas correr los IT en local: usar un Docker compatible con Testcontainers 1.21.x (p. ej. una versión de Docker Desktop anterior a la 29, un daemon Linux remoto vía `DOCKER_HOST`, o fijar `DOCKER_API_VERSION` a una versión soportada). Un bump de Testcontainers que soporte Docker 29 resolvería el problema cuando esté disponible/verificado.
 
 #### `application-test.yml` — H2 (tests unitarios de repositorios simples)
 
