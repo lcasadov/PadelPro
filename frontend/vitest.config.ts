@@ -11,7 +11,9 @@ export default defineConfig({
     testTimeout: 15000,
     coverage: {
       provider: 'v8',
-      thresholds: { lines: 75, branches: 75 },
+      // Gate de cobertura global ≥80% (alineado con el gate JaCoCo 0.80 del backend).
+      // Estado actual holgado: ~94% líneas / ~82% ramas / ~84% funcs.
+      thresholds: { lines: 80, branches: 80, functions: 80, statements: 80 },
     },
   },
 });
