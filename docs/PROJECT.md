@@ -123,7 +123,7 @@
 
 | Capa | Tecnología | Versión |
 |---|---|---|
-| Backend | Java + Spring Boot (arquitectura hexagonal Maven multi-módulo) | Java 21, Spring Boot 3.2 |
+| Backend | Java + Spring Boot (arquitectura hexagonal Maven multi-módulo) | Java 17, Spring Boot 3.2 |
 | Frontend | React + Vite + TypeScript | React 18 |
 | Base de datos | PostgreSQL + Flyway | PostgreSQL 15 |
 | Infra local | Docker Compose | servicios `db`, `backend`, `frontend` |

@@ -15,6 +15,9 @@ spring:
     enabled: false
 
 app:
+  idempotency:
+    purge:
+      enabled: false   # deterministic tests — purge logic is exercised directly on the service
   notifications:
     retry:
       enabled: false   # deterministic tests — retry logic is exercised directly on the service

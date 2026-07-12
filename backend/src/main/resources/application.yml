@@ -23,6 +23,13 @@ spring:
             enable: ${MAIL_SMTP_STARTTLS:false}
 
 app:
+  idempotency:
+    # Retention window for idempotency_keys rows (ISO-8601 duration). An Idempotency-Key only guards
+    # short-window retries of POST /api/reservas, so keys older than this are purged (V9 deferred-job
+    # note). 24h comfortably covers legitimate client retries while capping unbounded table growth.
+    ttl: ${IDEMPOTENCY_TTL:PT24H}
+    purge:
+      enabled: ${IDEMPOTENCY_PURGE_ENABLED:true}
   mail:
     from: ${MAIL_FROM:no-reply@padelpro.local}
   jwt:
