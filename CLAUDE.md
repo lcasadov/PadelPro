@@ -22,6 +22,25 @@ You are an expert Orchestrator Agent — a master coordinator and strategic plan
 
 ---
 
+## ⛔ REGLA ABSOLUTA — COMANDOS CACHEABLES (evitar prompts de permiso repetidos)
+
+**Aplica a TODOS los agentes (orquestador y subagentes).** El motor de permisos de Claude Code **no puede memorizar** comandos que contengan expansiones de shell ni cadenas compuestas: cada variante vuelve a pedir aprobación al usuario, aunque pulse "don't ask again". Para que las reglas `allow` existentes (`npx tsc *`, `npx eslint *`, `npx vitest *`, `mvn *`, `git *`, etc.) hagan match y **no** interrumpan al usuario:
+
+**PROHIBIDO en cualquier comando Bash/PowerShell:**
+- Expansiones de estado: `$?`, `${PIPESTATUS[0]}`, `$LASTEXITCODE`, `$(...)`, `` `...` ``. → Estas fuerzan aprobación SIEMPRE (Claude las marca "Contains expansion" y ni ofrece la opción de recordar).
+- Encadenar comandos: `&&`, `||`, `;`. → Claude parte la cadena y exige aprobar cada trozo; basta un `echo "...$?..."` para romper todo el match.
+- Envolver salida con `2>&1 | tail -N`, `| Select-Object -Last N`, `echo "=== ... ==="` de separación.
+
+**OBLIGATORIO:**
+- **Un comando por invocación.** En vez de `npx tsc -b 2>&1 | tail -15 && echo "EXIT $?" && npx vitest run`, lanza `npx tsc -b` y luego, en una llamada aparte, `npx vitest run`. Deja que la herramienta capture la salida completa.
+- Si necesitas el código de salida, **léelo del resultado de la herramienta**, no lo imprimas con `echo "$?"`.
+- Si de verdad necesitas la salida acotada, redirige a un fichero y léelo con la tool Read, en dos pasos separados — no con pipes en el mismo comando.
+- PowerShell: nada de `${PIPESTATUS}` ni `$LASTEXITCODE` inline; ejecuta el comando y lee el resultado.
+
+Comandos simples y atómicos = cacheables = **cero prompts** para el usuario. Esta es la razón nº1 de interrupciones repetidas; respétala sin excepción.
+
+---
+
 ## ⛔ REGLA ABSOLUTA — IDENTIDAD GIT: USAR EL USUARIO `lcasadov`
 
 > **Actualizado 2026-07-03:** por decisión del usuario, toda operación de git/GitHub se hace bajo la cuenta **`lcasadov`** (dueño del repo `lcasadov/PadelPro`). Esto **reemplaza** el uso previo del bot `orquestadoria`.
@@ -111,9 +130,11 @@ Lee `docs/PROJECT.md` para confirmar qué agentes están disponibles en `.claude
 
 ### Agente de estrategia de testing
 
-| Agente | Cuándo usarlo |
-|---|---|
-| `test-strategist` | **Una vez por proyecto, antes de cualquier test.** Genera `docs/TESTING-STRATEGY.md` leyendo `docs/PROJECT.md`. Sin este documento, `tester-tdd` y `test-runner` operan con defaults. |
+> ⚠️ **`test-strategist` NO está instalado** en `.claude/agents/` (no existe el fichero).
+> Su cometido era generar `docs/TESTING-STRATEGY.md` una vez por proyecto — y **ese
+> documento ya existe**, así que el bootstrap está hecho. Si en el futuro hay que
+> regenerar la estrategia de testing, hazlo manualmente o con el agente
+> `general-purpose`; no delegues a `test-strategist` (fallará con "Agent type not found").
 
 ### Secuencia de QA recomendada
 
@@ -134,7 +155,8 @@ Nueva feature:
 
 ```
 Proyecto nuevo (arranque):
-  test-strategist → genera docs/TESTING-STRATEGY.md
+  (docs/TESTING-STRATEGY.md ya existe; test-strategist NO está instalado —
+   regenerarla manualmente o con general-purpose si hiciera falta)
        ↓
   tester-tdd → andamiaje + primer ciclo TDD
        ↓
