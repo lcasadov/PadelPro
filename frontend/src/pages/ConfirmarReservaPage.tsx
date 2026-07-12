@@ -13,8 +13,9 @@
 //    mapeo de error lee el contrato real (`error` como código, `details[0]` como
 //    detalle); el genérico solo para 5xx sin código / error de red.
 //
-// Idempotency-Key (D2): se genera con crypto.randomUUID() por intento. Se reutiliza
-// en reintentos de red del mismo envío (misma firma de formulario) y se regenera si
+// Idempotency-Key (D2): se genera con `uuid()` por intento (crypto.randomUUID con
+// fallback para contextos no seguros / HTTP — ver utils/uuid). Se reutiliza en
+// reintentos de red del mismo envío (misma firma de formulario) y se regenera si
 // el usuario cambia los datos (fecha/hora/duración/participantes).
 import { useMemo, useRef, useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
@@ -34,6 +35,7 @@ import {
   participanteCompleto,
 } from '../components/participanteModel';
 import { reservasPaths } from './reservasPaths';
+import { uuid } from '../utils/uuid';
 import './pages.css';
 import styles from './ConfirmarReservaPage.module.css';
 
@@ -125,7 +127,7 @@ export function ConfirmarReservaPage() {
 
   function idempotencyKey(): string {
     if (!idemRef.current || idemRef.current.sig !== signature) {
-      idemRef.current = { sig: signature, key: crypto.randomUUID() };
+      idemRef.current = { sig: signature, key: uuid() };
     }
     return idemRef.current.key;
   }
