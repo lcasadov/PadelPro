@@ -29,32 +29,55 @@ test('login y crear reserva llega a la confirmación', async ({ page }) => {
 
   // Elegir MAÑANA: el backend rechaza reservas en el pasado ("la fecha y hora deben
   // estar en el futuro"), así que las franjas de hoy ya vencidas fallarían. Con mañana,
-  // todas las franjas son futuras y reservables.
+  // todas las franjas son futuras.
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
-  const yyyyMmDd = tomorrow.toISOString().slice(0, 10);
-  await page.locator('#disp-fecha').fill(yyyyMmDd);
+  const fecha = tomorrow.toISOString().slice(0, 10);
 
-  // Esperar a que cargue la lista (o el estado vacío). El botón "Reservar HH:MM"
-  // solo aparece en tramos creables.
-  const reservarBtn = page.getByRole('button', { name: /^Reservar \d{2}:\d{2}$/ }).first();
-  await expect(
-    reservarBtn,
-    'No hay ninguna franja reservable para hoy: revisa el seed de SystemConfig/disponibilidad en el stack de prueba.'
-  ).toBeVisible();
-  await reservarBtn.click();
+  // 3) Reservar la primera franja LIBRE, tolerando 409.
+  //    El test crea una reserva REAL, así que en una BD reutilizada (local, sin resetear)
+  //    las primeras franjas pueden estar ya ocupadas y el backend responde 409
+  //    ("La franja se acaba de ocupar", el gist anti-solape es la autoridad aunque la
+  //    disponibilidad marque la franja como creable). Se prueban slots sucesivos hasta
+  //    que uno confirme. En CI la BD es fresca y confirma al primer intento.
+  const MAX_INTENTOS = 15; // ~slots de un día
+  let reservado = false;
 
-  // 3) Confirmar la reserva
-  await expect(page).toHaveURL(/\/reservas\/confirmar/);
-  const confirmarBtn = page.getByRole('button', { name: /^Confirmar reserva$/ });
-  await expect(confirmarBtn).toBeVisible();
-  await confirmarBtn.click();
+  for (let i = 0; i < MAX_INTENTOS && !reservado; i++) {
+    // (Re)fijar la fecha a mañana: volver de un conflicto reinicia el selector a hoy.
+    await page.locator('#disp-fecha').fill(fecha);
 
-  // 4) Verificar la pantalla de éxito (reserva pendiente de confirmación por el club).
-  //    Si el journey se rompe (p. ej. estilo #201), aquí aparecería el error genérico
-  //    "No se pudo completar la reserva" y el test fallaría con traza.
-  await expect(
-    page.getByRole('heading', { name: /Reserva pendiente de confirmaci/i })
-  ).toBeVisible();
-  await expect(page.getByText(/No se pudo completar la reserva/i)).toHaveCount(0);
+    const botones = page.getByRole('button', { name: /^Reservar \d{2}:\d{2}$/ });
+    await expect(
+      botones.first(),
+      'No hay franjas reservables para mañana (¿día lleno? resetea la BD: docker compose down -v).'
+    ).toBeVisible();
+
+    if (i >= (await botones.count())) break; // no quedan franjas por probar
+    await botones.nth(i).click();
+
+    // Confirmar
+    await expect(page).toHaveURL(/\/reservas\/confirmar/);
+    await page.getByRole('button', { name: /^Confirmar reserva$/ }).click();
+
+    // Resultado: éxito o conflicto (franja ya ocupada). Si el journey se rompe
+    // (estilo #201) aparecería el error genérico y ninguno de los dos → timeout claro.
+    const exito = page.getByRole('heading', { name: /Reserva pendiente de confirmaci/i });
+    const conflicto = page.getByRole('heading', { name: /La franja se acaba de ocupar/i });
+    await expect(exito.or(conflicto)).toBeVisible();
+    await expect(page.getByText(/No se pudo completar la reserva/i)).toHaveCount(0);
+
+    if (await exito.isVisible()) {
+      reservado = true;
+    } else {
+      // Franja ocupada: volver a disponibilidad y probar la siguiente.
+      await page.getByRole('button', { name: /Volver a buscar disponibilidad/i }).click();
+      await expect(page).toHaveURL(/\/reservas\/disponibilidad/);
+    }
+  }
+
+  expect(
+    reservado,
+    'No se pudo crear la reserva tras probar varias franjas (¿día lleno? resetea la BD: docker compose down -v).'
+  ).toBe(true);
 });
