@@ -316,67 +316,58 @@ block-beta
 
 Los tres casos de uso principales del sistema son los flujos críticos que cubren el ciclo completo de vida de una reserva: su **creación**, la posibilidad de que otros usuarios se **incorporen** a ella y su **pago**. Estos tres flujos están clasificados con cobertura de pruebas obligatoria del 100%.
 
-```plantuml
-@startuml DiagramaGeneralCasosDeUso
-title PadelPro – Diagrama General de Casos de Uso
+```mermaid
+graph LR
+    U(["👤 Usuario Registrado"]):::actor
+    UC(["👤 Usuario Casual<br/>(sin cuenta)"]):::actor
+    A(["👤 Administrador"]):::actor
+    PP(["💳 Pasarela de Pago"]):::actor
+    BOT(["🤖 Bot WhatsApp/<br/>Telegram"]):::actor
 
-left to right direction
-skinparam packageStyle rectangle
-skinparam actorStyle awesome
+    subgraph CU01["CU-01: Nueva Reserva"]
+        CU01a(["Consultar disponibilidad<br/>de la pista"])
+        CU01b(["Crear reserva"])
+        CU01c(["Cancelar reserva"])
+        CU01d(["Añadir participantes"])
+        CU01e(["Notificar al grupo<br/>WhatsApp/Telegram"])
+    end
 
-actor "Usuario Registrado" as U
-actor "Usuario Casual\n(sin cuenta)" as UC
-actor "Administrador" as A
-actor "Pasarela de Pago" as PP
-actor "Bot WhatsApp/\nTelegram" as BOT
+    subgraph CU02["CU-02: Incorporarse a Reserva"]
+        CU02a(["Ver reservas incompletas"])
+        CU02b(["Unirse a reserva<br/>(vía Web)"])
+        CU02c(["Unirse a reserva<br/>(vía WhatsApp/Telegram)"])
+    end
 
-rectangle "PadelPro – Sistema de Gestión de Reservas" {
+    subgraph CU03["CU-03: Pago de Reserva"]
+        CU03a(["Pagar con link online"])
+        CU03b(["Registrar pago<br/>en efectivo"])
+        CU03c(["Consultar histórico<br/>de pagos"])
+    end
 
-  rectangle "CU-01: Nueva Reserva" {
-    usecase "Consultar disponibilidad\nde la pista" as CU01a
-    usecase "Crear reserva" as CU01b
-    usecase "Cancelar reserva" as CU01c
-    usecase "Añadir participantes" as CU01d
-    usecase "Notificar al grupo\nWhatsApp/Telegram" as CU01e
-  }
+    U --> CU01a
+    U --> CU01b
+    U --> CU01c
+    U --> CU01d
+    CU01b -.->|include| CU01e
+    CU01d -.->|include| CU01e
+    CU01c -.->|include| CU01e
 
-  rectangle "CU-02: Incorporarse a Reserva" {
-    usecase "Ver reservas incompletas" as CU02a
-    usecase "Unirse a reserva\n(vía Web)" as CU02b
-    usecase "Unirse a reserva\n(vía WhatsApp/Telegram)" as CU02c
-  }
+    U --> CU02a
+    U --> CU02b
+    UC --> CU02c
+    CU02b -.->|include| CU01e
+    CU02c --> BOT
 
-  rectangle "CU-03: Pago de Reserva" {
-    usecase "Pagar con link online" as CU03a
-    usecase "Registrar pago\nen efectivo" as CU03b
-    usecase "Consultar histórico\nde pagos" as CU03c
-  }
-}
+    U --> CU03a
+    U --> CU03c
+    CU03a --> PP
+    A --> CU03b
 
-U --> CU01a
-U --> CU01b
-U --> CU01c
-U --> CU01d
-CU01b ..> CU01e : <<include>>
-CU01d ..> CU01e : <<include>>
-CU01c ..> CU01e : <<include>>
+    BOT --> CU01e
+    A --> CU01b
+    A --> CU01c
 
-U --> CU02a
-U --> CU02b
-UC --> CU02c
-CU02b ..> CU01e : <<include>>
-CU02c --> BOT
-
-U --> CU03a
-U --> CU03c
-CU03a --> PP
-A --> CU03b
-
-BOT --> CU01e
-A --> CU01b
-A --> CU01c
-
-@enduml
+    classDef actor fill:#2C3E50,stroke:#1A252F,color:#fff;
 ```
 
 ---
@@ -461,118 +452,96 @@ A --> CU01c
 
 **Flujo Web — Crear y Cancelar Reserva**
 
-```plantuml
-@startuml CU-01-Web
-title CU-01a: Nueva Reserva (Web)
-scale 0.85
+```mermaid
+sequenceDiagram
+    actor U as Usuario
+    participant W as Web (React)
+    participant API as API (Spring Boot)
+    participant SR as Reservas Service
+    participant DB as DB (Postgres)
+    participant BOT as Bot Msg
 
-skinparam sequenceArrowThickness 1
-skinparam sequenceParticipantFontSize 12
-skinparam sequenceMessageFontSize 11
-skinparam roundcorner 5
-skinparam sequenceParticipantBackgroundColor #ECF0F1
-skinparam sequenceParticipantBorderColor #2C3E50
+    Note over U,BOT: Consultar disponibilidad
+    U->>W: Accede a Nueva Reserva
+    W->>API: GET /reservas/disponibilidad?fecha=X
+    API->>SR: consultarDisponibilidad(fecha)
+    SR->>DB: SELECT franjas WHERE fecha=?
+    DB-->>SR: franjas ocupadas
+    SR-->>API: mapa disponibilidad
+    API-->>W: franjas libres/ocupadas
+    W-->>U: Calendario interactivo
 
-actor Usuario as U
-participant "Web\n(React)" as W
-participant "API\n(Spring Boot)" as API
-participant "Reservas\nService" as SR
-database "DB\n(Postgres)" as DB
-participant "Bot\nMsg" as BOT
+    Note over U,BOT: Crear reserva
+    U->>W: Selecciona fecha, hora y duración
+    U->>W: Añade participantes (máx 4)
+    U->>W: Confirma reserva
+    W->>API: POST /reservas {titular, fecha, hora, duración, participantes}
+    API->>SR: validarYCrear(dto)
 
-== Consultar disponibilidad ==
-U -> W: Accede a Nueva Reserva
-W -> API: GET /reservas/disponibilidad?fecha=X
-API -> SR: consultarDisponibilidad(fecha)
-SR -> DB: SELECT franjas WHERE fecha=?
-DB --> SR: franjas ocupadas
-SR --> API: mapa disponibilidad
-API --> W: franjas libres/ocupadas
-W --> U: Calendario interactivo
+    alt Franja libre
+        SR->>DB: INSERT reserva (estado=CONFIRMADA)
+        DB-->>SR: reserva_id
+        SR-->>API: ReservaDTO
+        API->>BOT: notificarNuevaReserva(dto)
+        BOT->>U: [Grupo] "18:30-20:00 🎾X 🎾X 🎾 🎾"
+        API-->>W: 201 Created
+        W-->>U: Reserva confirmada
+    else Franja ocupada [FA-01]
+        SR-->>API: ConflictoException
+        API-->>W: 409 Conflict
+        W-->>U: Aviso + franjas alternativas
+    end
 
-== Crear reserva ==
-U -> W: Selecciona fecha, hora y duración
-U -> W: Añade participantes (máx 4)
-U -> W: Confirma reserva
-W -> API: POST /reservas {titular, fecha, hora, duración, participantes}
-API -> SR: validarYCrear(dto)
+    Note over U,BOT: Cancelar reserva
+    U->>W: Solicita cancelación
+    W->>API: DELETE /reservas/{id}
+    API->>SR: cancelar(reservaId, userId)
 
-alt Franja libre
-    SR -> DB: INSERT reserva (estado=CONFIRMADA)
-    DB --> SR: reserva_id
-    SR --> API: ReservaDTO
-    API -> BOT: notificarNuevaReserva(dto)
-    BOT -> U: [Grupo] "18:30-20:00 🎾X 🎾X 🎾 🎾"
-    API --> W: 201 Created
-    W --> U: Reserva confirmada
-else Franja ocupada [FA-01]
-    SR --> API: ConflictoException
-    API --> W: 409 Conflict
-    W --> U: Aviso + franjas alternativas
-end
-
-== Cancelar reserva ==
-U -> W: Solicita cancelación
-W -> API: DELETE /reservas/{id}
-API -> SR: cancelar(reservaId, userId)
-
-alt Dentro del periodo permitido [FA-03]
-    SR -> DB: UPDATE estado=CANCELADA
-    SR -> DB: UPDATE pago=ANULADO
-    API -> BOT: notificarCancelacion(dto)
-    BOT -> U: [Grupo] Aviso cancelación
-    API --> W: 200 OK
-    W --> U: Cancelación confirmada
-else Fuera del periodo [FA-04]
-    SR -> DB: UPDATE estado=PENDIENTE_PAGO
-    API --> W: 200 OK (pago pendiente)
-    W --> U: Aviso pago no cancelado
-end
-@enduml
+    alt Dentro del periodo permitido [FA-03]
+        SR->>DB: UPDATE estado=CANCELADA
+        SR->>DB: UPDATE pago=ANULADO
+        API->>BOT: notificarCancelacion(dto)
+        BOT->>U: [Grupo] Aviso cancelación
+        API-->>W: 200 OK
+        W-->>U: Cancelación confirmada
+    else Fuera del periodo [FA-04]
+        SR->>DB: UPDATE estado=PENDIENTE_PAGO
+        API-->>W: 200 OK (pago pendiente)
+        W-->>U: Aviso pago no cancelado
+    end
 ```
 
 **Flujo WhatsApp/Telegram — Reserva con OTP (Flujo Crítico)**
 
-```plantuml
-@startuml CU-01-WhatsApp
-title CU-01b: Nueva Reserva (WhatsApp/Telegram)
-scale 0.85
+```mermaid
+sequenceDiagram
+    actor U as Usuario
+    participant G as Grupo WA/TG
+    participant BOT as Bot Msg
+    participant API as API (Spring Boot)
+    participant SR as Reservas Service
+    participant DB as DB (Postgres)
 
-skinparam sequenceArrowThickness 1
-skinparam sequenceParticipantFontSize 12
-skinparam sequenceMessageFontSize 11
-skinparam roundcorner 5
-skinparam sequenceParticipantBackgroundColor #ECF0F1
-skinparam sequenceParticipantBorderColor #2C3E50
+    U->>G: "reserva de pista DD/MM/AA HH:MM duración"
+    G->>BOT: Mensaje recibido
+    BOT->>API: POST /reservas/whatsapp {tel, fecha, hora, dur}
+    API->>SR: validar(dto)
+    SR->>DB: SELECT disponibilidad
+    DB-->>SR: franja libre
 
-actor Usuario as U
-participant "Grupo\nWA/TG" as G
-participant "Bot\nMsg" as BOT
-participant "API\n(Spring Boot)" as API
-participant "Reservas\nService" as SR
-database "DB\n(Postgres)" as DB
+    SR-->>API: disponible=true
+    API->>BOT: Generar y enviar OTP
+    BOT->>U: [WA personal] "Código: XXXX"
 
-U -> G: "reserva de pista DD/MM/AA HH:MM duración"
-G -> BOT: Mensaje recibido
-BOT -> API: POST /reservas/whatsapp {tel, fecha, hora, dur}
-API -> SR: validar(dto)
-SR -> DB: SELECT disponibilidad
-DB --> SR: franja libre
-
-SR --> API: disponible=true
-API -> BOT: Generar y enviar OTP
-BOT -> U: [WA personal] "Código: XXXX"
-
-U -> G: Responde con OTP
-G -> BOT: OTP recibido
-BOT -> API: POST /reservas/whatsapp/confirmar {tel, otp}
-API -> SR: confirmar(tel, otp)
-SR -> DB: INSERT reserva (estado=CONFIRMADA)
-DB --> SR: OK
-SR --> API: ReservaDTO
-API -> BOT: publicar en grupo
-BOT -> G: "DD/MM HH:MM 🎾X 🎾X 🎾 🎾"
-@enduml
+    U->>G: Responde con OTP
+    G->>BOT: OTP recibido
+    BOT->>API: POST /reservas/whatsapp/confirmar {tel, otp}
+    API->>SR: confirmar(tel, otp)
+    SR->>DB: INSERT reserva (estado=CONFIRMADA)
+    DB-->>SR: OK
+    SR-->>API: ReservaDTO
+    API->>BOT: publicar en grupo
+    BOT->>G: "DD/MM HH:MM 🎾X 🎾X 🎾 🎾"
 ```
 
 ---
@@ -649,95 +618,73 @@ BOT -> G: "DD/MM HH:MM 🎾X 🎾X 🎾 🎾"
 
 **Flujo Web — Unirse a una reserva con hueco**
 
-```plantuml
-@startuml CU-02-Web
-title CU-02a: Incorporarse (Web)
-scale 0.85
+```mermaid
+sequenceDiagram
+    actor U as Usuario
+    participant W as Web (React)
+    participant API as API (Spring Boot)
+    participant SR as Reservas Service
+    participant DB as DB (Postgres)
+    participant BOT as Bot Msg
 
-skinparam sequenceArrowThickness 1
-skinparam sequenceParticipantFontSize 12
-skinparam sequenceMessageFontSize 11
-skinparam roundcorner 5
-skinparam sequenceParticipantBackgroundColor #ECF0F1
-skinparam sequenceParticipantBorderColor #2C3E50
+    U->>W: Accede a "Incluirse en reserva"
+    W->>API: GET /reservas/incompletas?semana=actual
+    API->>SR: listarConHuecos(semana)
+    SR->>DB: SELECT WHERE participantes<4 AND fecha<=hoy+7
+    DB-->>SR: reservas incompletas
+    SR-->>API: List<ReservaDTO>
+    API-->>W: reservas disponibles
+    W-->>U: Calendario semanal con huecos
 
-actor Usuario as U
-participant "Web\n(React)" as W
-participant "API\n(Spring Boot)" as API
-participant "Reservas\nService" as SR
-database "DB\n(Postgres)" as DB
-participant "Bot\nMsg" as BOT
+    U->>W: Selecciona reserva
+    W->>API: POST /reservas/{id}/participantes {usuarioId}
+    API->>SR: unirse(reservaId, userId)
+    SR->>DB: SELECT huecos FOR UPDATE
 
-U -> W: Accede a "Incluirse en reserva"
-W -> API: GET /reservas/incompletas?semana=actual
-API -> SR: listarConHuecos(semana)
-SR -> DB: SELECT WHERE participantes<4 AND fecha<=hoy+7
-DB --> SR: reservas incompletas
-SR --> API: List<ReservaDTO>
-API --> W: reservas disponibles
-W --> U: Calendario semanal con huecos
-
-U -> W: Selecciona reserva
-W -> API: POST /reservas/{id}/participantes {usuarioId}
-API -> SR: unirse(reservaId, userId)
-SR -> DB: SELECT huecos FOR UPDATE
-
-alt Hueco disponible
-    SR -> DB: INSERT participante
-    DB --> SR: OK
-    SR --> API: ReservaDTO actualizada
-    API -> BOT: actualizarMensaje(dto)
-    BOT -> U: [Grupo] Mensaje actualizado con nuevo nombre
-    API --> W: 200 OK
-    W --> U: Incorporación confirmada
-else Sin huecos [RN-10]
-    SR --> API: SinHuecosException
-    API --> W: 409 Conflict
-    W --> U: Reserva completa — ver otras opciones
-end
-@enduml
+    alt Hueco disponible
+        SR->>DB: INSERT participante
+        DB-->>SR: OK
+        SR-->>API: ReservaDTO actualizada
+        API->>BOT: actualizarMensaje(dto)
+        BOT->>U: [Grupo] Mensaje actualizado con nuevo nombre
+        API-->>W: 200 OK
+        W-->>U: Incorporación confirmada
+    else Sin huecos [RN-10]
+        SR-->>API: SinHuecosException
+        API-->>W: 409 Conflict
+        W-->>U: Reserva completa — ver otras opciones
+    end
 ```
 
 **Flujo WhatsApp/Telegram — Usuario casual sin cuenta**
 
-```plantuml
-@startuml CU-02-WhatsApp
-title CU-02b: Incorporarse (WhatsApp/Telegram)
-scale 0.85
+```mermaid
+sequenceDiagram
+    actor UC as Usuario Casual
+    participant G as Grupo WA/TG
+    participant BOT as Bot Msg
+    participant API as API (Spring Boot)
+    participant SR as Reservas Service
+    participant DB as DB (Postgres)
 
-skinparam sequenceArrowThickness 1
-skinparam sequenceParticipantFontSize 12
-skinparam sequenceMessageFontSize 11
-skinparam roundcorner 5
-skinparam sequenceParticipantBackgroundColor #ECF0F1
-skinparam sequenceParticipantBorderColor #2C3E50
+    UC->>G: Copia mensaje y añade nombre en hueco vacío
+    G->>BOT: Mensaje de respuesta recibido
+    BOT->>BOT: Parsea: extrae fecha/hora + nombre nuevo
+    BOT->>API: POST /reservas/whatsapp/participante {fecha, hora, nombre, telefono}
+    API->>SR: unirseExterno(dto)
+    SR->>DB: SELECT reserva FOR UPDATE
 
-actor "Usuario\nCasual" as UC
-participant "Grupo\nWA/TG" as G
-participant "Bot\nMsg" as BOT
-participant "API\n(Spring Boot)" as API
-participant "Reservas\nService" as SR
-database "DB\n(Postgres)" as DB
-
-UC -> G: Copia mensaje y añade nombre en hueco vacío
-G -> BOT: Mensaje de respuesta recibido
-BOT -> BOT: Parsea: extrae fecha/hora + nombre nuevo
-BOT -> API: POST /reservas/whatsapp/participante\n{fecha, hora, nombre, telefono}
-API -> SR: unirseExterno(dto)
-SR -> DB: SELECT reserva FOR UPDATE
-
-alt Hueco disponible
-    SR -> DB: INSERT participante_externo
-    DB --> SR: OK
-    SR --> API: ReservaDTO actualizada
-    API -> BOT: publicar mensaje actualizado
-    BOT -> G: "18:30-20:00 🎾A 🎾B 🎾C 🎾Juan"
-else Sin huecos disponibles
-    SR --> API: SinHuecosException
-    API -> BOT: notificar remitente
-    BOT -> UC: [WA personal] "Reserva ya completa"
-end
-@enduml
+    alt Hueco disponible
+        SR->>DB: INSERT participante_externo
+        DB-->>SR: OK
+        SR-->>API: ReservaDTO actualizada
+        API->>BOT: publicar mensaje actualizado
+        BOT->>G: "18:30-20:00 🎾A 🎾B 🎾C 🎾Juan"
+    else Sin huecos disponibles
+        SR-->>API: SinHuecosException
+        API->>BOT: notificar remitente
+        BOT->>UC: [WA personal] "Reserva ya completa"
+    end
 ```
 
 ---
@@ -822,112 +769,90 @@ end
 
 **Flujo A — Pago online mediante link seguro**
 
-```plantuml
-@startuml CU-03-Online
-title CU-03a: Pago Online
-scale 0.85
+```mermaid
+sequenceDiagram
+    actor U as Usuario
+    participant W as Web (React)
+    participant API as API (Spring Boot)
+    participant PS as Pagos Service
+    participant DB as DB (Postgres)
+    participant PP as Pasarela Banco
+    participant BOT as Bot Msg
 
-skinparam sequenceArrowThickness 1
-skinparam sequenceParticipantFontSize 12
-skinparam sequenceMessageFontSize 11
-skinparam roundcorner 5
-skinparam sequenceParticipantBackgroundColor #ECF0F1
-skinparam sequenceParticipantBorderColor #2C3E50
+    Note over API,BOT: Tras CU-01, el sistema envía link de pago automáticamente
+    API->>BOT: enviarLink(telefono, linkPago)
+    BOT->>U: [WA personal] "Paga tu reserva: [link]"
 
-actor Usuario as U
-participant "Web\n(React)" as W
-participant "API\n(Spring Boot)" as API
-participant "Pagos\nService" as PS
-database "DB\n(Postgres)" as DB
-participant "Pasarela\nBanco" as PP
-participant "Bot\nMsg" as BOT
+    U->>W: Accede a Pago de Reserva
+    W->>API: GET /pagos/pendientes?userId=X
+    API->>PS: listarPendientes(userId)
+    PS->>DB: SELECT WHERE titular=? AND estado=PENDIENTE
+    DB-->>PS: reservas pendientes
+    PS-->>API: List<PagoDTO>
+    API-->>W: reservas pendientes
+    W-->>U: Lista de pagos pendientes
 
-note over API, BOT: Tras CU-01, el sistema envía link de pago automáticamente
-API -> BOT: enviarLink(telefono, linkPago)
-BOT -> U: [WA personal] "Paga tu reserva: [link]"
+    U->>W: Selecciona reserva y pulsa Pagar
+    W->>API: POST /pagos/iniciar {reservaId}
+    API->>PS: iniciarPago(reservaId)
+    PS->>DB: SELECT link_pago
+    DB-->>PS: URL pasarela
+    PS-->>API: URL
+    API-->>W: Redirección
+    W-->>U: Redirige a pasarela del banco
 
-U -> W: Accede a Pago de Reserva
-W -> API: GET /pagos/pendientes?userId=X
-API -> PS: listarPendientes(userId)
-PS -> DB: SELECT WHERE titular=? AND estado=PENDIENTE
-DB --> PS: reservas pendientes
-PS --> API: List<PagoDTO>
-API --> W: reservas pendientes
-W --> U: Lista de pagos pendientes
+    U->>PP: Completa pago
+    PP->>PP: Procesa transacción
 
-U -> W: Selecciona reserva y pulsa Pagar
-W -> API: POST /pagos/iniciar {reservaId}
-API -> PS: iniciarPago(reservaId)
-PS -> DB: SELECT link_pago
-DB --> PS: URL pasarela
-PS --> API: URL
-API --> W: Redirección
-W --> U: Redirige a pasarela del banco
-
-U -> PP: Completa pago
-PP -> PP: Procesa transacción
-
-alt Pago aprobado
-    PP -> API: POST /pagos/webhook {reservaId, APROBADO, txId}
-    API -> PS: confirmar(reservaId, txId)
-    PS -> DB: UPDATE estado=PAGADA
-    PS -> DB: INSERT ingreso (ONLINE)
-    PS -> DB: INSERT auditoria
-    DB --> PS: OK
-    API -> BOT: notificarConfirmacion(telefono)
-    BOT -> U: [WA personal] "Pago confirmado"
-    API --> W: 200 OK
-    W --> U: Confirmación de pago
-else Pago rechazado
-    PP -> API: POST /pagos/webhook {reservaId, RECHAZADO}
-    API -> PS: registrarFallo(reservaId)
-    PS -> DB: INSERT auditoria (RECHAZADO)
-    API --> W: 402 Payment Required
-    W --> U: Pago rechazado — reintentar
-end
-@enduml
+    alt Pago aprobado
+        PP->>API: POST /pagos/webhook {reservaId, APROBADO, txId}
+        API->>PS: confirmar(reservaId, txId)
+        PS->>DB: UPDATE estado=PAGADA
+        PS->>DB: INSERT ingreso (ONLINE)
+        PS->>DB: INSERT auditoria
+        DB-->>PS: OK
+        API->>BOT: notificarConfirmacion(telefono)
+        BOT->>U: [WA personal] "Pago confirmado"
+        API-->>W: 200 OK
+        W-->>U: Confirmación de pago
+    else Pago rechazado
+        PP->>API: POST /pagos/webhook {reservaId, RECHAZADO}
+        API->>PS: registrarFallo(reservaId)
+        PS->>DB: INSERT auditoria (RECHAZADO)
+        API-->>W: 402 Payment Required
+        W-->>U: Pago rechazado — reintentar
+    end
 ```
 
 **Flujo B — Pago en efectivo registrado por el administrador**
 
-```plantuml
-@startuml CU-03-Efectivo
-title CU-03b: Pago en Efectivo (Admin)
-scale 0.85
+```mermaid
+sequenceDiagram
+    actor A as Admin
+    participant W as Web (React)
+    participant API as API (Spring Boot)
+    participant PS as Pagos Service
+    participant DB as DB (Postgres)
 
-skinparam sequenceArrowThickness 1
-skinparam sequenceParticipantFontSize 12
-skinparam sequenceMessageFontSize 11
-skinparam roundcorner 5
-skinparam sequenceParticipantBackgroundColor #ECF0F1
-skinparam sequenceParticipantBorderColor #2C3E50
+    A->>W: Accede a Administración de Reservas
+    W->>API: GET /admin/reservas?estado=PENDIENTE
+    API->>PS: listarPendientes()
+    PS->>DB: SELECT WHERE estado IN (CONFIRMADA, PENDIENTE_PAGO)
+    DB-->>PS: lista de reservas
+    PS-->>API: List<ReservaAdminDTO>
+    API-->>W: tabla de reservas
+    W-->>A: Muestra reservas pendientes de pago
 
-actor Admin as A
-participant "Web\n(React)" as W
-participant "API\n(Spring Boot)" as API
-participant "Pagos\nService" as PS
-database "DB\n(Postgres)" as DB
-
-A -> W: Accede a Administración de Reservas
-W -> API: GET /admin/reservas?estado=PENDIENTE
-API -> PS: listarPendientes()
-PS -> DB: SELECT WHERE estado IN (CONFIRMADA, PENDIENTE_PAGO)
-DB --> PS: lista de reservas
-PS --> API: List<ReservaAdminDTO>
-API --> W: tabla de reservas
-W --> A: Muestra reservas pendientes de pago
-
-A -> W: Selecciona reserva y pulsa "Pagada en efectivo"
-W -> API: PATCH /admin/reservas/{id}/pago {EFECTIVO, adminId}
-API -> PS: registrarEfectivo(reservaId, adminId)
-PS -> DB: UPDATE estado=PAGADA
-PS -> DB: INSERT ingreso (metodo=EFECTIVO)
-PS -> DB: INSERT auditoria (PAGO_EFECTIVO_REGISTRADO)
-DB --> PS: OK
-PS --> API: PagoRegistradoDTO
-API --> W: 200 OK
-W --> A: Reserva marcada como pagada
-@enduml
+    A->>W: Selecciona reserva y pulsa "Pagada en efectivo"
+    W->>API: PATCH /admin/reservas/{id}/pago {EFECTIVO, adminId}
+    API->>PS: registrarEfectivo(reservaId, adminId)
+    PS->>DB: UPDATE estado=PAGADA
+    PS->>DB: INSERT ingreso (metodo=EFECTIVO)
+    PS->>DB: INSERT auditoria (PAGO_EFECTIVO_REGISTRADO)
+    DB-->>PS: OK
+    PS-->>API: PagoRegistradoDTO
+    API-->>W: 200 OK
+    W-->>A: Reserva marcada como pagada
 ```
 
 ---
@@ -1652,180 +1577,138 @@ graph LR
 
 **Diagrama A — Modelo de Dominio y Puertos** *(detalle de clases)*
 
-```plantuml
-@startuml reservas-domain-ports
-scale max 680 width
-skinparam classAttributeIconSize 0
-skinparam classFontSize 10
-skinparam packageFontSize 10
-skinparam nodesep 20
-skinparam ranksep 30
-hide empty members
-hide circle
+```mermaid
+classDiagram
+    class Reserva {
+        -UUID id
+        -LocalDateTime fechaHora
+        -int duracionMin
+        -EstadoReserva estado
+        +calcularImporte(ph) BigDecimal
+        +puedeSerCancelada(ahora, margen) boolean
+        +estaCompleta() boolean
+        +agregarParticipante(p) void
+    }
+    class Participante {
+        -UUID usuarioId
+        -String nombre
+        -EstadoPago estadoPago
+        +haPagado() boolean
+    }
+    class EstadoReserva {
+        <<enumeration>>
+        PENDIENTE
+        CONFIRMADA
+        CANCELADA
+        COMPLETADA
+    }
+    class EstadoPago {
+        <<enumeration>>
+        PENDIENTE
+        PAGADO_ONLINE
+        PAGADO_EFECTIVO
+    }
 
-' ── Entidades ──────────────────────────────
-class Reserva #FFFDE7 {
-    - id          : UUID
-    - fechaHora   : LocalDateTime
-    - duracionMin : int
-    - estado      : EstadoReserva
-    --
-    + calcularImporte(ph) : BigDecimal
-    + puedeSerCancelada(ahora, margen) : boolean
-    + estaCompleta() : boolean
-    + agregarParticipante(p) : void
-}
-class Participante #FFFDE7 {
-    - usuarioId  : UUID
-    - nombre     : String
-    - estadoPago : EstadoPago
-    --
-    + haPagado() : boolean
-}
-enum EstadoReserva #FFFDE7 {
-    PENDIENTE · CONFIRMADA
-    CANCELADA · COMPLETADA
-}
-enum EstadoPago #FFFDE7 {
-    PENDIENTE
-    PAGADO_ONLINE · PAGADO_EFECTIVO
-}
+    class ReservaUseCase {
+        <<interface>>
+        +crearReserva(cmd) ReservaDTO
+        +cancelarReserva(cmd) void
+        +unirseAReserva(cmd) ReservaDTO
+        +listarDisponibles(fecha) List~ReservaDTO~
+        +obtenerReserva(id) ReservaDTO
+    }
 
-' ── Puerto primario ────────────────────────
-interface ReservaUseCase #DDEEFF {
-    + crearReserva(cmd)        : ReservaDTO
-    + cancelarReserva(cmd)     : void
-    + unirseAReserva(cmd)      : ReservaDTO
-    + listarDisponibles(fecha) : List<ReservaDTO>
-    + obtenerReserva(id)       : ReservaDTO
-}
+    class ReservaRepositoryPort {
+        <<interface>>
+        +guardar(r) Reserva
+        +buscarPorId(id) Optional~Reserva~
+        +buscarDisponibles(fecha) List~Reserva~
+        +existeSolapamiento(...) boolean
+    }
+    class MensajeriaPort {
+        <<interface>>
+        +enviar(destino, msg) void
+        +enviarOtp(destino, codigo) void
+        +publicarEnGrupo(gid, msg) void
+    }
+    class AuditoriaPort {
+        <<interface>>
+        +registrar(accion, entidad, uid, detalle) void
+    }
 
-' ── Puertos secundarios ────────────────────
-interface ReservaRepositoryPort #FFE8E0 {
-    + guardar(r)               : Reserva
-    + buscarPorId(id)          : Optional<Reserva>
-    + buscarDisponibles(fecha) : List<Reserva>
-    + existeSolapamiento(...)  : boolean
-}
-interface MensajeriaPort #FFE8E0 {
-    + enviar(destino, msg)       : void
-    + enviarOtp(destino, codigo) : void
-    + publicarEnGrupo(gid, msg)  : void
-}
-interface AuditoriaPort #FFE8E0 {
-    + registrar(accion, entidad, uid, detalle) : void
-}
+    Reserva "1" *-- "1..4" Participante
+    Reserva --> EstadoReserva
+    Participante --> EstadoPago
 
-' ── Relaciones de dominio ──────────────────
-Reserva "1" *-- "1..4" Participante
-Reserva      --> EstadoReserva
-Participante --> EstadoPago
-
-' ── Apilado vertical forzado ──────────────
-Reserva               -[hidden]down-> ReservaUseCase
-ReservaUseCase        -[hidden]down-> ReservaRepositoryPort
-ReservaRepositoryPort -[hidden]down-> MensajeriaPort
-MensajeriaPort        -[hidden]down-> AuditoriaPort
-EstadoReserva         -[hidden]right-> Participante
-
-note right of ReservaRepositoryPort
-    existeSolapamiento() usa
-    SELECT FOR UPDATE (PostgreSQL)
-end note
-
-@enduml
+    note for ReservaRepositoryPort "existeSolapamiento() usa SELECT FOR UPDATE (PostgreSQL)"
 ```
 
 ---
 
 **Diagrama B — Capa Application e Infraestructura**
 
-```plantuml
-@startuml reservas-application-infra
-scale max 680 width
-skinparam classAttributeIconSize 0
-skinparam classFontSize 10
-skinparam packageFontSize 10
-skinparam nodesep 20
-skinparam ranksep 30
-hide empty members
-hide circle
+```mermaid
+classDiagram
+    class ReservaController {
+        +POST /api/reservas
+        +GET /api/reservas/:id
+        +DELETE /api/reservas/:id
+    }
+    class AdminReservaController {
+        +GET /api/admin/reservas
+        +PATCH /api/admin/reservas/:id/estado
+    }
+    class BotReservaAdapter {
+        +procesarComandoReserva(msg) void
+        +procesarComandoCancelacion(msg) void
+    }
 
-' ── Infra Inbound (agrupado) ───────────────
-class ReservaController #DDEEFF {
-    + POST   /api/reservas
-    + GET    /api/reservas/{id}
-    + DELETE /api/reservas/{id}
-}
-class AdminReservaController #DDEEFF {
-    + GET   /api/admin/reservas
-    + PATCH /api/admin/reservas/{id}/estado
-}
-class BotReservaAdapter #DDEEFF {
-    + procesarComandoReserva(msg)     : void
-    + procesarComandoCancelacion(msg) : void
-}
+    class ReservaUseCase {
+        <<interface>>
+        +crearReserva(cmd) ReservaDTO
+        +cancelarReserva(cmd) void
+        +unirseAReserva(cmd) ReservaDTO
+        +listarDisponibles(fecha) List~ReservaDTO~
+        +obtenerReserva(id) ReservaDTO
+    }
 
-' ── Puerto primario ────────────────────────
-interface ReservaUseCase #E8E8E8 {
-    + crearReserva(cmd)        : ReservaDTO
-    + cancelarReserva(cmd)     : void
-    + unirseAReserva(cmd)      : ReservaDTO
-    + listarDisponibles(fecha) : List<ReservaDTO>
-    + obtenerReserva(id)       : ReservaDTO
-}
+    class ReservaApplicationService {
+        -ReservaRepositoryPort reservaRepo
+        -MensajeriaPort mensajeria
+        -AuditoriaPort auditoria
+        +crearReserva(cmd) ReservaDTO
+        +cancelarReserva(cmd) void
+        +unirseAReserva(cmd) ReservaDTO
+        +listarDisponibles(fecha) List~ReservaDTO~
+        +obtenerReserva(id) ReservaDTO
+    }
 
-' ── Application Service ────────────────────
-class ReservaApplicationService #DDFADD {
-    - reservaRepo : ReservaRepositoryPort
-    - mensajeria  : MensajeriaPort
-    - auditoria   : AuditoriaPort
-    --
-    + crearReserva(cmd)        : ReservaDTO
-    + cancelarReserva(cmd)     : void
-    + unirseAReserva(cmd)      : ReservaDTO
-    + listarDisponibles(fecha) : List<ReservaDTO>
-    + obtenerReserva(id)       : ReservaDTO
-}
+    class ReservaRepositoryPort {
+        <<interface>>
+    }
+    class MensajeriaPort {
+        <<interface>>
+    }
+    class AuditoriaPort {
+        <<interface>>
+    }
 
-' ── Puertos outbound ───────────────────────
-interface ReservaRepositoryPort #FFE8E0
-interface MensajeriaPort        #FFE8E0
-interface AuditoriaPort         #FFE8E0
+    class ReservaJpaAdapter {
+        +guardar(r) Reserva
+        +buscarPorId(id) Optional~Reserva~
+        +existeSolapamiento(...) boolean
+    }
 
-' ── Infra Outbound ─────────────────────────
-class ReservaJpaAdapter #FFCCAA {
-    + guardar(r)               : Reserva
-    + buscarPorId(id)          : Optional<Reserva>
-    + existeSolapamiento(...)  : boolean
-}
+    ReservaController ..> ReservaUseCase : use
+    AdminReservaController ..> ReservaUseCase : use
+    BotReservaAdapter ..> ReservaUseCase : use
+    ReservaUseCase <|.. ReservaApplicationService : implements
+    ReservaApplicationService ..> ReservaRepositoryPort : use
+    ReservaApplicationService ..> MensajeriaPort : use
+    ReservaApplicationService ..> AuditoriaPort : use
+    ReservaRepositoryPort <|.. ReservaJpaAdapter : implements
 
-' ── Apilado vertical forzado ──────────────
-ReservaController      -[hidden]right-> AdminReservaController
-AdminReservaController -[hidden]right-> BotReservaAdapter
-ReservaController      -[hidden]down->  ReservaUseCase
-ReservaUseCase         -[hidden]down->  ReservaApplicationService
-ReservaApplicationService -[hidden]down-> ReservaRepositoryPort
-ReservaRepositoryPort  -[hidden]right-> MensajeriaPort
-MensajeriaPort         -[hidden]right-> AuditoriaPort
-ReservaRepositoryPort  -[hidden]down->  ReservaJpaAdapter
-
-' ── Relaciones reales ──────────────────────
-ReservaController      ..> ReservaUseCase             : use
-AdminReservaController ..> ReservaUseCase             : use
-BotReservaAdapter      ..> ReservaUseCase             : use
-ReservaUseCase         <|.. ReservaApplicationService : implements
-ReservaApplicationService ..> ReservaRepositoryPort   : use
-ReservaApplicationService ..> MensajeriaPort          : use
-ReservaApplicationService ..> AuditoriaPort           : use
-ReservaRepositoryPort  <|.. ReservaJpaAdapter         : implements
-
-note bottom of ReservaApplicationService
-    @Service · @Transactional
-    orquesta dominio y puertos
-end note
-
-@enduml
+    note for ReservaApplicationService "@Service · @Transactional — orquesta dominio y puertos"
 ```
 
 ---
@@ -3070,23 +2953,23 @@ mindmap
       PATCH /api/usuarios/me
       GET /api/admin/usuarios
       POST /api/admin/usuarios
-      GET /api/admin/usuarios/{id}
-      PATCH /api/admin/usuarios/{id}
-      PATCH /api/admin/usuarios/{id}/aprobar
-      DELETE /api/admin/usuarios/{id}
+      GET /api/admin/usuarios/:id
+      PATCH /api/admin/usuarios/:id
+      PATCH /api/admin/usuarios/:id/aprobar
+      DELETE /api/admin/usuarios/:id
     Reservas
       GET /api/reservas/disponibles
       GET /api/reservas
       POST /api/reservas
-      GET /api/reservas/{id}
-      DELETE /api/reservas/{id}
-      POST /api/reservas/{id}/unirse
+      GET /api/reservas/:id
+      DELETE /api/reservas/:id
+      POST /api/reservas/:id/unirse
       GET /api/admin/reservas
-      PATCH /api/admin/reservas/{id}/estado
+      PATCH /api/admin/reservas/:id/estado
     Pagos
       GET /api/pagos
       POST /api/pagos/iniciar
-      POST /api/admin/pagos/{reservaId}/efectivo
+      POST /api/admin/pagos/:reservaId/efectivo
       GET /api/admin/pagos
     OTP
       POST /api/otp/verificar
