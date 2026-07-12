@@ -13,6 +13,7 @@ import com.padelpro.pagos.application.service.RedsysConfigService;
 import com.padelpro.pagos.application.service.RedsysOrderIdGenerator;
 import com.padelpro.pagos.application.service.RedsysProperties;
 import com.padelpro.pagos.application.service.RegistrarPagoEfectivoService;
+import com.padelpro.pagos.application.service.SimularPagoService;
 import com.padelpro.reservas.domain.port.out.PaymentCommandPort;
 import com.padelpro.reservas.domain.port.out.ReservationCommandPort;
 import com.padelpro.reservas.infrastructure.persistence.PaymentJpaRepository;
@@ -91,7 +92,28 @@ public class PagosConfig {
 
     @Bean
     public PagoQueryService pagoQueryService(PaymentJpaRepository paymentRepository,
-                                             ReservationJpaRepository reservationRepository) {
-        return new PagoQueryService(paymentRepository, reservationRepository);
+                                             ReservationJpaRepository reservationRepository,
+                                             UserRepositoryPort userRepositoryPort) {
+        return new PagoQueryService(paymentRepository, reservationRepository, userRepositoryPort);
+    }
+
+    /**
+     * Randomness source for the payment simulator. A {@link java.security.SecureRandom} (a
+     * {@link java.util.random.RandomGenerator}) is a CSPRNG — never {@code Math.random()} (OWASP A02).
+     * Tests inject a seeded generator for determinism.
+     */
+    @Bean
+    public java.util.random.RandomGenerator simuladorRandomGenerator() {
+        return new java.security.SecureRandom();
+    }
+
+    @Bean
+    public SimularPagoService simularPagoService(ReservationCommandPort reservationCommandPort,
+                                                 PaymentCommandPort paymentCommandPort,
+                                                 PagoAuditRecorder pagoAuditRecorder,
+                                                 ApplicationEventPublisher eventPublisher,
+                                                 java.util.random.RandomGenerator simuladorRandomGenerator) {
+        return new SimularPagoService(reservationCommandPort, paymentCommandPort, pagoAuditRecorder,
+                eventPublisher, simuladorRandomGenerator);
     }
 }

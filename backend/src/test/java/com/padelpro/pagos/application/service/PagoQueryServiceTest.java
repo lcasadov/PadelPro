@@ -1,5 +1,7 @@
 package com.padelpro.pagos.application.service;
 
+import com.padelpro.auth.domain.model.User;
+import com.padelpro.auth.domain.port.out.UserRepositoryPort;
 import com.padelpro.pagos.application.dto.PagoHistorialResponse;
 import com.padelpro.reservas.domain.model.Payment;
 import com.padelpro.reservas.domain.model.Reservation;
@@ -38,12 +40,13 @@ class PagoQueryServiceTest {
 
     @Mock private PaymentJpaRepository paymentRepository;
     @Mock private ReservationJpaRepository reservationRepository;
+    @Mock private UserRepositoryPort userRepositoryPort;
 
     private PagoQueryService service;
 
     @BeforeEach
     void setUp() {
-        service = new PagoQueryService(paymentRepository, reservationRepository);
+        service = new PagoQueryService(paymentRepository, reservationRepository, userRepositoryPort);
     }
 
     private Reservation reservation() {
@@ -86,12 +89,18 @@ class PagoQueryServiceTest {
     void list_all() {
         when(paymentRepository.findAllByOrderByCreatedAtDesc()).thenReturn(List.of(payment()));
         when(reservationRepository.findAllById(any())).thenReturn(List.of(reservation()));
+        User owner = org.mockito.Mockito.mock(User.class);
+        when(owner.getId()).thenReturn(OWNER_ID);
+        when(owner.getFirstName()).thenReturn("Ana");
+        when(owner.getLastName()).thenReturn("García");
+        when(userRepositoryPort.findAllById(any())).thenReturn(List.of(owner));
 
         List<PagoHistorialResponse> result = service.listAll();
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).reservaId()).isEqualTo(RES_ID.toString());
         assertThat(result.get(0).ownerId()).isEqualTo(OWNER_ID);
+        assertThat(result.get(0).ownerName()).isEqualTo("Ana García");
     }
 
     @Test

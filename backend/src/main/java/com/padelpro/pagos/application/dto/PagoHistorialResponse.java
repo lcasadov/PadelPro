@@ -14,6 +14,7 @@ public record PagoHistorialResponse(
         String pagoId,
         String reservaId,
         Long ownerId,
+        String ownerName,
         BigDecimal amount,
         String method,
         String status,

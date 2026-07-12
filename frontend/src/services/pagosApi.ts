@@ -67,6 +67,47 @@ export async function iniciarPago(
   }
 }
 
+// ─── Simulador de pago (pagos-simulador-gestion, D1/D2) ───────────────────────
+
+/** Payload de `POST /api/pagos/simular`. Datos de tarjeta SOLO en tránsito: se
+ *  envían para decidir el resultado y NUNCA se persisten (RN-RGPD-04). `expiry`
+ *  viaja como "MM/AA". */
+export interface SimularPagoInput {
+  reservaId: string;
+  cardNumber: string;
+  expiry: string;
+  cvc: string;
+}
+
+/** Respuesta 200 de `POST /api/pagos/simular`. `resultado` decide el flujo de la
+ *  UI: APPROVED → pantalla OK (el backend ya marcó el pago PAID); DECLINED →
+ *  pantalla KO con reintento. `motivo` acompaña opcionalmente al rechazo. */
+export interface SimularPagoResponse {
+  resultado: 'APPROVED' | 'DECLINED';
+  motivo?: string;
+}
+
+/**
+ * POST /api/pagos/simular — checkout simulado (provisional hasta integrar Redsys).
+ * Solo el dueño de la reserva con pago PENDING. Errores del contrato mapeados a
+ * `ReservaApiError`: 400 (formato de tarjeta inválido → VALIDATION_ERROR), 403
+ * (no-dueño → FORBIDDEN), 409/422 (ya pagado → CONFLICT/estado). El APPROVED y el
+ * DECLINED llegan ambos como 200 en el cuerpo (no son errores HTTP).
+ */
+export async function simularPago(
+  token: string,
+  input: SimularPagoInput
+): Promise<SimularPagoResponse> {
+  try {
+    const { data } = await api.post<SimularPagoResponse>('/pagos/simular', input, {
+      headers: authHeader(token),
+    });
+    return data;
+  } catch (err) {
+    toReservaApiError(err);
+  }
+}
+
 /**
  * GET /api/pagos — historial de pagos propios. `token` es opcional: al volver del
  * TPV (UrlOK/UrlKO) el access token en memoria puede haberse perdido (RN-AUTH-09,

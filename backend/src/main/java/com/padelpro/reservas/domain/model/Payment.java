@@ -145,6 +145,18 @@ public class Payment {
     }
 
     /**
+     * Confirm a payment through the provisional online simulator (change pagos-simulador-gestion, D2):
+     * PAID / SIMULADO. No card data ever reaches this entity (RN-RGPD-04); the simulator only decides
+     * the outcome in memory. Kept separate from {@link #markPaid} / {@link #markCashPaid} so a simulated
+     * collection is distinguishable from a real Redsys or cash one.
+     */
+    public void markSimulatedPaid(OffsetDateTime paidAt) {
+        this.status = PaymentStatus.PAID;
+        this.method = PaymentMethod.SIMULADO;
+        this.paidAt = paidAt;
+    }
+
+    /**
      * Register a manual cash payment by an ADMIN (pagos-redsys-online, group 5): PAID / CASH with the
      * registering admin id (DB CHECK {@code chk_pay_cash_admin} requires {@code registered_by_id}).
      */
