@@ -42,4 +42,16 @@ public interface RefreshTokenRepositoryPort {
      *         revoked (reuse / lost race). Callers MUST treat {@code 0} as an invalid token.
      */
     int revokeByTokenHashIfActive(String tokenHash);
+
+    /**
+     * Revoke ALL refresh tokens belonging to a user ({@code revoked = true}), regardless of their
+     * current state. Used by the RGPD right-to-be-forgotten flow (capability exportaciones-rgpd,
+     * RN-RGPD-07): when an account is anonymized every active session must be terminated so the
+     * anonymized user cannot keep operating with a previously issued token.
+     *
+     * <p>Idempotent: re-running it on a user whose tokens are already revoked simply updates 0 rows.
+     *
+     * @param userId the id of the user whose tokens are revoked
+     */
+    void revokeAllByUserId(Long userId);
 }

@@ -15,4 +15,17 @@ public interface ParticipantCommandPort {
      * managed instance with its generated {@code id} populated.
      */
     Participant save(Participant participant);
+
+    /**
+     * Anonymize the participation rows of a given user for the RGPD right-to-be-forgotten flow
+     * (capability exportaciones-rgpd): overwrite {@code external_name = 'ANONIMIZADO'} and
+     * {@code external_phone = NULL} for every {@code participants} row where {@code user_id = :userId}.
+     * The {@code user_id} is preserved (Requirement 2, Scenario 4 — the anonymized user still exists
+     * as an entity; FK SET NULL does not apply here).
+     *
+     * <p>Idempotent: safe to re-run on an already-anonymized user.
+     *
+     * @param userId the id of the anonymized user whose participation rows are anonymized
+     */
+    void anonymizeByUserId(Long userId);
 }
