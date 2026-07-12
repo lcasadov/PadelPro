@@ -8,6 +8,7 @@ import com.padelpro.auth.domain.model.SystemConfig.PaymentGateway;
 import com.padelpro.auth.domain.model.SystemConfig.PistaState;
 import com.padelpro.auth.domain.port.out.SystemConfigRepositoryPort;
 import com.padelpro.reservas.domain.model.PaymentMethod;
+import com.padelpro.reservas.domain.model.ReservationStatus;
 import com.padelpro.reservas.infrastructure.persistence.PaymentJpaRepository;
 import com.padelpro.reservas.infrastructure.persistence.ReservationJpaRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -87,7 +88,7 @@ class DashboardServiceTest {
     void ocupacion_conReservas_calculaPorcentaje() {
         configPresent();
         // 3 reservations of 60 min in a single day => 3 reserved slots of 15 available => 20.0%
-        when(reservationRepository.sumActiveDurationMinutesInRange(DIA, DIA)).thenReturn(180L);
+        when(reservationRepository.sumActiveDurationMinutesInRange(DIA, DIA, ReservationStatus.CANCELLED)).thenReturn(180L);
 
         OcupacionResponse resp = service.ocupacion(DIA, DIA);
 
@@ -102,7 +103,7 @@ class DashboardServiceTest {
     @DisplayName("ocupacion: sin reservas devuelve 0% con slots disponibles > 0")
     void ocupacion_sinReservas_devuelveCero() {
         configPresent();
-        when(reservationRepository.sumActiveDurationMinutesInRange(DIA, DIA)).thenReturn(0L);
+        when(reservationRepository.sumActiveDurationMinutesInRange(DIA, DIA, ReservationStatus.CANCELLED)).thenReturn(0L);
 
         OcupacionResponse resp = service.ocupacion(DIA, DIA);
 
@@ -116,7 +117,7 @@ class DashboardServiceTest {
     void ocupacion_sinConfig_slotsCeroYSinDivisionPorCero() {
         configAbsent();
         // Reservations exist, but without a configured schedule the denominator is 0.
-        when(reservationRepository.sumActiveDurationMinutesInRange(DIA, DIA)).thenReturn(120L);
+        when(reservationRepository.sumActiveDurationMinutesInRange(DIA, DIA, ReservationStatus.CANCELLED)).thenReturn(120L);
 
         OcupacionResponse resp = service.ocupacion(DIA, DIA);
 
@@ -138,7 +139,7 @@ class DashboardServiceTest {
     @Test
     @DisplayName("ingresos: total con desglose por método (REDSYS + CASH)")
     void ingresos_conDesglose() {
-        when(paymentRepository.sumPaidAmountGroupedByMethod(any(), any())).thenReturn(List.<Object[]>of(
+        when(paymentRepository.sumPaidAmountGroupedByMethod(any(), any(), any())).thenReturn(List.<Object[]>of(
                 new Object[]{PaymentMethod.REDSYS, new BigDecimal("45.00")},
                 new Object[]{PaymentMethod.CASH, new BigDecimal("30.00")}
         ));
@@ -154,7 +155,7 @@ class DashboardServiceTest {
     @Test
     @DisplayName("ingresos: rango sin pagos ⇒ total 0.00 y ambos métodos 0.00 (HTTP 200)")
     void ingresos_sinPagos_devuelveCeros() {
-        when(paymentRepository.sumPaidAmountGroupedByMethod(any(), any())).thenReturn(List.of());
+        when(paymentRepository.sumPaidAmountGroupedByMethod(any(), any(), any())).thenReturn(List.of());
 
         IngresosResponse resp = service.ingresos(DIA, FIN_MES);
 
@@ -173,13 +174,14 @@ class DashboardServiceTest {
         configPresent();
         LocalDate fin = LocalDate.of(2025, 5, 2); // 2-day range
         // Day 1: 2 reservations totalling 120 min => 2 slots of 15 => 13.3%
-        when(reservationRepository.findActiveUsageRowsInRange(DIA, fin)).thenReturn(List.<Object[]>of(
+        when(reservationRepository.findActiveUsageRowsInRange(DIA, fin, ReservationStatus.CANCELLED))
+                .thenReturn(List.<Object[]>of(
                 new Object[]{DIA, 60},
                 new Object[]{DIA, 60}
         ));
         // Day 1: one REDSYS payment of 45.00
         OffsetDateTime paidDay1 = DIA.atTime(12, 0).atZone(ZoneId.systemDefault()).toOffsetDateTime();
-        when(paymentRepository.findPaidRowsInRange(any(), any())).thenReturn(List.<Object[]>of(
+        when(paymentRepository.findPaidRowsInRange(any(), any(), any())).thenReturn(List.<Object[]>of(
                 new Object[]{paidDay1, new BigDecimal("45.00"), PaymentMethod.REDSYS}
         ));
 
@@ -197,10 +199,10 @@ class DashboardServiceTest {
     void exportarCsv_sinDatosPersonales() {
         configPresent();
         OffsetDateTime paid = DIA.atTime(9, 0).atZone(ZoneId.systemDefault()).toOffsetDateTime();
-        when(reservationRepository.findActiveUsageRowsInRange(DIA, DIA)).thenReturn(List.<Object[]>of(
+        when(reservationRepository.findActiveUsageRowsInRange(DIA, DIA, ReservationStatus.CANCELLED)).thenReturn(List.<Object[]>of(
                 new Object[]{DIA, 90}
         ));
-        when(paymentRepository.findPaidRowsInRange(any(), any())).thenReturn(List.<Object[]>of(
+        when(paymentRepository.findPaidRowsInRange(any(), any(), any())).thenReturn(List.<Object[]>of(
                 new Object[]{paid, new BigDecimal("22.50"), PaymentMethod.CASH}
         ));
 
@@ -219,10 +221,10 @@ class DashboardServiceTest {
     @DisplayName("exportarCsv: sin horario configurado ⇒ ocupacion_pct 0.0 por día")
     void exportarCsv_sinConfig_ocupacionCero() {
         configAbsent();
-        when(reservationRepository.findActiveUsageRowsInRange(DIA, DIA)).thenReturn(List.<Object[]>of(
+        when(reservationRepository.findActiveUsageRowsInRange(DIA, DIA, ReservationStatus.CANCELLED)).thenReturn(List.<Object[]>of(
                 new Object[]{DIA, 120}
         ));
-        lenient().when(paymentRepository.findPaidRowsInRange(any(), any())).thenReturn(List.of());
+        lenient().when(paymentRepository.findPaidRowsInRange(any(), any(), any())).thenReturn(List.of());
 
         String csv = service.exportarCsv(DIA, DIA);
         String[] lines = csv.split("\r\n");

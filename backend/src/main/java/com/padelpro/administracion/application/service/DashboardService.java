@@ -5,6 +5,8 @@ import com.padelpro.administracion.application.dto.OcupacionResponse;
 import com.padelpro.auth.domain.exception.ValidationException;
 import com.padelpro.auth.domain.port.out.SystemConfigRepositoryPort;
 import com.padelpro.reservas.domain.model.PaymentMethod;
+import com.padelpro.reservas.domain.model.PaymentStatus;
+import com.padelpro.reservas.domain.model.ReservationStatus;
 import com.padelpro.reservas.infrastructure.persistence.PaymentJpaRepository;
 import com.padelpro.reservas.infrastructure.persistence.ReservationJpaRepository;
 import org.springframework.transaction.annotation.Transactional;
@@ -88,7 +90,8 @@ public class DashboardService {
         validateRange(fechaInicio, fechaFin);
         int slotsDisponibles = slotsDisponibles(fechaInicio, fechaFin);
         long totalDurationMinutes =
-                reservationRepository.sumActiveDurationMinutesInRange(fechaInicio, fechaFin);
+                reservationRepository.sumActiveDurationMinutesInRange(
+                        fechaInicio, fechaFin, ReservationStatus.CANCELLED);
         int slotsReservados = durationToSlots(totalDurationMinutes);
         BigDecimal ocupacionPct = occupancyPct(slotsReservados, slotsDisponibles);
         return new OcupacionResponse(fechaInicio, fechaFin, slotsReservados, slotsDisponibles, ocupacionPct);
@@ -112,7 +115,8 @@ public class DashboardService {
         porMetodo.put(PaymentMethod.CASH.name(), zeroMoney());
 
         BigDecimal total = zeroMoney();
-        for (Object[] row : paymentRepository.sumPaidAmountGroupedByMethod(start, end)) {
+        for (Object[] row : paymentRepository.sumPaidAmountGroupedByMethod(
+                start, end, PaymentStatus.PAID)) {
             PaymentMethod method = (PaymentMethod) row[0];
             BigDecimal amount = money(row[1]);
             total = total.add(amount);
@@ -204,7 +208,8 @@ public class DashboardService {
 
     private Map<LocalDate, long[]> reservationsByDay(LocalDate fechaInicio, LocalDate fechaFin) {
         Map<LocalDate, long[]> byDay = new HashMap<>();
-        for (Object[] row : reservationRepository.findActiveUsageRowsInRange(fechaInicio, fechaFin)) {
+        for (Object[] row : reservationRepository.findActiveUsageRowsInRange(
+                fechaInicio, fechaFin, ReservationStatus.CANCELLED)) {
             LocalDate day = (LocalDate) row[0];
             long duration = ((Number) row[1]).longValue();
             long[] agg = byDay.computeIfAbsent(day, k -> new long[2]);
@@ -218,7 +223,7 @@ public class DashboardService {
         OffsetDateTime start = startOfDay(fechaInicio);
         OffsetDateTime end = startOfDay(fechaFin.plusDays(1));
         Map<LocalDate, BigDecimal[]> byDay = new HashMap<>();
-        for (Object[] row : paymentRepository.findPaidRowsInRange(start, end)) {
+        for (Object[] row : paymentRepository.findPaidRowsInRange(start, end, PaymentStatus.PAID)) {
             OffsetDateTime paidAt = (OffsetDateTime) row[0];
             BigDecimal amount = money(row[1]);
             PaymentMethod method = (PaymentMethod) row[2];
