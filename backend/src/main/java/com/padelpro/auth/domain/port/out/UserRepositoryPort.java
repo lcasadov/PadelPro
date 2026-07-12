@@ -50,6 +50,12 @@ public interface UserRepositoryPort {
     Optional<User> findById(Long id);
 
     /**
+     * Find a user by their linked Telegram chat id (auth-otp-telegram). Used by the webhook to
+     * enforce that a Telegram chat is linked to at most one account (spec Requirement 1, scenario 3).
+     */
+    Optional<User> findByTelegramChatId(String telegramChatId);
+
+    /**
      * Batch-load users by id (anti-N+1). Used to resolve participant display names for the
      * open-matches listing without one query per participant. The signature coincides with
      * {@code JpaRepository.findAllById} under type erasure, so the Spring Data proxy supplies it.

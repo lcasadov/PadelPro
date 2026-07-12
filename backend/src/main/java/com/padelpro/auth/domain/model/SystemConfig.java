@@ -35,6 +35,9 @@ public class SystemConfig {
     @Column(columnDefinition = "TEXT")
     private String telegramBotToken;
 
+    @Column(name = "telegram_webhook_secret", columnDefinition = "TEXT")
+    private String telegramWebhookSecret;
+
     @Column(columnDefinition = "TEXT")
     private String redsysMerchantId;
 
@@ -157,6 +160,14 @@ public class SystemConfig {
         this.telegramBotToken = telegramBotToken;
     }
 
+    public String getTelegramWebhookSecret() {
+        return telegramWebhookSecret;
+    }
+
+    public void setTelegramWebhookSecret(String telegramWebhookSecret) {
+        this.telegramWebhookSecret = telegramWebhookSecret;
+    }
+
     public String getRedsysMerchantId() {
         return redsysMerchantId;
     }
@@ -260,6 +271,7 @@ public class SystemConfig {
         private PistaState pistaState;
         private PaymentGateway paymentGateway;
         private String telegramBotToken;
+        private String telegramWebhookSecret;
         private String redsysMerchantId;
         private String redsysMerchantKey;
         private String redsysTerminal;
@@ -297,6 +309,11 @@ public class SystemConfig {
 
         public SystemConfigBuilder telegramBotToken(String telegramBotToken) {
             this.telegramBotToken = telegramBotToken;
+            return this;
+        }
+
+        public SystemConfigBuilder telegramWebhookSecret(String telegramWebhookSecret) {
+            this.telegramWebhookSecret = telegramWebhookSecret;
             return this;
         }
 
@@ -346,10 +363,12 @@ public class SystemConfig {
         }
 
         public SystemConfig build() {
-            return new SystemConfig(id, clubName, clubDescription, pistaState, paymentGateway,
+            SystemConfig config = new SystemConfig(id, clubName, clubDescription, pistaState, paymentGateway,
                     telegramBotToken, redsysMerchantId, redsysMerchantKey, redsysTerminal,
                     maxParticipantsPerPista, pricePerHour, cancellationDeadlineHours, createdAt,
                     updatedAt, updatedByUserId);
+            config.setTelegramWebhookSecret(telegramWebhookSecret);
+            return config;
         }
     }
 }

@@ -42,6 +42,11 @@ public interface UserRepository extends JpaRepository<User, Long>, UserRepositor
     Optional<User> findByLogin(String login);
 
     /**
+     * Find a user by their linked Telegram chat id (auth-otp-telegram).
+     */
+    Optional<User> findByTelegramChatId(String telegramChatId);
+
+    /**
      * Check whether a user with the given email already exists.
      */
     boolean existsByEmail(String email);

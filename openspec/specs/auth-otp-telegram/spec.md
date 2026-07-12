@@ -6,7 +6,7 @@ Gestiona la vinculación de la cuenta de PadelPro con el chat personal de Telegr
 
 ## Fase
 
-Fase 1
+Fase 1 — ✅ Implementada (change `auth-otp-telegram-impl`, Issue #207): módulos `otp` + `mensajeria`, migración `otp_codes` + link Telegram, webhook validado, `POST /api/otp/verificar`, y UI de vinculación en Mi perfil.
 
 ## Reglas de negocio implicadas
 
