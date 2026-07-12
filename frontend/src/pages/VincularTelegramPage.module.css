@@ -1,0 +1,258 @@
+/* VincularTelegramPage — Ref visual: docs/ux/mockups/15-vincular-telegram.html */
+
+.page {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--cream);
+  max-width: 430px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 20px 24px 32px;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.backBtn {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1.5px solid rgba(13, 13, 13, 0.14);
+  background: transparent;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.backBtn:hover {
+  border-color: var(--ink);
+}
+
+.backBtn svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* ── Hero ── */
+.hero {
+  text-align: center;
+  padding: 8px 0 24px;
+}
+
+.tgIcon {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: #229ed9; /* azul Telegram */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+  box-shadow: 0 8px 24px rgba(34, 158, 217, 0.32);
+}
+
+.tgIcon svg {
+  width: 34px;
+  height: 34px;
+}
+
+.hero h1 {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.12;
+  margin-bottom: 10px;
+}
+
+.hero h1 em {
+  font-style: normal;
+  color: #229ed9;
+}
+
+.hero p {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--muted);
+  max-width: 300px;
+  margin: 0 auto;
+}
+
+/* ── Steps ── */
+.steps {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin: 8px 0 28px;
+  padding: 0;
+}
+
+.step {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.stepNum {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--olive);
+  color: var(--lime);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stepTitle {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-bottom: 2px;
+}
+
+.stepDesc {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.botName {
+  display: inline-block;
+  margin-top: 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink);
+  background: rgba(34, 158, 217, 0.1);
+  border: 1px solid rgba(34, 158, 217, 0.25);
+  padding: 4px 10px;
+  border-radius: 8px;
+}
+
+/* ── Code card (OTP a enviar al bot) ── */
+.codeCard {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: rgba(34, 158, 217, 0.08);
+  border: 1.5px dashed rgba(34, 158, 217, 0.4);
+}
+
+.codeLabel {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.codeCommand {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--ink);
+  letter-spacing: 0.02em;
+}
+
+.codeValue {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  color: #1a7fb0;
+}
+
+.codeTimer {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.codeTimerNum {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  color: var(--ink);
+  letter-spacing: 0.04em;
+}
+
+/* ── Warning (caducado / no detectado) ── */
+.warning {
+  margin-top: 12px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #9a5a00;
+  padding: 12px 14px;
+  background: rgba(234, 160, 20, 0.12);
+  border-radius: 8px;
+  border-left: 3px solid #eaa014;
+}
+
+/* ── Actions ── */
+.actions {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.openBtn {
+  text-decoration: none;
+}
+
+/* ── Success view ── */
+.successView {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 14px;
+  padding: 0 12px;
+}
+
+.successIcon {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: var(--lime);
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 6px;
+}
+
+.successIcon svg {
+  width: 34px;
+  height: 34px;
+}
+
+.successView h1 {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.successView p {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--muted);
+  max-width: 300px;
+}
+
+.successView .p-btn {
+  margin-top: 12px;
+}

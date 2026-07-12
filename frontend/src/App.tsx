@@ -10,6 +10,8 @@ import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { ChangePasswordPage } from './pages/ChangePasswordPage';
 import { HomePage } from './pages/HomePage';
 import { MiPerfilPage } from './pages/MiPerfilPage';
+import { VincularTelegramPage } from './pages/VincularTelegramPage';
+import { telegramPaths } from './pages/telegramPaths';
 import { AdminUsuariosPage } from './pages/AdminUsuariosPage';
 import { DisponibilidadPage } from './pages/DisponibilidadPage';
 import { ConfirmarReservaPage } from './pages/ConfirmarReservaPage';
@@ -44,6 +46,8 @@ function App() {
           <Route element={<PrivateRoute />}>
             <Route path="/home" element={<HomePage />} />
             <Route path="/perfil" element={<MiPerfilPage />} />
+            {/* Vinculación de Telegram (auth-otp-telegram, mockup 15) */}
+            <Route path={telegramPaths.vincular} element={<VincularTelegramPage />} />
             {/* Cambio de contraseña forzado (D9) — accesible a cualquier autenticado */}
             <Route path="/cambiar-password" element={<ChangePasswordPage />} />
 
