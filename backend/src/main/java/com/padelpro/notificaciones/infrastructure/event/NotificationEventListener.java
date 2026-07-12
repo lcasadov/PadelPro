@@ -17,6 +17,7 @@ import com.padelpro.notificaciones.infrastructure.telegram.ReservationCancelledT
 import com.padelpro.notificaciones.infrastructure.telegram.ReservationConfirmedTelegramTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
@@ -32,6 +33,19 @@ import java.util.Optional;
  * a rolled-back transaction publishes no email (RN-NOT-01). The actual send is offloaded to
  * {@link EmailNotificationService#dispatch} which is {@code @Async} and fault-tolerant, so a slow or
  * broken SMTP never blocks the committing thread (RN-NOT-02).
+ *
+ * <p><b>Fully off the request/webhook thread (#199):</b> every handler is additionally
+ * {@code @Async("notificationsTaskExecutor")}, so the owner lookup ({@link UserRepositoryPort#findById})
+ * and all template building run on the notifications pool rather than the thread that committed the
+ * reservation/payment. This removes the extra owner-resolution round-trip from the latency of each
+ * mutation. The {@code @Async} + {@code AFTER_COMMIT} combination is safe here: {@code AFTER_COMMIT}
+ * already fires post-commit, so processing the event on another thread (outside the original
+ * transaction) is correct — the business data is already durable and nothing is rolled back. The
+ * owner is re-read inside its own repository transaction, and the handlers read no
+ * {@code SecurityContext}/MDC (all needed data travels inside the event payload), so no thread-bound
+ * context needs propagating. Rejection under load is handled by the executor's
+ * {@code CallerRunsPolicy} (see {@code AsyncConfig}) — a saturated queue degrades to inline execution
+ * rather than throwing back into the committing thread.
  *
  * <p>The recipient (owner/titular) email is resolved here from the user id. If the user cannot be
  * resolved or has no email (e.g. anonymized account), the notification is skipped — no email is sent
@@ -57,6 +71,7 @@ public class NotificationEventListener {
         this.userRepositoryPort = userRepositoryPort;
     }
 
+    @Async("notificationsTaskExecutor")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onReservationConfirmed(ReservationConfirmedEmailEvent event) {
         resolveOwner(event.ownerId()).ifPresent(owner -> {
@@ -82,6 +97,7 @@ public class NotificationEventListener {
         });
     }
 
+    @Async("notificationsTaskExecutor")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onReservationCancelled(ReservationCancelledEmailEvent event) {
         resolveOwner(event.ownerId()).ifPresent(owner -> {
@@ -98,6 +114,7 @@ public class NotificationEventListener {
         });
     }
 
+    @Async("notificationsTaskExecutor")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onPaymentPaid(PaymentPaidEmailEvent event) {
         resolveOwner(event.ownerId()).ifPresent(owner -> {

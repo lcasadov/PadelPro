@@ -30,6 +30,14 @@ app:
     ttl: ${IDEMPOTENCY_TTL:PT24H}
     purge:
       enabled: ${IDEMPOTENCY_PURGE_ENABLED:true}
+  notification:
+    # Retention window for notification_log rows (ISO-8601 duration). notification_log is an audit
+    # trail holding recipient (email) + message (reservation/payment data); past this window the rows
+    # are purged so personal data is not kept indefinitely (RGPD storage limitation, #199). 6 months
+    # covers retry/backoff cycles and any realistic support look-back.
+    retention: ${NOTIFICATION_RETENTION:P180D}
+    purge:
+      enabled: ${NOTIFICATION_PURGE_ENABLED:true}
   mail:
     from: ${MAIL_FROM:no-reply@padelpro.local}
   jwt:
