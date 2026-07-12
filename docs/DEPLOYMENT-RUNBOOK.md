@@ -62,13 +62,16 @@ En la consola de AWS EC2 → **Key Pairs** → importa la clave **pública**
 | Tipo       | Puerto | Origen            | Motivo                          |
 |------------|--------|-------------------|---------------------------------|
 | SSH        | 22     | tu IP / IP runner | acceso administración + deploy  |
-| Custom TCP | 8080   | 0.0.0.0/0         | backend (API + `/actuator/health`) |
-| Custom TCP | 5173   | 0.0.0.0/0         | frontend (build estático)       |
+| Custom TCP | 8080   | 0.0.0.0/0         | backend (solo despliegue HTTP legacy — cerrar al activar TLS) |
+| Custom TCP | 5173   | 0.0.0.0/0         | frontend (solo despliegue HTTP legacy — cerrar al activar TLS) |
+| HTTP       | 80     | 0.0.0.0/0         | reto ACME (Let's Encrypt) + redirect a HTTPS (modo TLS) |
+| HTTPS      | 443    | 0.0.0.0/0         | acceso público a la app con TLS (modo TLS) |
 
 > ⚠️ Restringir SSH (22) a tu IP. GitHub Actions usa rangos de IP dinámicos; si quieres
 > restringir el deploy por IP, considera un self-hosted runner o un bastion. En v1 se
 > acepta SSH abierto a tu IP de administración (el deploy usa la clave privada en Secrets).
-> 🔒 8080/5173 abiertos al mundo porque no hay TLS/proxy en v1 (D5). Endurecer en evolución.
+> 🔒 **Con TLS activado (sección 9)**, cierra 8080/5173 al mundo: el único acceso público
+> es 80/443 vía el reverse-proxy Caddy. 8080/5173 solo hacían falta en el despliegue HTTP legacy.
 
 ### 2.4 Instalar Docker + Docker Compose en el EC2
 
@@ -288,6 +291,93 @@ en el `.env` (eliminando el servicio `db` del compose).
 | `.env` del EC2   | `POSTGRES_PASSWORD`, `POSTGRES_DB/USER`    | credenciales BD (db + datasource)     |
 | `.env` del EC2   | `SPRING_PROFILES_ACTIVE=prod`              | perfil productivo (Flyway validate)   |
 | `.env` del EC2   | `VITE_API_BASE_URL`                        | URL del backend para el frontend      |
+| `.env` del EC2   | `PUBLIC_HOST` *(modo TLS)*                  | host público sslip.io/dominio para Caddy (sección 9) |
 
 🔒 Ningún secreto vive en el repositorio ni viaja por el workflow (D4). `.gitignore` cubre
 `.env`, `.env.*`, `*.env`, `*.pem`, `*.key`.
+
+---
+
+## 9. TLS/HTTPS en producción (change `tls-https-ec2`, Issue #203)
+
+Antepone un reverse-proxy **Caddy** que termina TLS y sirve la app por **HTTPS** con
+certificado **Let's Encrypt automático**, usando un dominio **`sslip.io`** derivado de la
+IP fija — **sin comprar dominio**. Cierra el gap de *secure context* del navegador (causa del
+bug #201, `crypto.randomUUID`) y el transporte en claro de JWT/credenciales.
+
+> Artefactos: `docker-compose.prod.yml` (stack de prod autocontenido) + `caddy/Caddyfile`.
+> **Este cambio se aplica manualmente en el EC2**; no lo despliega la CI automáticamente
+> (así se evita romper prod antes de tener Elastic IP + `PUBLIC_HOST` listos).
+
+### 9.1 Requisitos previos (una sola vez)
+
+1. **Elastic IP fija** asociada a la instancia (imprescindible: si la IP cambia, el
+   certificado y el host `sslip.io` dejan de valer).
+   - EC2 → *Elastic IPs* → *Allocate* → *Associate* a la instancia.
+2. **Abrir puertos 80 y 443** en el Security Group (ver sección 2.3). El **80 es
+   obligatorio** para el reto ACME HTTP-01 de Let's Encrypt.
+3. Calcular el host `sslip.io` a partir de la Elastic IP sustituyendo los puntos por guiones:
+   - IP `16.192.61.61` → `PUBLIC_HOST=16-192-61-61.sslip.io`
+
+### 9.2 Configurar `PUBLIC_HOST` en el `.env` del EC2
+
+```bash
+# En el .env del EC2 (junto a JWT_SECRET, etc.)
+echo "PUBLIC_HOST=16-192-61-61.sslip.io" >> .env   # usa TU Elastic IP guionizada
+```
+
+### 9.3 Levantar el stack con TLS
+
+```bash
+cd ~/PadelPro
+git pull origin develop
+
+# Detener el stack HTTP legacy si estuviera arriba
+docker compose down
+
+# Levantar el stack de producción con TLS (Caddy + front/back sin puertos al host)
+docker compose -f docker-compose.prod.yml up -d --build
+
+# Ver la emisión del certificado (primera vez tarda unos segundos)
+docker compose -f docker-compose.prod.yml logs -f caddy
+```
+
+> 💡 **Prueba primero con el *staging* de Let's Encrypt** para no gastar el rate-limit de
+> producción si algo falla. Añade en `caddy/Caddyfile`, dentro del bloque de host, la
+> directiva global `acme_ca https://acme-staging-v02.api.letsencrypt.org/directory`
+> (o vía bloque global) y, una vez validado, quítala y `docker compose ... up -d` de nuevo.
+> Los certs de staging NO son de confianza (el navegador avisará), pero confirman el flujo.
+
+### 9.4 Verificación
+
+```bash
+# HTTPS sirve el frontend
+curl -sSI https://16-192-61-61.sslip.io/ | head -1        # 200
+
+# La API responde por el mismo origen HTTPS
+curl -sS  https://16-192-61-61.sslip.io/actuator/health   # {"status":"UP"}
+
+# HTTP redirige a HTTPS
+curl -sSI http://16-192-61-61.sslip.io/ | grep -i location # https://...
+```
+
+En el navegador, abrir `https://<PUBLIC_HOST>/`, iniciar sesión y **crear una reserva**:
+con HTTPS `crypto.randomUUID` funciona y el flujo se completa (regresión de #201).
+Comprobar en DevTools → Network que **no hay peticiones a `:8080` ni a `http://`**
+(sin *mixed content*).
+
+### 9.5 Rollback
+
+```bash
+docker compose -f docker-compose.prod.yml down
+docker compose up -d --build     # vuelve al stack HTTP legacy (puertos 8080/5173)
+```
+
+Los certificados quedan en el volumen `caddy_data` para el siguiente intento (no se
+re-solicitan, evitando el rate-limit de Let's Encrypt).
+
+### 9.6 Migrar a un dominio propio (futuro, opcional)
+
+Apunta un registro A de tu dominio a la Elastic IP y cambia `PUBLIC_HOST=reservas.tuclub.com`
+en el `.env`. `docker compose -f docker-compose.prod.yml up -d` y Caddy emite el certificado
+del dominio real. Sin cambios en el `Caddyfile`.

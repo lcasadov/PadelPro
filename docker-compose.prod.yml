@@ -1,4 +1,39 @@
+# docker-compose.prod.yml — stack de PRODUCCIÓN con terminación TLS (change tls-https-ec2).
+#
+# Autocontenido (no es un overlay): define el stack completo de producción. Se usa así:
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Diferencias respecto a docker-compose.yml (dev):
+#   - Se antepone `caddy` como reverse-proxy TLS; SOLO caddy publica puertos al host (80/443).
+#   - `frontend` y `backend` NO publican puertos: solo son accesibles por la red interna.
+#   - El acceso público es https://${PUBLIC_HOST}/  (ver caddy/Caddyfile y el runbook).
+#
+# ⚠️ Mantener en sync con docker-compose.yml (db/backend/frontend comparten definición
+#    salvo la publicación de puertos). Los secretos viven en el .env del EC2.
 services:
+  # Reverse-proxy + terminación TLS
+  caddy:
+    image: caddy:2-alpine
+    container_name: padelpro-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      # <ip-con-guiones>.sslip.io en prod; localhost para validación local.
+      PUBLIC_HOST: ${PUBLIC_HOST:?Define PUBLIC_HOST (p. ej. 16-192-61-61.sslip.io o localhost)}
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data      # certificados + estado ACME (persistente: evita rate-limit de LE)
+      - caddy_config:/config
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+    networks:
+      - padelpro-network
+
   # PostgreSQL 15 — Base de datos
   db:
     image: postgres:15-alpine
@@ -6,8 +41,6 @@ services:
     environment:
       POSTGRES_DB: padelpro
       POSTGRES_USER: padelpro
-      # En producción el password se inyecta desde el .env del EC2 (D4).
-      # Fallback solo para desarrollo local.
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-padelpro_dev}
     ports:
       - "5432:5432"
@@ -22,35 +55,25 @@ services:
       - padelpro-network
     restart: unless-stopped
 
-  # Backend — Spring Boot
+  # Backend — Spring Boot (sin publicar puerto al host: solo red interna)
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: padelpro-backend
     environment:
-      # Database
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/padelpro
       SPRING_DATASOURCE_USERNAME: padelpro
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-padelpro_dev}
       SPRING_JPA_HIBERNATE_DDL_AUTO: validate
       SPRING_FLYWAY_ENABLED: 'true'
       SPRING_FLYWAY_LOCATIONS: classpath:db/migration
-
-      # JWT
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRATION: 3600
       JWT_REFRESH_EXPIRATION: 604800
-
-      # Encryption (configuracion-club)
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
-
-      # Bootstrap del primer admin (acceso-cuenta-prod, D1). Si están vacías, el runner no crea nada.
       ADMIN_EMAIL: ${ADMIN_EMAIL:-}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
-
-      # SMTP / Email (notificaciones). Credenciales SOLO en el .env del EC2 (nunca en el repo).
-      # Si MAIL_HOST está vacío, el envío falla de forma tolerante (D4) y no rompe la gestión.
       MAIL_HOST: ${MAIL_HOST:-}
       MAIL_PORT: ${MAIL_PORT:-587}
       MAIL_USERNAME: ${MAIL_USERNAME:-}
@@ -58,16 +81,8 @@ services:
       MAIL_FROM: ${MAIL_FROM:-no-reply@padelpro.local}
       MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-true}
       MAIL_SMTP_STARTTLS: ${MAIL_SMTP_STARTTLS:-true}
-      # Health de correo: en prod queda activo (true). En E2E/CI sin SMTP real se pone
-      # a false para que un SMTP no configurado no marque /actuator/health DOWN y bloquee
-      # el arranque del frontend (depends_on: backend healthy).
-      MANAGEMENT_HEALTH_MAIL_ENABLED: ${MANAGEMENT_HEALTH_MAIL_ENABLED:-true}
-
-      # Spring Boot
       SPRING_PROFILES_ACTIVE: prod
       SERVER_PORT: 8080
-    ports:
-      - "8080:8080"
     depends_on:
       db:
         condition: service_healthy
@@ -80,19 +95,17 @@ services:
       - padelpro-network
     restart: unless-stopped
 
-  # Frontend — React + Vite
+  # Frontend — React + Vite (sin publicar puerto al host: solo red interna)
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: padelpro-frontend
     environment:
-      # El bundle se sirve como build estático (D6). Las llamadas a /api se
-      # enrutan al backend vía el proxy de `vite preview` (ver vite.config.ts).
-      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://backend:8080}
+      # El frontend llama al backend por ruta relativa /api (mismo origen HTTPS vía
+      # Caddy), por lo que VITE_API_BASE_URL no interviene; se mantiene por compat.
+      VITE_API_BASE_URL: /api
       NODE_ENV: production
-    ports:
-      - "5173:5173"
     depends_on:
       backend:
         condition: service_healthy
@@ -111,4 +124,8 @@ networks:
 
 volumes:
   padelpro_postgres_data:
+    driver: local
+  caddy_data:
+    driver: local
+  caddy_config:
     driver: local
