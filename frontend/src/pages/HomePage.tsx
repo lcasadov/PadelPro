@@ -113,6 +113,21 @@ export function HomePage() {
             <div className={styles.actionSub}>Aprobar, activar y resetear</div>
           </Link>
         )}
+
+        {/* Dashboard del club — solo ADMIN (administracion-club, D5) */}
+        {role === 'ADMIN' && (
+          <Link to="/admin/dashboard" className={styles.action}>
+            <div className={styles.actionIco}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <line x1="18" y1="20" x2="18" y2="10" />
+                <line x1="12" y1="20" x2="12" y2="4" />
+                <line x1="6" y1="20" x2="6" y2="14" />
+              </svg>
+            </div>
+            <div className={styles.actionLabel}>Dashboard del club</div>
+            <div className={styles.actionSub}>Ocupación, ingresos y export</div>
+          </Link>
+        )}
       </div>
 
       {/* ── Logout ── */}
