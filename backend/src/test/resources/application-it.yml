@@ -26,6 +26,9 @@ app:
   notifications:
     retry:
       enabled: false   # deterministic tests — retry logic is exercised directly on the service
+  notification:
+    purge:
+      enabled: false   # deterministic tests — retention purge is exercised directly on the service
   jwt:
     secret: test-secret-key-padelpro-256-bits-minimum-length-padding-here
     access-token-expiry-minutes: 15
