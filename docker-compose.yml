@@ -58,6 +58,10 @@ services:
       MAIL_FROM: ${MAIL_FROM:-no-reply@padelpro.local}
       MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-true}
       MAIL_SMTP_STARTTLS: ${MAIL_SMTP_STARTTLS:-true}
+      # Health de correo: en prod queda activo (true). En E2E/CI sin SMTP real se pone
+      # a false para que un SMTP no configurado no marque /actuator/health DOWN y bloquee
+      # el arranque del frontend (depends_on: backend healthy).
+      MANAGEMENT_HEALTH_MAIL_ENABLED: ${MANAGEMENT_HEALTH_MAIL_ENABLED:-true}
 
       # Spring Boot
       SPRING_PROFILES_ACTIVE: prod
