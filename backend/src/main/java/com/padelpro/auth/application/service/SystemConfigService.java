@@ -77,6 +77,11 @@ public class SystemConfigService {
             config.setTelegramBotToken(encryptionService.encrypt(request.telegramBotToken()));
         }
 
+        // auth-otp-telegram (D-OTP-01): encrypt the Telegram webhook secret like the other club secrets.
+        if (request.telegramWebhookSecret() != null && !request.telegramWebhookSecret().isBlank()) {
+            config.setTelegramWebhookSecret(encryptionService.encrypt(request.telegramWebhookSecret()));
+        }
+
         if (request.redsysMerchantId() != null && !request.redsysMerchantId().isBlank()) {
             config.setRedsysMerchantId(encryptionService.encrypt(request.redsysMerchantId()));
         }

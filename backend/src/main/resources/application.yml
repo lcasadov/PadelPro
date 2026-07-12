@@ -30,6 +30,12 @@ app:
     access-token-expiry-minutes: 15
   encryption:
     key: ${ENCRYPTION_KEY}
+  telegram:
+    # Telegram Bot API base URL. The bot token + webhook secret live (encrypted) in system_config,
+    # not here (D-OTP-01). Override the base URL in tests to point at a mock server.
+    api-url: ${TELEGRAM_API_URL:https://api.telegram.org}
+    # Profile URL shown to unlinked users who message the bot ("link first").
+    profile-url: ${TELEGRAM_PROFILE_URL:http://localhost:5173/perfil}
   redsys:
     # TPV endpoint (sandbox by default; set the production endpoint via env in prod).
     tpv-url: ${REDSYS_TPV_URL:https://sis-t.redsys.es:25443/sis/realizarPago}

@@ -20,6 +20,8 @@ import com.padelpro.reservas.domain.exception.ReservaNotFoundException;
 import com.padelpro.reservas.domain.exception.SlotConflictException;
 import com.padelpro.usuarios.domain.exception.AdminSelfDeactivationException;
 import com.padelpro.usuarios.domain.exception.EmailConflictException;
+import com.padelpro.mensajeria.domain.exception.TelegramWebhookForbiddenException;
+import com.padelpro.otp.domain.exception.OtpVerificationException;
 import com.padelpro.usuarios.domain.exception.UserNotFoundException;
 import com.padelpro.usuarios.domain.exception.UserNotPendingException;
 import java.util.List;
@@ -258,5 +260,32 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.UNPROCESSABLE_ENTITY)
                 .body(new ErrorResponse(ex.getCode(), ex.getMessage()));
+    }
+
+    // -------------------------------------------------------------------------
+    // auth-otp-telegram capability
+    // -------------------------------------------------------------------------
+
+    /**
+     * A failed OTP verification (wrong/expired/invalidated code) → 422 with the exception's own
+     * machine-readable code ({@code OTP_INVALID}, {@code OTP_EXPIRED}, {@code OTP_MAX_ATTEMPTS}).
+     * The clear code is never echoed (RN-RGPD-04).
+     */
+    @ExceptionHandler(OtpVerificationException.class)
+    public ResponseEntity<ErrorResponse> handleOtpVerification(OtpVerificationException ex) {
+        return ResponseEntity
+                .status(HttpStatus.UNPROCESSABLE_ENTITY)
+                .body(new ErrorResponse(ex.getCode(), ex.getMessage()));
+    }
+
+    /**
+     * A Telegram webhook request with a missing/incorrect {@code X-Telegram-Bot-Api-Secret-Token}
+     * (RN-TEL-01) → 403.
+     */
+    @ExceptionHandler(TelegramWebhookForbiddenException.class)
+    public ResponseEntity<ErrorResponse> handleTelegramWebhookForbidden(TelegramWebhookForbiddenException ex) {
+        return ResponseEntity
+                .status(HttpStatus.FORBIDDEN)
+                .body(new ErrorResponse("TELEGRAM_WEBHOOK_FORBIDDEN", ex.getMessage()));
     }
 }

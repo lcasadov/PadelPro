@@ -15,6 +15,18 @@ public record UpdateSystemConfigRequest(
         String telegramBotToken,
         Integer maxParticipantsPerPista,
         BigDecimal pricePerHour,
-        Integer cancellationDeadlineHours
+        Integer cancellationDeadlineHours,
+        // auth-otp-telegram (D-OTP-01): the Telegram webhook secret, stored AES-256-GCM encrypted
+        // alongside telegramBotToken. Optional on update — omitting it keeps the stored value.
+        String telegramWebhookSecret
 ) {
+    /** Backward-compatible constructor for callers that don't set the Telegram webhook secret. */
+    public UpdateSystemConfigRequest(String clubName, String clubDescription, PistaState pistaState,
+                                     PaymentGateway paymentGateway, String redsysMerchantId,
+                                     String redsysMerchantKey, String telegramBotToken,
+                                     Integer maxParticipantsPerPista, BigDecimal pricePerHour,
+                                     Integer cancellationDeadlineHours) {
+        this(clubName, clubDescription, pistaState, paymentGateway, redsysMerchantId, redsysMerchantKey,
+                telegramBotToken, maxParticipantsPerPista, pricePerHour, cancellationDeadlineHours, null);
+    }
 }

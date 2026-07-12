@@ -2,10 +2,12 @@
 // Ref visual: docs/ux/mockups/14-mi-perfil.html
 // API: GET /api/usuarios/me, PATCH /api/usuarios/me
 import { useState, useEffect } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { getMeApi, updateMeApi, UsuarioMe } from '../services/usuariosApi';
+import { desvincularTelegramApi } from '../services/telegramApi';
+import { telegramPaths } from './telegramPaths';
 import './pages.css';
 import styles from './MiPerfilPage.module.css';
 
@@ -15,10 +17,16 @@ function getInitials(firstName: string, lastName: string): string {
 
 export function MiPerfilPage() {
   const { accessToken, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
 
   const [profile, setProfile] = useState<UsuarioMe | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+
+  // Telegram (auth-otp-telegram) — feedback y estado del botón desvincular.
+  const [telegramSubmitting, setTelegramSubmitting] = useState(false);
+  const [telegramMsg, setTelegramMsg] = useState<string | null>(null);
+  const [telegramError, setTelegramError] = useState<string | null>(null);
 
   // Form state — editable fields
   const [firstName, setFirstName] = useState('');
@@ -95,6 +103,22 @@ export function MiPerfilPage() {
     }
   }
 
+  async function handleDesvincular() {
+    if (!accessToken || !profile) return;
+    setTelegramMsg(null);
+    setTelegramError(null);
+    setTelegramSubmitting(true);
+    try {
+      await desvincularTelegramApi(accessToken);
+      setProfile({ ...profile, telegramLinked: false });
+      setTelegramMsg('Telegram desvinculado');
+    } catch {
+      setTelegramError('No se pudo desvincular Telegram. Inténtalo de nuevo.');
+    } finally {
+      setTelegramSubmitting(false);
+    }
+  }
+
   return (
     <div className={styles.perfilPage}>
       {/* ── Header ── */}
@@ -138,6 +162,53 @@ export function MiPerfilPage() {
               )}
             </div>
           )}
+
+          <div className={styles.divider} />
+
+          {/* ── Conexiones · Telegram (auth-otp-telegram, mockup 14) ── */}
+          <section className={styles.connections} aria-labelledby="conexiones-title">
+            <p id="conexiones-title" className={styles.sectionTitle}>Conexiones</p>
+
+            {telegramMsg && (
+              <p className={styles.successMsg}>{telegramMsg}</p>
+            )}
+            {telegramError && (
+              <p className={styles.errorMsg} role="alert">{telegramError}</p>
+            )}
+
+            <div className={styles.connectionRow}>
+              <div className={styles.connectionIcon} aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M21.5 4.5l-3 15s-.5 1-1.5 1c-.5 0-2-1-2-1l-7-5-3-1s-1-.5-1-1.5 1-1.5 1-1.5l16-5s.5-.5 1-.5c.5 0 .5.5.5.5z" />
+                </svg>
+              </div>
+              <div className={styles.connectionText}>
+                <div className={styles.connectionName}>Telegram</div>
+                <div className={styles.connectionSub}>Recibe avisos y usa OTP</div>
+              </div>
+              {profile?.telegramLinked ? (
+                <div className={styles.connectionActions}>
+                  <span className={styles.linkedPill}>Vinculado</span>
+                  <button
+                    type="button"
+                    className={styles.unlinkBtn}
+                    onClick={handleDesvincular}
+                    disabled={telegramSubmitting}
+                  >
+                    {telegramSubmitting ? 'Desvinculando…' : 'Desvincular'}
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className={styles.linkBtn}
+                  onClick={() => navigate(telegramPaths.vincular)}
+                >
+                  Vincular
+                </button>
+              )}
+            </div>
+          </section>
 
           <div className={styles.divider} />
 

@@ -18,7 +18,7 @@
 | `configuracion-club` | ✅ Implementada | `archive/2026-06-07-configuracion-club` |
 | `pistas` | ✅ Implementada | (incluida en `configuracion-club`) |
 | `disponibilidad-pistas` | ✅ Implementada | `archive/2026-06-18-disponibilidad-pistas` |
-| `auth-otp-telegram` | 📋 Pendiente | — |
+| `auth-otp-telegram` | ✅ Implementada (OTP RN-AUTH-07 + vinculación Telegram por webhook + `POST /api/otp/verificar`; token real en `system_config` al desplegar) | `archive/2026-07-12-auth-otp-telegram-impl` |
 | `reservas` | ✅ Implementada (+ UI jugador: disponibilidad/confirmar/mis reservas + duración/compañero/cancelar) | `archive/2026-06-20-reservas`, `archive/2026-07-05-reservas-ui-jugador-fixes` (UI en #184, aún sin archivar) |
 | `pagos-redsys` | ✅ Implementada (iniciar pago firmado + webhook idempotente + efectivo ADMIN + historial; pago compartido diferido) | `archive/2026-07-05-pagos-redsys-online` |
 | `notificaciones` | 🔶 Parcial — email SMTP + bienvenida ✅; email de eventos (confirmación/cancelación/recibo) + `notification_log` + reintentos ✅; Telegram pendiente | `archive/2026-07-03-usuarios-alta-edicion-email`, `archive/2026-07-06-notificaciones-eventos-email` |
