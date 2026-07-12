@@ -1,5 +1,8 @@
 package com.padelpro.shared;
 
+import com.padelpro.auth.infrastructure.web.filter.RateLimitFilter;
+import org.junit.jupiter.api.BeforeEach;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
@@ -57,6 +60,24 @@ public abstract class PostgresIntegrationTest {
             JDBC_URL = CONTAINER.getJdbcUrl();
             USERNAME = CONTAINER.getUsername();
             PASSWORD = CONTAINER.getPassword();
+        }
+    }
+
+    /**
+     * The {@link RateLimitFilter} bucket store is a singleton in the cached Spring context, so its
+     * per-IP counters leak across integration test classes and methods and cause order-dependent
+     * failures (notably {@code RateLimitIntegrationTest} intermittently seeing 401 where it expects
+     * 429). Optional ({@code required = false}) so tests running with a slice context that does not
+     * register the filter still load. See {@link RateLimitFilter#resetBuckets()}.
+     */
+    @Autowired(required = false)
+    private RateLimitFilter rateLimitFilter;
+
+    /** Reset rate-limit buckets before every test method so each starts with full capacity. */
+    @BeforeEach
+    void resetRateLimitBuckets() {
+        if (rateLimitFilter != null) {
+            rateLimitFilter.resetBuckets();
         }
     }
 

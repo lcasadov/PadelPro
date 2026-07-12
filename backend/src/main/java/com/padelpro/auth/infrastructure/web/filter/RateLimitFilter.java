@@ -113,6 +113,22 @@ public class RateLimitFilter extends OncePerRequestFilter {
         }
     }
 
+    /**
+     * Clears every in-memory rate-limit bucket, resetting all counters to full capacity.
+     *
+     * <p><b>Intended for test isolation only.</b> The bucket store is a singleton living inside the
+     * cached Spring context, so without an explicit reset the counters leak between integration test
+     * classes/methods and cause order-dependent failures (e.g. a request that should be the first of
+     * a fresh minute is instead the 6th and returns 429 — or, conversely, an exhausted bucket masks a
+     * different expected status). Integration tests call this in a {@code @BeforeEach} so every test
+     * method starts with a clean slate regardless of execution order.
+     *
+     * <p>Not part of the production request path; it has no effect other than emptying the store.
+     */
+    public void resetBuckets() {
+        buckets.clear();
+    }
+
     // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
