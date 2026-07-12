@@ -21,7 +21,7 @@
 | `auth-otp-telegram` | ✅ Implementada (OTP RN-AUTH-07 + vinculación Telegram por webhook + `POST /api/otp/verificar`; token real en `system_config` al desplegar) | `archive/2026-07-12-auth-otp-telegram-impl` |
 | `reservas` | ✅ Implementada (+ UI jugador: disponibilidad/confirmar/mis reservas + duración/compañero/cancelar) | `archive/2026-06-20-reservas`, `archive/2026-07-05-reservas-ui-jugador-fixes` (UI en #184, aún sin archivar) |
 | `pagos-redsys` | ✅ Implementada (iniciar pago firmado + webhook idempotente + efectivo ADMIN + historial; pago compartido diferido) | `archive/2026-07-05-pagos-redsys-online` |
-| `notificaciones` | 🔶 Parcial — email SMTP + bienvenida ✅; email de eventos (confirmación/cancelación/recibo) + `notification_log` + reintentos ✅; Telegram pendiente | `archive/2026-07-03-usuarios-alta-edicion-email`, `archive/2026-07-06-notificaciones-eventos-email` |
+| `notificaciones` | ✅ Implementada — email SMTP + bienvenida + eventos (confirmación/cancelación/recibo) + `notification_log` + reintentos; **pata Telegram** (directo + grupo, RN-NOT-01) | `archive/2026-07-03-usuarios-alta-edicion-email`, `archive/2026-07-06-notificaciones-eventos-email`, `archive/2026-07-12-notificaciones-telegram` |
 | `partidas` | ✅ Implementada (ver/unirse/abandonar partidas abiertas; pago compartido diferido a `pagos-redsys`) | `archive/2026-07-05-partidas-unirse` |
 | `exportaciones-rgpd` | 📋 Pendiente | — |
 | `administracion-club` | 📋 Pendiente (Fase 2) | — |

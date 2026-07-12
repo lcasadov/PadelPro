@@ -4,6 +4,7 @@ import com.padelpro.auth.domain.model.User;
 import com.padelpro.auth.domain.model.UserStatus;
 import com.padelpro.auth.domain.port.out.UserRepositoryPort;
 import com.padelpro.notificaciones.application.service.EmailNotificationService;
+import com.padelpro.notificaciones.application.service.TelegramNotificationService;
 import com.padelpro.notificaciones.domain.event.PaymentPaidEmailEvent;
 import com.padelpro.notificaciones.domain.event.ReservationCancelledEmailEvent;
 import com.padelpro.notificaciones.domain.event.ReservationConfirmedEmailEvent;
@@ -11,6 +12,9 @@ import com.padelpro.notificaciones.domain.model.EmailMessage;
 import com.padelpro.notificaciones.infrastructure.email.PaymentReceiptEmailTemplate;
 import com.padelpro.notificaciones.infrastructure.email.ReservationCancelledEmailTemplate;
 import com.padelpro.notificaciones.infrastructure.email.ReservationConfirmedEmailTemplate;
+import com.padelpro.notificaciones.infrastructure.telegram.PaymentReceiptTelegramTemplate;
+import com.padelpro.notificaciones.infrastructure.telegram.ReservationCancelledTelegramTemplate;
+import com.padelpro.notificaciones.infrastructure.telegram.ReservationConfirmedTelegramTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -42,44 +46,79 @@ public class NotificationEventListener {
     private static final String ENTITY_PAYMENT = "PAYMENT";
 
     private final EmailNotificationService emailNotificationService;
+    private final TelegramNotificationService telegramNotificationService;
     private final UserRepositoryPort userRepositoryPort;
 
     public NotificationEventListener(EmailNotificationService emailNotificationService,
+                                     TelegramNotificationService telegramNotificationService,
                                      UserRepositoryPort userRepositoryPort) {
         this.emailNotificationService = emailNotificationService;
+        this.telegramNotificationService = telegramNotificationService;
         this.userRepositoryPort = userRepositoryPort;
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onReservationConfirmed(ReservationConfirmedEmailEvent event) {
         resolveOwner(event.ownerId()).ifPresent(owner -> {
+            String reservationId = event.reservationId().toString();
             EmailMessage message = ReservationConfirmedEmailTemplate.build(
                     owner.getEmail(), owner.getFirstName(), event.date(), event.startTime(),
                     event.durationMinutes(), event.amount());
-            emailNotificationService.dispatch(message, owner.getId(),
-                    ENTITY_RESERVATION, event.reservationId().toString());
+            emailNotificationService.dispatch(message, owner.getId(), ENTITY_RESERVATION, reservationId);
+
+            // RN-TEL-03: direct Telegram notification only to a linked recipient.
+            if (hasTelegram(owner)) {
+                telegramNotificationService.dispatchDirect(owner.getTelegramChatId(),
+                        ReservationConfirmedTelegramTemplate.direct(owner.getFirstName(), event.date(),
+                                event.startTime(), event.durationMinutes(), event.amount()),
+                        owner.getId(), ENTITY_RESERVATION, reservationId);
+            }
+            // Req 6: broadcast to the club group when configured (no personal data). The service
+            // no-ops when telegram_group_id is unset.
+            telegramNotificationService.dispatchGroup(
+                    ReservationConfirmedTelegramTemplate.group(event.date(), event.startTime(),
+                            event.durationMinutes()),
+                    ENTITY_RESERVATION, reservationId);
         });
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onReservationCancelled(ReservationCancelledEmailEvent event) {
         resolveOwner(event.ownerId()).ifPresent(owner -> {
+            String reservationId = event.reservationId().toString();
             EmailMessage message = ReservationCancelledEmailTemplate.build(
                     owner.getEmail(), owner.getFirstName(), event.reason());
-            emailNotificationService.dispatch(message, owner.getId(),
-                    ENTITY_RESERVATION, event.reservationId().toString());
+            emailNotificationService.dispatch(message, owner.getId(), ENTITY_RESERVATION, reservationId);
+
+            if (hasTelegram(owner)) {
+                telegramNotificationService.dispatchDirect(owner.getTelegramChatId(),
+                        ReservationCancelledTelegramTemplate.direct(owner.getFirstName(), event.reason()),
+                        owner.getId(), ENTITY_RESERVATION, reservationId);
+            }
         });
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onPaymentPaid(PaymentPaidEmailEvent event) {
         resolveOwner(event.ownerId()).ifPresent(owner -> {
+            String reservationId = event.reservationId().toString();
             EmailMessage message = PaymentReceiptEmailTemplate.build(
                     owner.getEmail(), owner.getFirstName(), event.amount(),
                     event.paidAt(), event.reference());
-            emailNotificationService.dispatch(message, owner.getId(),
-                    ENTITY_PAYMENT, event.reservationId().toString());
+            emailNotificationService.dispatch(message, owner.getId(), ENTITY_PAYMENT, reservationId);
+
+            if (hasTelegram(owner)) {
+                telegramNotificationService.dispatchDirect(owner.getTelegramChatId(),
+                        PaymentReceiptTelegramTemplate.direct(owner.getFirstName(), event.amount(),
+                                event.paidAt(), event.reference()),
+                        owner.getId(), ENTITY_PAYMENT, reservationId);
+            }
         });
+    }
+
+    /** Whether the owner has a linked Telegram chat and is thus eligible for Telegram (RN-TEL-03). */
+    private static boolean hasTelegram(User owner) {
+        return owner.getTelegramChatId() != null && !owner.getTelegramChatId().isBlank();
     }
 
     /**

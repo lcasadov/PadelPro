@@ -2,6 +2,7 @@ package com.padelpro.mensajeria.infrastructure.telegram;
 
 import com.padelpro.mensajeria.application.service.TelegramConfigService;
 import com.padelpro.mensajeria.domain.port.out.TelegramPort;
+import com.padelpro.mensajeria.domain.port.out.TelegramSendResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.client.RestClient;
@@ -38,12 +39,13 @@ public class TelegramApiAdapter implements TelegramPort {
     }
 
     @Override
-    public void enviarMensaje(String chatId, String texto) {
+    public TelegramSendResult enviarMensaje(String chatId, String texto) {
         Optional<String> token = configService.getBotToken();
         if (token.isEmpty()) {
-            // RN-TEL-03: degrade to no-op when the bot is not configured.
+            // RN-TEL-03: degrade to a no-op when the bot is not configured. This is a clean skip, not
+            // a real failure, so callers must not audit it as one.
             log.info("Telegram not configured — skipping message to chat {} (no-op)", chatId);
-            return;
+            return TelegramSendResult.skipped("telegram not configured");
         }
         try {
             restClient.post()
@@ -52,9 +54,13 @@ public class TelegramApiAdapter implements TelegramPort {
                     .retrieve()
                     .toBodilessEntity();
             log.info("Telegram message sent to chat {}", chatId);
+            return TelegramSendResult.sent();
         } catch (Exception ex) {
-            // Never break the business flow on a delivery failure (D-OTP-05).
+            // Never break the business flow on a delivery failure (D-OTP-05) — return the failure so
+            // the caller can audit it (RN-NOT-01). Only the exception class name is surfaced, never the
+            // message body nor any secret (RN-RGPD-04).
             log.warn("Failed to send Telegram message to chat {}: {}", chatId, ex.getClass().getSimpleName());
+            return TelegramSendResult.failed(ex.getClass().getSimpleName());
         }
     }
 

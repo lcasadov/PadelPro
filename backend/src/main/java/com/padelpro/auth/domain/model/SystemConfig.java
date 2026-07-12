@@ -38,6 +38,14 @@ public class SystemConfig {
     @Column(name = "telegram_webhook_secret", columnDefinition = "TEXT")
     private String telegramWebhookSecret;
 
+    /**
+     * Telegram group chat id used to broadcast reservation-confirmed messages (notificaciones-telegram,
+     * Req 6 / D2). Unlike the bot token / webhook secret this is NOT encrypted — a chat id is not
+     * sensitive. Nullable: when unset no group message is published.
+     */
+    @Column(name = "telegram_group_id", length = 64)
+    private String telegramGroupId;
+
     @Column(columnDefinition = "TEXT")
     private String redsysMerchantId;
 
@@ -168,6 +176,14 @@ public class SystemConfig {
         this.telegramWebhookSecret = telegramWebhookSecret;
     }
 
+    public String getTelegramGroupId() {
+        return telegramGroupId;
+    }
+
+    public void setTelegramGroupId(String telegramGroupId) {
+        this.telegramGroupId = telegramGroupId;
+    }
+
     public String getRedsysMerchantId() {
         return redsysMerchantId;
     }
@@ -272,6 +288,7 @@ public class SystemConfig {
         private PaymentGateway paymentGateway;
         private String telegramBotToken;
         private String telegramWebhookSecret;
+        private String telegramGroupId;
         private String redsysMerchantId;
         private String redsysMerchantKey;
         private String redsysTerminal;
@@ -314,6 +331,11 @@ public class SystemConfig {
 
         public SystemConfigBuilder telegramWebhookSecret(String telegramWebhookSecret) {
             this.telegramWebhookSecret = telegramWebhookSecret;
+            return this;
+        }
+
+        public SystemConfigBuilder telegramGroupId(String telegramGroupId) {
+            this.telegramGroupId = telegramGroupId;
             return this;
         }
 
@@ -368,6 +390,7 @@ public class SystemConfig {
                     maxParticipantsPerPista, pricePerHour, cancellationDeadlineHours, createdAt,
                     updatedAt, updatedByUserId);
             config.setTelegramWebhookSecret(telegramWebhookSecret);
+            config.setTelegramGroupId(telegramGroupId);
             return config;
         }
     }

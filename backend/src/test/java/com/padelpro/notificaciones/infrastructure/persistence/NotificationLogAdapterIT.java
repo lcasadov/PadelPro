@@ -87,9 +87,15 @@ class NotificationLogAdapterIT extends PostgresIntegrationTest {
         sent.markSent(OffsetDateTime.now());
         UUID sentId = port.save(sent).getId();
 
+        // FAILED Telegram entry → audit-only, NOT retriable (the retry job re-sends emails only).
+        NotificationLog telegramFailed = NotificationLog.pending(
+                NotificationType.TELEGRAM_DIRECT, null, "chat-1", "s", "m", "RESERVATION", "t1");
+        telegramFailed.markFailed("boom", OffsetDateTime.now());
+        UUID telegramFailedId = port.save(telegramFailed).getId();
+
         List<UUID> ids = port.findRetriable(3).stream().map(NotificationLog::getId).toList();
 
         assertThat(ids).contains(retriableId);
-        assertThat(ids).doesNotContain(exhaustedId, sentId);
+        assertThat(ids).doesNotContain(exhaustedId, sentId, telegramFailedId);
     }
 }
