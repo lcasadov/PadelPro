@@ -182,6 +182,144 @@ class SystemConfigServiceTest {
                 .encrypt("-100999888");
     }
 
+    // -------------------------------------------------------------------------
+    // updateConfig — full field coverage (change backend-branch-coverage)
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("update with all secrets + pricing set encrypts every secret and stores the group id in clear")
+    void should_update_all_secret_and_pricing_fields() {
+        SystemConfig existing = SystemConfig.builder()
+                .id(1L).clubName("Old").pistaState(PistaState.ACTIVA)
+                .paymentGateway(PaymentGateway.CASH).maxParticipantsPerPista(4)
+                .pricePerHour(new java.math.BigDecimal("10.00")).cancellationDeadlineHours(24)
+                .updatedAt(OffsetDateTime.now()).build();
+        when(repositoryPort.findById(1L)).thenReturn(java.util.Optional.of(existing));
+        when(repositoryPort.save(org.mockito.ArgumentMatchers.any()))
+                .thenAnswer(inv -> inv.getArgument(0));
+        when(encryptionService.encrypt("bot-tok")).thenReturn("enc-bot");
+        when(encryptionService.encrypt("hook-secret")).thenReturn("enc-hook");
+        when(encryptionService.encrypt("merch-id")).thenReturn("enc-id");
+        when(encryptionService.encrypt("merch-key")).thenReturn("enc-key");
+
+        UpdateSystemConfigRequest request = new UpdateSystemConfigRequest(
+                "New Club", "New Desc", PistaState.MANTENIMIENTO, PaymentGateway.REDSYS,
+                "merch-id", "merch-key", "bot-tok", 6,
+                new java.math.BigDecimal("20.00"), 12, "hook-secret", "-100999");
+
+        configService.updateConfig(request);
+
+        // every secret encrypted (true branches of the !=null && !isBlank guards)
+        org.mockito.Mockito.verify(encryptionService).encrypt("bot-tok");
+        org.mockito.Mockito.verify(encryptionService).encrypt("hook-secret");
+        org.mockito.Mockito.verify(encryptionService).encrypt("merch-id");
+        org.mockito.Mockito.verify(encryptionService).encrypt("merch-key");
+        // group id is not a secret — stored verbatim
+        assertThat(existing.getTelegramGroupId()).isEqualTo("-100999");
+        // optional pricing fields present → applied
+        assertThat(existing.getPricePerHour()).isEqualByComparingTo("20.00");
+        assertThat(existing.getCancellationDeadlineHours()).isEqualTo(12);
+        assertThat(existing.getMaxParticipantsPerPista()).isEqualTo(6);
+    }
+
+    @Test
+    @DisplayName("blank secret/group/pricing fields are skipped (isBlank / null branches), keeping stored values")
+    void should_skip_blank_or_null_optional_fields() {
+        SystemConfig existing = SystemConfig.builder()
+                .id(1L).clubName("Old").pistaState(PistaState.ACTIVA)
+                .paymentGateway(PaymentGateway.CASH).maxParticipantsPerPista(4)
+                .pricePerHour(new java.math.BigDecimal("10.00")).cancellationDeadlineHours(24)
+                .telegramGroupId("-100keep").updatedAt(OffsetDateTime.now()).build();
+        when(repositoryPort.findById(1L)).thenReturn(java.util.Optional.of(existing));
+        when(repositoryPort.save(org.mockito.ArgumentMatchers.any()))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        // blank strings for every secret + group id, null pricing → all guards skip
+        UpdateSystemConfigRequest request = new UpdateSystemConfigRequest(
+                "New", "Desc", PistaState.ACTIVA, PaymentGateway.CASH,
+                "  ", "  ", "  ", 4, null, null, "  ", "  ");
+
+        configService.updateConfig(request);
+
+        // nothing encrypted, stored values untouched
+        org.mockito.Mockito.verifyNoInteractions(encryptionService);
+        assertThat(existing.getPricePerHour()).isEqualByComparingTo("10.00");
+        assertThat(existing.getCancellationDeadlineHours()).isEqualTo(24);
+        assertThat(existing.getTelegramGroupId()).isEqualTo("-100keep");
+    }
+
+    // -------------------------------------------------------------------------
+    // validateUpdateRequest — every guard
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("REDSYS without merchant key → validation error")
+    void should_throw_when_redsys_missing_key() {
+        UpdateSystemConfigRequest request = new UpdateSystemConfigRequest(
+                "Club", "Desc", PistaState.ACTIVA, PaymentGateway.REDSYS,
+                "merch-id", null, null, 4, null, null);
+
+        assertThatThrownBy(() -> configService.updateConfig(request))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("merchant_key");
+    }
+
+    @Test
+    @DisplayName("null maxParticipants → validation error")
+    void should_throw_when_max_participants_null() {
+        UpdateSystemConfigRequest request = new UpdateSystemConfigRequest(
+                "Club", "Desc", PistaState.ACTIVA, PaymentGateway.CASH,
+                null, null, null, null, null, null);
+
+        assertThatThrownBy(() -> configService.updateConfig(request))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("maxParticipantsPerPista");
+    }
+
+    @Test
+    @DisplayName("non-positive maxParticipants → validation error")
+    void should_throw_when_max_participants_not_positive() {
+        UpdateSystemConfigRequest request = new UpdateSystemConfigRequest(
+                "Club", "Desc", PistaState.ACTIVA, PaymentGateway.CASH,
+                null, null, null, 0, null, null);
+
+        assertThatThrownBy(() -> configService.updateConfig(request))
+                .isInstanceOf(ValidationException.class);
+    }
+
+    @Test
+    @DisplayName("non-positive pricePerHour → validation error")
+    void should_throw_when_price_not_positive() {
+        UpdateSystemConfigRequest request = new UpdateSystemConfigRequest(
+                "Club", "Desc", PistaState.ACTIVA, PaymentGateway.CASH,
+                null, null, null, 4, java.math.BigDecimal.ZERO, null);
+
+        assertThatThrownBy(() -> configService.updateConfig(request))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("pricePerHour");
+    }
+
+    @Test
+    @DisplayName("negative cancellationDeadlineHours → validation error")
+    void should_throw_when_deadline_negative() {
+        UpdateSystemConfigRequest request = new UpdateSystemConfigRequest(
+                "Club", "Desc", PistaState.ACTIVA, PaymentGateway.CASH,
+                null, null, null, 4, new java.math.BigDecimal("10.00"), -1);
+
+        assertThatThrownBy(() -> configService.updateConfig(request))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("cancellationDeadlineHours");
+    }
+
+    @Test
+    @DisplayName("getConfig throws when the singleton row is missing")
+    void should_throw_when_config_missing() {
+        when(repositoryPort.findById(1L)).thenReturn(java.util.Optional.empty());
+
+        assertThatThrownBy(() -> configService.getConfig())
+                .isInstanceOf(RuntimeException.class);
+    }
+
     @Test
     @DisplayName("2.6: should not expose secrets when they are not configured")
     void should_not_expose_secrets_when_not_configured() {

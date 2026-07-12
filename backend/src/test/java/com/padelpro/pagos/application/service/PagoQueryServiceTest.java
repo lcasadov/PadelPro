@@ -22,6 +22,8 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -90,5 +92,36 @@ class PagoQueryServiceTest {
         assertThat(result).hasSize(1);
         assertThat(result.get(0).reservaId()).isEqualTo(RES_ID.toString());
         assertThat(result.get(0).ownerId()).isEqualTo(OWNER_ID);
+    }
+
+    @Test
+    @DisplayName("listAll: sin pagos → lista vacía (rama empty)")
+    void list_all_empty() {
+        when(paymentRepository.findAllByOrderByCreatedAtDesc()).thenReturn(List.of());
+
+        assertThat(service.listAll()).isEmpty();
+        // no reservation batch-load when there are no payments
+        verify(reservationRepository, never()).findAllById(any());
+    }
+
+    @Test
+    @DisplayName("listAll: pago sin reserva asociada y campos nulos → rama r==null / getX()==null")
+    void list_all_missing_reservation_and_null_fields() {
+        Payment p = Payment.pendingFor(RES_ID, new BigDecimal("15.00"));
+        p.setStatus(null); // null id (no onCreate), null method, null status
+        when(paymentRepository.findAllByOrderByCreatedAtDesc()).thenReturn(List.of(p));
+        // reservation not found → r == null in toResponse
+        when(reservationRepository.findAllById(any())).thenReturn(List.of());
+
+        List<PagoHistorialResponse> result = service.listAll();
+
+        assertThat(result).hasSize(1);
+        PagoHistorialResponse row = result.get(0);
+        assertThat(row.pagoId()).isNull();           // p.getId() == null branch
+        assertThat(row.method()).isNull();           // p.getMethod() == null branch
+        assertThat(row.status()).isNull();           // p.getStatus() == null branch
+        assertThat(row.ownerId()).isNull();          // r == null branch
+        assertThat(row.reservationDate()).isNull();  // r == null branch
+        assertThat(row.startTime()).isNull();        // r == null branch
     }
 }

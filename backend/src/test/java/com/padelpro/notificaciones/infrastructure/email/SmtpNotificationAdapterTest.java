@@ -119,6 +119,54 @@ class SmtpNotificationAdapterTest {
         assertThat(logContent()).doesNotContain("Temp0rary9X");
     }
 
+    // -------------------------------------------------------------------------
+    // sendEmail (change notificaciones-eventos-email) — propagates on failure + masks recipient
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("sendEmail delivers a transactional email with the configured sender + subject/body")
+    void send_email_delivers() {
+        adapter.sendEmail(new com.padelpro.notificaciones.domain.model.EmailMessage(
+                "ana@example.com", "Reserva confirmada", "cuerpo"));
+
+        ArgumentCaptor<SimpleMailMessage> captor = ArgumentCaptor.forClass(SimpleMailMessage.class);
+        verify(mailSender).send(captor.capture());
+        SimpleMailMessage sent = captor.getValue();
+        assertThat(sent.getFrom()).isEqualTo(FROM);
+        assertThat(sent.getTo()).containsExactly("ana@example.com");
+        assertThat(sent.getSubject()).isEqualTo("Reserva confirmada");
+        assertThat(sent.getText()).isEqualTo("cuerpo");
+        // masked recipient in the log, never in clear (RN-RGPD-04)
+        assertThat(logContent()).doesNotContain("ana@example.com").contains("an***@example.com");
+    }
+
+    @Test
+    @DisplayName("sendEmail propagates a delivery failure (so the notification is marked FAILED)")
+    void send_email_propagates_failure() {
+        doThrow(new MailSendException("SMTP down")).when(mailSender).send(any(SimpleMailMessage.class));
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> adapter.sendEmail(
+                        new com.padelpro.notificaciones.domain.model.EmailMessage(
+                                "ana@example.com", "s", "b")))
+                .isInstanceOf(MailSendException.class);
+    }
+
+    @Test
+    @DisplayName("sendEmail masks a short local part (<=2 chars) keeping only the first character")
+    void send_email_masks_short_local() {
+        adapter.sendEmail(new com.padelpro.notificaciones.domain.model.EmailMessage(
+                "an@example.com", "s", "b"));
+        assertThat(logContent()).contains("a***@example.com");
+    }
+
+    @Test
+    @DisplayName("sendEmail masks a recipient with no @ as *** (at <= 0 branch)")
+    void send_email_masks_recipient_without_at() {
+        adapter.sendEmail(new com.padelpro.notificaciones.domain.model.EmailMessage(
+                "no-at-symbol", "s", "b"));
+        assertThat(logContent()).contains("***").doesNotContain("no-at-symbol");
+    }
+
     private String logContent() {
         StringBuilder sb = new StringBuilder();
         for (ILoggingEvent e : logAppender.list) {

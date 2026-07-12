@@ -13,6 +13,7 @@ import com.padelpro.otp.domain.port.out.OtpCodeRepositoryPort;
 import com.padelpro.reservas.domain.port.out.ParticipantCommandPort;
 import com.padelpro.usuarios.application.dto.CreateUserAdminCommand;
 import com.padelpro.usuarios.application.dto.PagedUsersResponse;
+import com.padelpro.usuarios.application.dto.UpdateUserAdminCommand;
 import com.padelpro.usuarios.application.dto.UserAdminResponse;
 import com.padelpro.usuarios.domain.exception.AdminSelfDeactivationException;
 import com.padelpro.usuarios.domain.exception.EmailConflictException;
@@ -40,6 +41,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -161,6 +163,66 @@ class UserAdminServiceTest {
                 .isInstanceOf(EmailConflictException.class);
     }
 
+    @Test
+    @DisplayName("should_create_user_with_explicit_role_when_role_supplied (role != null branch)")
+    void should_create_user_with_explicit_admin_role() {
+        when(userRepositoryPort.existsByEmail("a@example.com")).thenReturn(false);
+        when(userRepositoryPort.existsByLogin("adminlogin")).thenReturn(false);
+        when(temporaryPasswordGenerator.generate()).thenReturn("Gener4tedX9");
+        when(passwordEncoder.encode("Gener4tedX9")).thenReturn("$2a$12$hashed");
+        when(userRepositoryPort.save(any(User.class))).thenAnswer(inv -> {
+            User u = inv.getArgument(0);
+            setId(u, 11L);
+            return u;
+        });
+        when(auditLogRepositoryPort.save(any(AuditLog.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        CreateUserAdminCommand cmd = new CreateUserAdminCommand(
+                "adminlogin", "A", "B", "a@example.com", null, null, "admin");
+
+        UserAdminResponse response = userAdminService.createUser(cmd);
+
+        assertThat(response.role()).isEqualTo("ADMIN");
+    }
+
+    @Test
+    @DisplayName("should_throw_when_creating_duplicate_login")
+    void should_throw_when_creating_duplicate_login() {
+        when(userRepositoryPort.existsByEmail("new@example.com")).thenReturn(false);
+        when(userRepositoryPort.existsByLogin("dup")).thenReturn(true);
+
+        CreateUserAdminCommand cmd = new CreateUserAdminCommand(
+                "dup", "A", "B", "new@example.com", null, null, null);
+
+        assertThatThrownBy(() -> userAdminService.createUser(cmd))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Login already exists");
+    }
+
+    @Test
+    @DisplayName("should_complete_create_even_when_welcome_email_fails (sendWelcomeEmailSafely catch)")
+    void should_complete_create_when_email_fails() {
+        when(userRepositoryPort.existsByEmail("new@example.com")).thenReturn(false);
+        when(userRepositoryPort.existsByLogin("newlogin")).thenReturn(false);
+        when(temporaryPasswordGenerator.generate()).thenReturn("Gener4tedX9");
+        when(passwordEncoder.encode("Gener4tedX9")).thenReturn("$2a$12$hashed");
+        when(userRepositoryPort.save(any(User.class))).thenAnswer(inv -> {
+            User u = inv.getArgument(0);
+            setId(u, 12L);
+            return u;
+        });
+        when(auditLogRepositoryPort.save(any(AuditLog.class))).thenAnswer(inv -> inv.getArgument(0));
+        doThrow(new RuntimeException("SMTP down"))
+                .when(notificationPort).sendWelcomeEmail(any(WelcomeEmail.class));
+
+        CreateUserAdminCommand cmd = new CreateUserAdminCommand(
+                "newlogin", "New", "User", "new@example.com", null, null, null);
+
+        UserAdminResponse response = userAdminService.createUser(cmd);
+
+        assertThat(response.status()).isEqualTo("ACTIVE"); // creation not affected by email failure
+    }
+
     // -------------------------------------------------------------------------
     // approveUser
     // -------------------------------------------------------------------------
@@ -243,6 +305,123 @@ class UserAdminServiceTest {
 
         assertThat(response.size()).isLessThanOrEqualTo(100);
         assertThat(response.totalElements()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("should_filter_by_status_when_status_supplied (findByStatus branch)")
+    void should_list_users_filtered_by_status() {
+        Pageable requested = PageRequest.of(0, 20);
+        Page<User> page = new PageImpl<>(List.of(pendingUser), PageRequest.of(0, 20), 1);
+        when(userRepositoryPort.findByStatus(eq(UserStatus.PENDING), any(Pageable.class)))
+                .thenReturn(page);
+
+        PagedUsersResponse response = userAdminService.listUsers(UserStatus.PENDING, requested);
+
+        assertThat(response.totalElements()).isEqualTo(1);
+        verify(userRepositoryPort).findByStatus(eq(UserStatus.PENDING), any(Pageable.class));
+        verify(userRepositoryPort, never()).findAll(any(Pageable.class));
+    }
+
+    // -------------------------------------------------------------------------
+    // updateUser (partial update + role-change audit)
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("should_apply_all_fields_and_audit_role_change_when_role_differs")
+    void should_update_all_fields_and_audit_role_change() {
+        when(userRepositoryPort.findById(2L)).thenReturn(Optional.of(activeUser));
+        when(userRepositoryPort.existsByEmailAndIdNot("new@example.com", 2L)).thenReturn(false);
+        when(userRepositoryPort.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(auditLogRepositoryPort.save(any(AuditLog.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateUserAdminCommand cmd = new UpdateUserAdminCommand(
+                "Nombre", "Apellido", "new@example.com", "+34600999888", "ADMIN", "INACTIVE");
+
+        UserAdminResponse response = userAdminService.updateUser(2L, cmd);
+
+        assertThat(activeUser.getFirstName()).isEqualTo("Nombre");
+        assertThat(activeUser.getLastName()).isEqualTo("Apellido");
+        assertThat(activeUser.getEmail()).isEqualTo("new@example.com");
+        assertThat(activeUser.getPhone()).isEqualTo("+34600999888");
+        assertThat(activeUser.getRole()).isEqualTo(UserRole.ADMIN);
+        assertThat(activeUser.getStatus()).isEqualTo(UserStatus.INACTIVE);
+        assertThat(response.role()).isEqualTo("ADMIN");
+        // role change is audited
+        ArgumentCaptor<AuditLog> captor = ArgumentCaptor.forClass(AuditLog.class);
+        verify(auditLogRepositoryPort).save(captor.capture());
+        assertThat(captor.getValue().getAction()).isEqualTo("USER_ROLE_CHANGED");
+    }
+
+    @Test
+    @DisplayName("should_not_audit_when_role_is_present_but_unchanged")
+    void should_not_audit_when_role_unchanged() {
+        // activeUser already has role USER
+        when(userRepositoryPort.findById(2L)).thenReturn(Optional.of(activeUser));
+        when(userRepositoryPort.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateUserAdminCommand cmd = new UpdateUserAdminCommand(
+                null, null, null, null, "USER", null);
+
+        userAdminService.updateUser(2L, cmd);
+
+        // same role → no role-change audit row
+        verify(auditLogRepositoryPort, never()).save(any(AuditLog.class));
+    }
+
+    @Test
+    @DisplayName("should_be_noop_friendly_when_all_fields_null (every optional guard false)")
+    void should_apply_nothing_when_all_null() {
+        when(userRepositoryPort.findById(2L)).thenReturn(Optional.of(activeUser));
+        when(userRepositoryPort.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+        String email = activeUser.getEmail();
+
+        UpdateUserAdminCommand cmd = new UpdateUserAdminCommand(null, null, null, null, null, null);
+
+        userAdminService.updateUser(2L, cmd);
+
+        assertThat(activeUser.getEmail()).isEqualTo(email); // unchanged
+        verify(auditLogRepositoryPort, never()).save(any(AuditLog.class));
+        verify(userRepositoryPort, never()).existsByEmailAndIdNot(anyString(), any());
+    }
+
+    @Test
+    @DisplayName("should_reject_update_with_email_already_used_by_another_user")
+    void should_reject_update_with_conflicting_email() {
+        when(userRepositoryPort.findById(2L)).thenReturn(Optional.of(activeUser));
+        when(userRepositoryPort.existsByEmailAndIdNot("taken@example.com", 2L)).thenReturn(true);
+
+        UpdateUserAdminCommand cmd = new UpdateUserAdminCommand(
+                null, null, "taken@example.com", null, null, null);
+
+        assertThatThrownBy(() -> userAdminService.updateUser(2L, cmd))
+                .isInstanceOf(EmailConflictException.class);
+        verify(userRepositoryPort, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("should_skip_email_conflict_check_when_email_unchanged")
+    void should_skip_conflict_check_when_email_same() {
+        when(userRepositoryPort.findById(2L)).thenReturn(Optional.of(activeUser));
+        when(userRepositoryPort.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        // same email as the stored user → the !equals branch is false, no conflict lookup
+        UpdateUserAdminCommand cmd = new UpdateUserAdminCommand(
+                "NewName", null, activeUser.getEmail(), null, null, null);
+
+        userAdminService.updateUser(2L, cmd);
+
+        assertThat(activeUser.getFirstName()).isEqualTo("NewName");
+        verify(userRepositoryPort, never()).existsByEmailAndIdNot(anyString(), any());
+    }
+
+    @Test
+    @DisplayName("should_throw_not_found_when_updating_missing_user")
+    void should_throw_not_found_when_updating_missing_user() {
+        when(userRepositoryPort.findById(999L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> userAdminService.updateUser(999L,
+                new UpdateUserAdminCommand(null, null, null, null, null, null)))
+                .isInstanceOf(UserNotFoundException.class);
     }
 
     // -------------------------------------------------------------------------

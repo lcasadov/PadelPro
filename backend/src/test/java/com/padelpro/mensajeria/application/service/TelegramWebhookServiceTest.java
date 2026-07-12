@@ -156,4 +156,107 @@ class TelegramWebhookServiceTest {
         verify(telegramPort).enviarMensaje(eq("999"), contains("Vincula primero"));
         verifyNoInteractions(otpService);
     }
+
+    // -------------------------------------------------------------------------
+    // additional branches (change backend-branch-coverage)
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("no secret configured → 403 + audits (expected.isEmpty branch)")
+    void no_secret_configured_forbidden() {
+        when(configService.getWebhookSecret()).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.handleUpdate("anything", update("999", "hola")))
+                .isInstanceOf(TelegramWebhookForbiddenException.class);
+        verify(auditRecorder).record(eq(TelegramAuditActions.TELEGRAM_WEBHOOK_INVALID_SECRET), isNull(), any());
+    }
+
+    @Test
+    @DisplayName("/vincular with an invalid (non-expired) OTP → replies invalid, no link")
+    void vincular_invalid_otp() {
+        when(configService.getWebhookSecret()).thenReturn(Optional.of("s3cret"));
+        when(otpService.resolveActiveLinkOtp("123456")).thenThrow(OtpVerificationException.invalid());
+
+        service.handleUpdate("s3cret", update("999", "/vincular 123456"));
+
+        verify(telegramPort).enviarMensaje(eq("999"), contains("inválido"));
+        verify(userRepositoryPort, never()).save(any());
+        verify(otpService, never()).consume(any());
+    }
+
+    @Test
+    @DisplayName("/vincular when the chat is already linked to the SAME user → completes the link")
+    void vincular_chat_linked_same_user() {
+        when(configService.getWebhookSecret()).thenReturn(Optional.of("s3cret"));
+        OtpCode otp = linkOtp(42L);
+        when(otpService.resolveActiveLinkOtp("123456")).thenReturn(otp);
+        // chat already belongs to user 42 (the OTP owner) → guard passes, link proceeds
+        when(userRepositoryPort.findByTelegramChatId("999")).thenReturn(Optional.of(userWithId(42L, "999")));
+        User user = userWithId(42L, "999");
+        when(userRepositoryPort.findById(42L)).thenReturn(Optional.of(user));
+
+        service.handleUpdate("s3cret", update("999", "/vincular 123456"));
+
+        verify(userRepositoryPort).save(user);
+        verify(otpService).consume(otp);
+        verify(telegramPort).enviarMensaje(eq("999"), contains("vinculada"));
+    }
+
+    @Test
+    @DisplayName("/vincular when the OTP's user no longer exists → replies generic failure, no link")
+    void vincular_user_not_found() {
+        when(configService.getWebhookSecret()).thenReturn(Optional.of("s3cret"));
+        when(otpService.resolveActiveLinkOtp("123456")).thenReturn(linkOtp(42L));
+        when(userRepositoryPort.findByTelegramChatId("999")).thenReturn(Optional.empty());
+        when(userRepositoryPort.findById(42L)).thenReturn(Optional.empty());
+
+        service.handleUpdate("s3cret", update("999", "/vincular 123456"));
+
+        verify(telegramPort).enviarMensaje(eq("999"), contains("No se ha podido"));
+        verify(userRepositoryPort, never()).save(any());
+        verify(otpService, never()).consume(any());
+    }
+
+    @Test
+    @DisplayName("blank body → ignored (no parsing, no reply)")
+    void blank_body_ignored() {
+        when(configService.getWebhookSecret()).thenReturn(Optional.of("s3cret"));
+
+        service.handleUpdate("s3cret", "   ");
+
+        verifyNoInteractions(telegramPort, otpService);
+    }
+
+    @Test
+    @DisplayName("unparseable body → swallowed (no reply)")
+    void unparseable_body_ignored() {
+        when(configService.getWebhookSecret()).thenReturn(Optional.of("s3cret"));
+
+        service.handleUpdate("s3cret", "{not valid json");
+
+        verifyNoInteractions(telegramPort, otpService);
+    }
+
+    @Test
+    @DisplayName("update without a chat id → ignored")
+    void missing_chat_id_ignored() {
+        when(configService.getWebhookSecret()).thenReturn(Optional.of("s3cret"));
+
+        service.handleUpdate("s3cret", "{\"message\":{\"text\":\"hola\"}}");
+
+        verifyNoInteractions(telegramPort, otpService);
+    }
+
+    @Test
+    @DisplayName("non-command from an ALREADY-linked chat → no reply, no business op")
+    void linked_account_non_command_no_reply() {
+        when(configService.getWebhookSecret()).thenReturn(Optional.of("s3cret"));
+        when(userRepositoryPort.findByTelegramChatId("999"))
+                .thenReturn(Optional.of(userWithId(42L, "999")));
+
+        service.handleUpdate("s3cret", update("999", "hola"));
+
+        verifyNoInteractions(telegramPort);
+        verifyNoInteractions(otpService);
+    }
 }
