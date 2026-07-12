@@ -102,8 +102,11 @@ public class AdminUsuariosController {
 
     /**
      * DELETE /api/admin/usuarios/{id}
-     * Deactivates a user (soft-delete: status=INACTIVE).
-     * An admin cannot deactivate their own account (RN-AUTH-05).
+     * RGPD right-to-be-forgotten (Art. 17): irreversibly anonymizes the user's personal data,
+     * sets status=INACTIVE, revokes tokens and invalidates OTP codes in one atomic transaction
+     * (capability exportaciones-rgpd, RN-RGPD-01). Financial/audit history is preserved.
+     * The response is 204 No Content (contract unchanged). An admin cannot anonymize their own
+     * account (RN-AUTH-05).
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deactivateUser(@PathVariable Long id) {

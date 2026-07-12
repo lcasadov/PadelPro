@@ -5,9 +5,12 @@ import com.padelpro.auth.domain.model.User;
 import com.padelpro.auth.domain.model.UserRole;
 import com.padelpro.auth.domain.model.UserStatus;
 import com.padelpro.auth.domain.port.out.AuditLogRepositoryPort;
+import com.padelpro.auth.domain.port.out.RefreshTokenRepositoryPort;
 import com.padelpro.auth.domain.port.out.UserRepositoryPort;
 import com.padelpro.notificaciones.domain.model.WelcomeEmail;
 import com.padelpro.notificaciones.domain.port.out.NotificationPort;
+import com.padelpro.otp.domain.port.out.OtpCodeRepositoryPort;
+import com.padelpro.reservas.domain.port.out.ParticipantCommandPort;
 import com.padelpro.usuarios.application.dto.CreateUserAdminCommand;
 import com.padelpro.usuarios.application.dto.PagedUsersResponse;
 import com.padelpro.usuarios.application.dto.ResetPasswordResult;
@@ -41,22 +44,36 @@ public class UserAdminService {
 
     private static final Logger log = LoggerFactory.getLogger(UserAdminService.class);
 
+    /** Neutral value written over personal name fields on anonymization (RN-RGPD-01). */
+    static final String ANONYMIZED = "ANONIMIZADO";
+    /** Domain of the synthetic, non-routable email assigned on anonymization (RN-RGPD-01). */
+    static final String ANONYMIZED_EMAIL_DOMAIN = "@padelpro.local";
+
     private final UserRepositoryPort userRepositoryPort;
     private final AuditLogRepositoryPort auditLogRepositoryPort;
     private final BCryptPasswordEncoder passwordEncoder;
     private final TemporaryPasswordGenerator temporaryPasswordGenerator;
     private final NotificationPort notificationPort;
+    private final RefreshTokenRepositoryPort refreshTokenRepositoryPort;
+    private final OtpCodeRepositoryPort otpCodeRepositoryPort;
+    private final ParticipantCommandPort participantCommandPort;
 
     public UserAdminService(UserRepositoryPort userRepositoryPort,
                             AuditLogRepositoryPort auditLogRepositoryPort,
                             BCryptPasswordEncoder passwordEncoder,
                             TemporaryPasswordGenerator temporaryPasswordGenerator,
-                            NotificationPort notificationPort) {
+                            NotificationPort notificationPort,
+                            RefreshTokenRepositoryPort refreshTokenRepositoryPort,
+                            OtpCodeRepositoryPort otpCodeRepositoryPort,
+                            ParticipantCommandPort participantCommandPort) {
         this.userRepositoryPort   = userRepositoryPort;
         this.auditLogRepositoryPort = auditLogRepositoryPort;
         this.passwordEncoder      = passwordEncoder;
         this.temporaryPasswordGenerator = temporaryPasswordGenerator;
         this.notificationPort     = notificationPort;
+        this.refreshTokenRepositoryPort = refreshTokenRepositoryPort;
+        this.otpCodeRepositoryPort = otpCodeRepositoryPort;
+        this.participantCommandPort = participantCommandPort;
     }
 
     /**
@@ -223,10 +240,31 @@ public class UserAdminService {
     }
 
     /**
-     * Deactivate a user (soft-delete via status=INACTIVE).
-     * An admin cannot deactivate their own account (RN-AUTH-05).
+     * RGPD right-to-be-forgotten (Art. 17) — irreversibly anonymize a user account in a single
+     * atomic transaction (capability exportaciones-rgpd, RN-RGPD-01/05/06/07). Backs
+     * {@code DELETE /api/admin/usuarios/{id}} (D1: the former soft-delete endpoint now anonymizes;
+     * the HTTP contract is unchanged — the controller still returns 204).
      *
-     * @param targetId the id of the user to deactivate
+     * <p>In one transaction this method:
+     * <ul>
+     *   <li>overwrites the personal fields of {@code users} with neutral values and sets
+     *       {@code status = INACTIVE} (RN-RGPD-01/06);</li>
+     *   <li>revokes every {@code refresh_tokens} row of the user (RN-RGPD-07);</li>
+     *   <li>invalidates every active {@code otp_codes} row of the user (RN-RGPD-07);</li>
+     *   <li>anonymizes the user's {@code participants} rows (RN-RGPD-01);</li>
+     *   <li>writes a {@code USER_ANONYMIZED} audit entry attributed to the executing admin (D3).</li>
+     * </ul>
+     *
+     * <p>Financial/audit history ({@code reservations}, {@code payments}, existing {@code audit_log})
+     * is intentionally NOT touched (RN-RGPD-02/05). Rows are never hard-deleted.
+     *
+     * <p>Idempotent (D4): re-running it on an already-anonymized account simply re-writes the same
+     * neutral values and records another audit entry, without failing.
+     *
+     * <p>An admin cannot anonymize their own account (RN-AUTH-05). RN-RGPD-04: no personal data
+     * (name, email, phone, telegram id) is ever logged — only technical ids.
+     *
+     * @param targetId the id of the user to anonymize
      * @param adminId  the id of the requesting admin
      * @throws AdminSelfDeactivationException if targetId == adminId
      * @throws UserNotFoundException          if the target user does not exist
@@ -237,12 +275,36 @@ public class UserAdminService {
             throw new AdminSelfDeactivationException();
         }
         User user = requireUser(targetId);
-        user.setStatus(UserStatus.INACTIVE);
-        User saved = userRepositoryPort.save(user);
+        // The audit entry is attributed to the executing admin (D3): user_id = admin. Resolved
+        // before mutating the target so the reference is independent of the anonymized user.
+        User admin = userRepositoryPort.findById(adminId).orElse(null);
 
+        // 1) Overwrite personal fields with neutral values + mark INACTIVE (RN-RGPD-01/06).
+        user.setFirstName(ANONYMIZED);
+        user.setLastName(ANONYMIZED);
+        user.setEmail("anonimized-" + targetId + ANONYMIZED_EMAIL_DOMAIN);
+        user.setPhone(null);
+        user.setTelegramChatId(null);
+        user.setTelegramLinkedAt(null);
+        user.setStatus(UserStatus.INACTIVE);
+        userRepositoryPort.save(user);
+
+        // 2) Terminate all sessions and pending one-time passwords (RN-RGPD-07).
+        refreshTokenRepositoryPort.revokeAllByUserId(targetId);
+        otpCodeRepositoryPort.invalidateAllActiveByUserId(targetId);
+
+        // 3) Anonymize the user's participation rows (RN-RGPD-01).
+        participantCommandPort.anonymizeByUserId(targetId);
+
+        // 4) Audit the anonymization: user_id = executing admin, entity = USER/{targetId} (D3).
+        //    RN-RGPD-04: no personal data in the details — only technical ids.
         auditLogRepositoryPort.save(new AuditLog(
-                AuditActions.USER_DEACTIVATED, saved, null,
-                "deactivatedBy=" + adminId, OffsetDateTime.now()));
+                AuditActions.USER_ANONYMIZED, admin, null,
+                "anonymizedBy=" + adminId, OffsetDateTime.now(),
+                "USER", String.valueOf(targetId)));
+
+        // RN-RGPD-04: log technical ids only, never the anonymized personal data.
+        log.info("User anonymized: targetId={} by adminId={}", targetId, adminId);
     }
 
     /**

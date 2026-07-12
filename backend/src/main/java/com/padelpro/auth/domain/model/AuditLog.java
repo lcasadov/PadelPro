@@ -70,6 +70,18 @@ public class AuditLog {
         this.createdAt = createdAt;
     }
 
+    /**
+     * Full constructor including the affected entity reference ({@code entity_type} / {@code entity_id}).
+     * Used e.g. by the RGPD anonymization flow to record which USER was anonymized while the
+     * {@code user} field references the executing admin (capability exportaciones-rgpd, RN-RGPD-01).
+     */
+    public AuditLog(String action, User user, String ipAddress, String details,
+                    OffsetDateTime createdAt, String entityType, String entityId) {
+        this(action, user, ipAddress, details, createdAt);
+        this.entityType = entityType;
+        this.entityId = entityId;
+    }
+
     // -------------------------------------------------------------------------
     // Getters (no setters — audit log entries are immutable after creation)
     // -------------------------------------------------------------------------

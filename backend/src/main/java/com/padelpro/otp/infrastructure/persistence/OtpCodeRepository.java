@@ -4,7 +4,11 @@ import com.padelpro.otp.domain.model.OtpCode;
 import com.padelpro.otp.domain.model.OtpType;
 import com.padelpro.otp.domain.port.out.OtpCodeRepositoryPort;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -26,4 +30,14 @@ public interface OtpCodeRepository extends JpaRepository<OtpCode, Long>, OtpCode
 
     @Override
     List<OtpCode> findByCodeHashAndTypeAndUsedFalse(String codeHash, OtpType type);
+
+    /**
+     * Invalidate all active OTP codes of a user in one UPDATE ({@code used = true}). Used by the RGPD
+     * anonymization flow (RN-RGPD-07). Idempotent — updates 0 rows when none are active.
+     */
+    @Override
+    @Transactional
+    @Modifying
+    @Query("UPDATE OtpCode o SET o.used = true WHERE o.userId = :userId AND o.used = false")
+    void invalidateAllActiveByUserId(@Param("userId") Long userId);
 }

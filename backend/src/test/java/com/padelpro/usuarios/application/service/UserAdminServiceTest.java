@@ -5,9 +5,12 @@ import com.padelpro.auth.domain.model.User;
 import com.padelpro.auth.domain.model.UserRole;
 import com.padelpro.auth.domain.model.UserStatus;
 import com.padelpro.auth.domain.port.out.AuditLogRepositoryPort;
+import com.padelpro.auth.domain.port.out.RefreshTokenRepositoryPort;
 import com.padelpro.auth.domain.port.out.UserRepositoryPort;
 import com.padelpro.notificaciones.domain.model.WelcomeEmail;
 import com.padelpro.notificaciones.domain.port.out.NotificationPort;
+import com.padelpro.otp.domain.port.out.OtpCodeRepositoryPort;
+import com.padelpro.reservas.domain.port.out.ParticipantCommandPort;
 import com.padelpro.usuarios.application.dto.CreateUserAdminCommand;
 import com.padelpro.usuarios.application.dto.PagedUsersResponse;
 import com.padelpro.usuarios.application.dto.UserAdminResponse;
@@ -57,6 +60,15 @@ class UserAdminServiceTest {
 
     @Mock
     private NotificationPort notificationPort;
+
+    @Mock
+    private RefreshTokenRepositoryPort refreshTokenRepositoryPort;
+
+    @Mock
+    private OtpCodeRepositoryPort otpCodeRepositoryPort;
+
+    @Mock
+    private ParticipantCommandPort participantCommandPort;
 
     @InjectMocks
     private UserAdminService userAdminService;
@@ -248,27 +260,117 @@ class UserAdminServiceTest {
     }
 
     // -------------------------------------------------------------------------
-    // deactivateUser
+    // deactivateUser → RGPD anonymization (capability exportaciones-rgpd)
     // -------------------------------------------------------------------------
 
     @Test
-    @DisplayName("should_deactivate_user_and_audit")
-    void should_deactivate_user_and_audit() {
+    @DisplayName("should_anonymize_user_revoke_tokens_invalidate_otp_anonymize_participants_and_audit (RN-RGPD-01/07)")
+    void should_anonymize_user_and_related_data() {
+        activeUser.setPhone("+34600111222");
+        activeUser.setTelegramChatId("987654321");
+        activeUser.setTelegramLinkedAt(OffsetDateTime.now());
         when(userRepositoryPort.findById(2L)).thenReturn(Optional.of(activeUser));
-        when(userRepositoryPort.save(any(User.class))).thenReturn(activeUser);
+        when(userRepositoryPort.findById(3L)).thenReturn(Optional.of(adminUser));
+        when(userRepositoryPort.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
         when(auditLogRepositoryPort.save(any(AuditLog.class))).thenAnswer(inv -> inv.getArgument(0));
 
         userAdminService.deactivateUser(2L, 3L);
 
+        // users anonymized (RN-RGPD-01/06)
         assertThat(activeUser.getStatus()).isEqualTo(UserStatus.INACTIVE);
-        verify(auditLogRepositoryPort).save(any(AuditLog.class));
+        assertThat(activeUser.getFirstName()).isEqualTo("ANONIMIZADO");
+        assertThat(activeUser.getLastName()).isEqualTo("ANONIMIZADO");
+        assertThat(activeUser.getEmail()).isEqualTo("anonimized-2@padelpro.local");
+        assertThat(activeUser.getPhone()).isNull();
+        assertThat(activeUser.getTelegramChatId()).isNull();
+        assertThat(activeUser.getTelegramLinkedAt()).isNull();
+
+        // sessions/otp terminated + participants anonymized, in the same flow (RN-RGPD-07/01)
+        verify(refreshTokenRepositoryPort).revokeAllByUserId(2L);
+        verify(otpCodeRepositoryPort).invalidateAllActiveByUserId(2L);
+        verify(participantCommandPort).anonymizeByUserId(2L);
+
+        // audit USER_ANONYMIZED, executor=admin (user_id=admin), entity USER/{targetId} (D3)
+        ArgumentCaptor<AuditLog> captor = ArgumentCaptor.forClass(AuditLog.class);
+        verify(auditLogRepositoryPort).save(captor.capture());
+        AuditLog audit = captor.getValue();
+        assertThat(audit.getAction()).isEqualTo("USER_ANONYMIZED");
+        assertThat(audit.getUser()).isSameAs(adminUser);
+        assertThat(audit.getEntityType()).isEqualTo("USER");
+        assertThat(audit.getEntityId()).isEqualTo("2");
+        // RN-RGPD-04: personal data never leaks into the audit details
+        String details = audit.getDetails() == null ? "" : audit.getDetails();
+        assertThat(details).doesNotContain("active.user@example.com").doesNotContain("987654321");
     }
 
     @Test
-    @DisplayName("should_throw_admin_self_deactivation_exception")
+    @DisplayName("should_reject_admin_anonymizing_own_account_and_touch_nothing (RN-AUTH-05)")
     void should_throw_admin_self_deactivation_exception() {
         assertThatThrownBy(() -> userAdminService.deactivateUser(3L, 3L))
                 .isInstanceOf(AdminSelfDeactivationException.class);
+
+        // guard fires before any mutation — no field/token/otp/participant/audit change
+        verify(userRepositoryPort, never()).save(any());
+        verify(refreshTokenRepositoryPort, never()).revokeAllByUserId(any());
+        verify(otpCodeRepositoryPort, never()).invalidateAllActiveByUserId(any());
+        verify(participantCommandPort, never()).anonymizeByUserId(any());
+        verify(auditLogRepositoryPort, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("should_not_modify_reservations_payments_or_audit_history — single new audit row (RN-RGPD-02/05)")
+    void should_preserve_financial_and_audit_history() {
+        when(userRepositoryPort.findById(2L)).thenReturn(Optional.of(activeUser));
+        when(userRepositoryPort.findById(3L)).thenReturn(Optional.of(adminUser));
+        when(userRepositoryPort.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(auditLogRepositoryPort.save(any(AuditLog.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        userAdminService.deactivateUser(2L, 3L);
+
+        // exactly one NEW audit entry (history is immutable, never rewritten) — RN-RGPD-05
+        verify(auditLogRepositoryPort, times(1)).save(any(AuditLog.class));
+        // participants are anonymized via UPDATE, never inserted/deleted — RN-RGPD-02
+        verify(participantCommandPort, times(1)).anonymizeByUserId(2L);
+        verify(participantCommandPort, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("should_be_idempotent_when_anonymizing_already_anonymized_user (D4)")
+    void should_be_idempotent_on_double_anonymization() {
+        User already = makeUser(2L, "active.user", UserStatus.INACTIVE, UserRole.USER);
+        already.setFirstName("ANONIMIZADO");
+        already.setLastName("ANONIMIZADO");
+        already.setEmail("anonimized-2@padelpro.local");
+        when(userRepositoryPort.findById(2L)).thenReturn(Optional.of(already));
+        when(userRepositoryPort.findById(3L)).thenReturn(Optional.of(adminUser));
+        when(userRepositoryPort.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(auditLogRepositoryPort.save(any(AuditLog.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        // re-anonymizing must not fail; it re-writes the same neutral values (D4)
+        userAdminService.deactivateUser(2L, 3L);
+
+        assertThat(already.getStatus()).isEqualTo(UserStatus.INACTIVE);
+        assertThat(already.getEmail()).isEqualTo("anonimized-2@padelpro.local");
+        assertThat(already.getFirstName()).isEqualTo("ANONIMIZADO");
+        verify(refreshTokenRepositoryPort).revokeAllByUserId(2L);
+        verify(otpCodeRepositoryPort).invalidateAllActiveByUserId(2L);
+        verify(participantCommandPort).anonymizeByUserId(2L);
+    }
+
+    @Test
+    @DisplayName("should_throw_not_found_when_anonymizing_missing_user")
+    void should_throw_not_found_when_anonymizing_missing_user() {
+        when(userRepositoryPort.findById(999L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> userAdminService.deactivateUser(999L, 3L))
+                .isInstanceOf(UserNotFoundException.class)
+                .hasMessageContaining("999");
+
+        // nothing mutated when the target does not exist
+        verify(refreshTokenRepositoryPort, never()).revokeAllByUserId(any());
+        verify(otpCodeRepositoryPort, never()).invalidateAllActiveByUserId(any());
+        verify(participantCommandPort, never()).anonymizeByUserId(any());
+        verify(auditLogRepositoryPort, never()).save(any());
     }
 
     // -------------------------------------------------------------------------

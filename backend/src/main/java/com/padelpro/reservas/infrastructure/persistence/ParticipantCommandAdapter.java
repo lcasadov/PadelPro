@@ -22,4 +22,9 @@ public class ParticipantCommandAdapter implements ParticipantCommandPort {
     public Participant save(Participant participant) {
         return participantRepository.saveAndFlush(participant);
     }
+
+    @Override
+    public void anonymizeByUserId(Long userId) {
+        participantRepository.anonymizeByUserId(userId);
+    }
 }

@@ -29,4 +29,16 @@ public interface OtpCodeRepositoryPort {
      * account a {@code /vincular <code>} command belongs to (D-OTP-04).
      */
     List<OtpCode> findByCodeHashAndTypeAndUsedFalse(String codeHash, OtpType type);
+
+    /**
+     * Invalidate ALL active ({@code used = false}) OTP codes of a user in a single UPDATE, setting
+     * {@code used = true}. Used by the RGPD right-to-be-forgotten flow (capability exportaciones-rgpd,
+     * RN-RGPD-07): anonymizing an account must void any pending one-time password so it can no longer
+     * be used to authenticate or link Telegram.
+     *
+     * <p>Idempotent: on a user with no active codes it updates 0 rows.
+     *
+     * @param userId the id of the user whose active OTP codes are invalidated
+     */
+    void invalidateAllActiveByUserId(Long userId);
 }

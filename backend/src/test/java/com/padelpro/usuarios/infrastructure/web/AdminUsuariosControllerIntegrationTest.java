@@ -230,15 +230,24 @@ class AdminUsuariosControllerIntegrationTest extends PostgresIntegrationTest {
     // -------------------------------------------------------------------------
 
     @Test
-    @DisplayName("DELETE /api/admin/usuarios/{id} → 204 and user becomes INACTIVE")
+    @DisplayName("DELETE /api/admin/usuarios/{id} → 204 and user is anonymized (RGPD Art. 17)")
     void deactivate_user_returns_204() throws Exception {
-        mockMvc.perform(delete("/api/admin/usuarios/{id}", regularUser.getId())
+        Long targetId = regularUser.getId();
+
+        mockMvc.perform(delete("/api/admin/usuarios/{id}", targetId)
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isNoContent());
 
-        // Verify in DB
+        // RN-RGPD-01: personal fields overwritten with neutral values, account INACTIVE.
+        // The login is preserved (edge case), so we can still look the row up by it.
         User updated = userRepository.findByLogin(regularUser.getLogin()).orElseThrow();
         assert updated.getStatus() == UserStatus.INACTIVE;
+        assert "ANONIMIZADO".equals(updated.getFirstName());
+        assert "ANONIMIZADO".equals(updated.getLastName());
+        assert ("anonimized-" + targetId + "@padelpro.local").equals(updated.getEmail());
+        assert updated.getPhone() == null;
+        assert updated.getTelegramChatId() == null;
+        assert updated.getTelegramLinkedAt() == null;
     }
 
     @Test

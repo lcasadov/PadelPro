@@ -58,12 +58,15 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long
     int revokeByTokenHashIfActive(@Param("tokenHash") String tokenHash);
 
     /**
-     * Revoke all active refresh tokens for a given user.
-     * Triggered on password change, logout-all-devices, or account deactivation.
+     * Revoke all refresh tokens for a given user.
+     * Triggered on password change, logout-all-devices, account deactivation, or RGPD anonymization
+     * (capability exportaciones-rgpd, RN-RGPD-07).
      *
      * @param userId the ID of the user whose tokens should be revoked
      */
+    @Override
+    @Transactional
     @Modifying
     @Query("UPDATE RefreshToken r SET r.revoked = true WHERE r.user.id = :userId")
-    void revokeAll(@Param("userId") Long userId);
+    void revokeAllByUserId(@Param("userId") Long userId);
 }
