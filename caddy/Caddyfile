@@ -1,0 +1,32 @@
+# Caddyfile — reverse-proxy con terminación TLS para PadelPro (change tls-https-ec2).
+#
+# El host público se inyecta con la variable de entorno PUBLIC_HOST:
+#   - Producción: PUBLIC_HOST=<ip-con-guiones>.sslip.io  (p. ej. 16-192-61-61.sslip.io)
+#                 → Caddy emite y renueva un certificado Let's Encrypt automáticamente.
+#   - Local:      PUBLIC_HOST=localhost
+#                 → Caddy usa su CA interna (cert autofirmado local) para validar el
+#                   enrutado sin depender de Let's Encrypt (no hay IP pública).
+#
+# Enrutado (mismo origen HTTPS, sin mixed content):
+#   /api/*      → backend:8080   (el backend sirve las rutas con prefijo /api)
+#   /actuator/* → backend:8080   (health/actuator del backend)
+#   /*          → frontend:5173  (SPA servida por `vite preview`)
+#
+# La redirección HTTP(:80) → HTTPS(:443) la configura Caddy automáticamente al
+# declarar un nombre de host.
+
+{$PUBLIC_HOST} {
+	encode gzip
+
+	# API y actuator: se preserva la ruta completa (handle, no handle_path) porque
+	# el backend espera /api/... y /actuator/... tal cual.
+	@backend path /api/* /actuator/*
+	handle @backend {
+		reverse_proxy backend:8080
+	}
+
+	# Resto: la SPA.
+	handle {
+		reverse_proxy frontend:5173
+	}
+}
