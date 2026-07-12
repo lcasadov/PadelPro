@@ -87,10 +87,11 @@ public interface ReservationJpaRepository extends JpaRepository<Reservation, UUI
             SELECT COALESCE(SUM(r.durationMinutes), 0)
             FROM Reservation r
             WHERE r.reservationDate BETWEEN :fechaInicio AND :fechaFin
-              AND r.status <> com.padelpro.reservas.domain.model.ReservationStatus.CANCELLED
+              AND r.status <> :cancelled
             """)
     long sumActiveDurationMinutesInRange(@Param("fechaInicio") LocalDate fechaInicio,
-                                         @Param("fechaFin") LocalDate fechaFin);
+                                         @Param("fechaFin") LocalDate fechaFin,
+                                         @Param("cancelled") ReservationStatus cancelled);
 
     /**
      * Minimal usage rows {@code (reservation_date, duration_minutes)} of non-cancelled reservations in
@@ -101,8 +102,9 @@ public interface ReservationJpaRepository extends JpaRepository<Reservation, UUI
             SELECT r.reservationDate, r.durationMinutes
             FROM Reservation r
             WHERE r.reservationDate BETWEEN :fechaInicio AND :fechaFin
-              AND r.status <> com.padelpro.reservas.domain.model.ReservationStatus.CANCELLED
+              AND r.status <> :cancelled
             """)
     List<Object[]> findActiveUsageRowsInRange(@Param("fechaInicio") LocalDate fechaInicio,
-                                              @Param("fechaFin") LocalDate fechaFin);
+                                              @Param("fechaFin") LocalDate fechaFin,
+                                              @Param("cancelled") ReservationStatus cancelled);
 }

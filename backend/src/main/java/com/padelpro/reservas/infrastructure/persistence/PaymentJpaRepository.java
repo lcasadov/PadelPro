@@ -1,6 +1,7 @@
 package com.padelpro.reservas.infrastructure.persistence;
 
 import com.padelpro.reservas.domain.model.Payment;
+import com.padelpro.reservas.domain.model.PaymentStatus;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -52,12 +53,13 @@ public interface PaymentJpaRepository extends JpaRepository<Payment, UUID> {
     @Query("""
             SELECT p.method, COALESCE(SUM(p.amount), 0)
             FROM Payment p
-            WHERE p.status = com.padelpro.reservas.domain.model.PaymentStatus.PAID
+            WHERE p.status = :paid
               AND p.paidAt >= :start AND p.paidAt < :end
             GROUP BY p.method
             """)
     List<Object[]> sumPaidAmountGroupedByMethod(@Param("start") OffsetDateTime start,
-                                                @Param("end") OffsetDateTime end);
+                                                @Param("end") OffsetDateTime end,
+                                                @Param("paid") PaymentStatus paid);
 
     /**
      * Minimal PAID payment rows {@code (paid_at, amount, method)} in {@code [start, end)} for the
@@ -67,9 +69,10 @@ public interface PaymentJpaRepository extends JpaRepository<Payment, UUID> {
     @Query("""
             SELECT p.paidAt, p.amount, p.method
             FROM Payment p
-            WHERE p.status = com.padelpro.reservas.domain.model.PaymentStatus.PAID
+            WHERE p.status = :paid
               AND p.paidAt >= :start AND p.paidAt < :end
             """)
     List<Object[]> findPaidRowsInRange(@Param("start") OffsetDateTime start,
-                                       @Param("end") OffsetDateTime end);
+                                       @Param("end") OffsetDateTime end,
+                                       @Param("paid") PaymentStatus paid);
 }
