@@ -714,18 +714,17 @@ paths:
       operationId: listarMisReservas
       summary: Listar reservas del usuario autenticado
       description: |
-        Lista las reservas en las que el usuario autenticado es propietario o participante,
-        con paginación. Requiere ROLE_USER o ROLE_ADMIN.
-      parameters:
-        - $ref: '#/components/parameters/PageParam'
-        - $ref: '#/components/parameters/PageSizeParam'
+        Lista las reservas en las que el usuario autenticado es propietario o participante.
+        Devuelve un **array JSON plano** (sin paginación). Requiere ROLE_USER o ROLE_ADMIN.
       responses:
         '200':
-          description: Lista devuelta correctamente
+          description: Lista devuelta correctamente (array plano)
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaginatedReservasResponse'
+                type: array
+                items:
+                  $ref: '#/components/schemas/ReservaResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
 
@@ -772,6 +771,7 @@ paths:
                   notes: "Reserva para partido de entrenamiento"
                   participantesAdicionales:
                     - externalName: "Carlos García"
+                      externalPhone: "+34611223344"
       responses:
         '201':
           description: Reserva creada correctamente
@@ -785,18 +785,20 @@ paths:
                   value:
                     id: "550e8400-e29b-41d4-a716-446655440000"
                     reservationDate: "2025-06-15"
-                    startTime: "09:00"
+                    startTime: "09:00:00"
+                    endTime: "10:00:00"
                     durationMinutes: 60
                     status: "PENDING_CONFIRMATION"
+                    channel: "WEB"
                     ownerId: 5
-                    ownerName: "John Doe"
                     priceTotal: 15.00
                     notes: "Reserva para partido de entrenamiento"
                     participants:
-                      - id: 1
-                        userId: 5
-                        nombre: "John Doe"
-                        statusPago: "PENDING"
+                      - userId: 5
+                        externalName: null
+                        externalPhone: null
+                        owner: true
+                    createdAt: "2026-07-05T18:30:00Z"
         '400':
           $ref: '#/components/responses/ValidationError'
         '401':
@@ -807,7 +809,7 @@ paths:
           description: |
             La franja horaria solapa con una reserva activa (RN-RES-01). El constraint
             `excl_res_no_overlap` (gist) garantiza la exclusión incluso bajo concurrencia.
-            Cuerpo: `code: "CONFLICT"`.
+            Cuerpo: `error: "CONFLICT"` (HTTP 409).
           content:
             application/json:
               schema:
@@ -1009,7 +1011,7 @@ paths:
         '422':
           description: |
             La transición de estado no está permitida (D6, máquina unidireccional).
-            Cuerpo: `code: "INVALID_STATE_TRANSITION"`.
+            Cuerpo: `error: "INVALID_STATE_TRANSITION"` (HTTP 422).
           content:
             application/json:
               schema:
@@ -1348,9 +1350,9 @@ components:
             tokenExpirado:
               summary: Token expirado
               value:
-                code: "UNAUTHORIZED"
+                error: "UNAUTHORIZED"
                 message: "El token de acceso ha expirado."
-                errors: []
+                timestamp: "2026-07-05T18:30:00Z"
 
     Forbidden:
       description: El usuario autenticado no tiene permisos para esta operación
@@ -1362,9 +1364,9 @@ components:
             sinRol:
               summary: Rol insuficiente
               value:
-                code: "FORBIDDEN"
+                error: "FORBIDDEN"
                 message: "No tiene permisos para realizar esta operación."
-                errors: []
+                timestamp: "2026-07-05T18:30:00Z"
 
     NotFound:
       description: Recurso no encontrado
@@ -1376,9 +1378,9 @@ components:
             noEncontrado:
               summary: Recurso no encontrado
               value:
-                code: "NOT_FOUND"
+                error: "NOT_FOUND"
                 message: "El recurso solicitado no existe."
-                errors: []
+                timestamp: "2026-07-05T18:30:00Z"
 
     ValidationError:
       description: Error de validación de parámetros o cuerpo de la petición
@@ -1390,11 +1392,11 @@ components:
             campoInvalido:
               summary: Campo con formato inválido
               value:
-                code: "VALIDATION_ERROR"
+                error: "VALIDATION_ERROR"
                 message: "Los datos de la solicitud no son válidos."
-                errors:
-                  - field: "email"
-                    message: "El formato del email no es válido."
+                timestamp: "2026-07-05T18:30:00Z"
+                details:
+                  - "El formato del email no es válido."
 
     Conflict:
       description: Conflicto (p.ej. franja ya reservada, email duplicado)
@@ -1406,9 +1408,9 @@ components:
             franjaOcupada:
               summary: Franja horaria ya ocupada
               value:
-                code: "CONFLICT"
+                error: "CONFLICT"
                 message: "La franja horaria seleccionada ya está reservada."
-                errors: []
+                timestamp: "2026-07-05T18:30:00Z"
 
     InternalError:
       description: Error interno del servidor
@@ -1678,37 +1680,32 @@ components:
 
     RegisterRequest:
       type: object
-      description: Datos para el auto-registro de un nuevo usuario
+      description: >-
+        Datos para el auto-registro de un nuevo usuario. El backend usa campos en
+        snake_case (RegisterCommand: first_name, last_name, email, password).
       required:
-        - login
+        - first_name
+        - last_name
         - email
-        - phone
-        - name
         - password
       properties:
-        login:
+        first_name:
           type: string
-          description: Nombre de usuario (solo alfanumérico y guión bajo, 3-50 chars)
-          minLength: 3
-          maxLength: 50
-          pattern: '^[a-zA-Z0-9_]+$'
-          example: jdoe
+          description: Nombre del usuario
+          minLength: 2
+          maxLength: 100
+          example: "John"
+        last_name:
+          type: string
+          description: Apellidos del usuario
+          minLength: 2
+          maxLength: 100
+          example: "Doe"
         email:
           type: string
           format: email
-          description: Correo electrónico del usuario
+          description: Correo electrónico del usuario (identificador de acceso)
           example: jdoe@example.com
-        phone:
-          type: string
-          description: Teléfono en formato E.164
-          pattern: '^\+[1-9]\d{7,14}$'
-          example: "+34612345678"
-        name:
-          type: string
-          description: Nombre completo del usuario
-          minLength: 2
-          maxLength: 100
-          example: "John Doe"
         password:
           type: string
           format: password
@@ -2028,34 +2025,23 @@ components:
 
     ParticipanteResponse:
       type: object
-      description: Información de un participante en la reserva
+      description: >-
+        Información de un participante en la reserva (backend ParticipanteResponse:
+        userId, externalName, externalPhone, owner). No incluye id ni joinedAt.
       required:
-        - id
-        - nombre
-        - statusPago
-        - isOwner
-        - joinedAt
+        - owner
       properties:
-        id:
-          type: integer
-          format: int64
-          description: Identificador del registro de participante
-          example: 3
         userId:
           type: integer
           format: int64
           description: ID del usuario registrado (null si es participante externo)
           nullable: true
           example: 7
-        nombre:
-          type: string
-          description: Nombre del participante (registrado o externo)
-          example: "Carlos García"
         externalName:
           type: string
           description: Nombre del invitado externo (null si es usuario registrado)
           nullable: true
-          example: "Invitado Externo"
+          example: "Carlos García"
         externalPhone:
           type: string
           description: >-
@@ -2064,23 +2050,10 @@ components:
             (minimización de datos personales).
           nullable: true
           example: "+34611223344"
-        statusPago:
-          $ref: '#/components/schemas/PaymentStatus'
-        isOwner:
+        owner:
           type: boolean
           description: Indica si este participante es el titular de la reserva
           example: false
-        slotPosition:
-          type: integer
-          description: Posición en la reserva (1 = titular, 2-4 = resto)
-          minimum: 1
-          maximum: 4
-          example: 2
-        joinedAt:
-          type: string
-          format: date-time
-          description: Instante en que se incorporó a la reserva
-          example: "2025-06-14T18:30:00Z"
 
     ReservaRequest:
       type: object
@@ -2149,12 +2122,12 @@ components:
           example: "2025-06-15"
         startTime:
           type: string
-          description: Hora de inicio (HH:mm)
-          example: "09:00"
+          description: Hora de inicio, serializada como LocalTime (HH:MM:SS)
+          example: "09:00:00"
         endTime:
           type: string
-          description: Hora de fin calculada (HH:mm)
-          example: "10:00"
+          description: Hora de fin calculada, serializada como LocalTime (HH:MM:SS)
+          example: "10:00:00"
         durationMinutes:
           type: integer
           description: Duración en minutos
@@ -2166,12 +2139,10 @@ components:
         ownerId:
           type: integer
           format: int64
-          description: ID del titular de la reserva
+          description: >-
+            ID del titular de la reserva. El backend NO devuelve el nombre del titular
+            (`ownerName`) en esta respuesta.
           example: 5
-        ownerName:
-          type: string
-          description: Nombre completo del titular
-          example: "John Doe"
         priceTotal:
           type: number
           format: double
