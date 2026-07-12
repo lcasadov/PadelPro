@@ -1,5 +1,7 @@
 package com.padelpro.pagos.application.service;
 
+import com.padelpro.auth.domain.model.User;
+import com.padelpro.auth.domain.port.out.UserRepositoryPort;
 import com.padelpro.pagos.application.dto.PagoHistorialResponse;
 import com.padelpro.reservas.domain.model.Payment;
 import com.padelpro.reservas.domain.model.Reservation;
@@ -26,11 +28,26 @@ public class PagoQueryService {
 
     private final PaymentJpaRepository paymentRepository;
     private final ReservationJpaRepository reservationRepository;
+    private final UserRepositoryPort userRepositoryPort;
 
     public PagoQueryService(PaymentJpaRepository paymentRepository,
-                            ReservationJpaRepository reservationRepository) {
+                            ReservationJpaRepository reservationRepository,
+                            UserRepositoryPort userRepositoryPort) {
         this.paymentRepository = paymentRepository;
         this.reservationRepository = reservationRepository;
+        this.userRepositoryPort = userRepositoryPort;
+    }
+
+    /** Nombre completo del titular ("Nombre Apellidos"), trim; null-safe. */
+    private static String fullName(User u) {
+        if (u == null) {
+            return null;
+        }
+        return (safe(u.getFirstName()) + " " + safe(u.getLastName())).trim();
+    }
+
+    private static String safe(String s) {
+        return s == null ? "" : s;
     }
 
     /** Payments of reservations owned by the user, most-recent first. */
@@ -44,7 +61,7 @@ public class PagoQueryService {
                 .collect(Collectors.toMap(Reservation::getId, Function.identity()));
         List<Payment> payments = paymentRepository.findByReservationIdIn(byId.keySet());
         return payments.stream()
-                .map(p -> toResponse(p, byId.get(p.getReservationId())))
+                .map(p -> toResponse(p, byId.get(p.getReservationId()), null))
                 .sorted(Comparator.comparing(PagoHistorialResponse::createdAt,
                         Comparator.nullsLast(Comparator.reverseOrder())))
                 .toList();
@@ -60,16 +77,29 @@ public class PagoQueryService {
         List<UUID> reservationIds = payments.stream().map(Payment::getReservationId).toList();
         Map<UUID, Reservation> byId = reservationRepository.findAllById(reservationIds).stream()
                 .collect(Collectors.toMap(Reservation::getId, Function.identity()));
+        // Resolver el nombre del titular (ADMIN): batch-load de usuarios por ownerId (anti-N+1).
+        List<Long> ownerIds = byId.values().stream()
+                .map(Reservation::getOwnerId).filter(java.util.Objects::nonNull).distinct().toList();
+        Map<Long, String> nameByOwner = ownerIds.isEmpty()
+                ? Map.of()
+                : userRepositoryPort.findAllById(ownerIds).stream()
+                        .collect(Collectors.toMap(User::getId, PagoQueryService::fullName));
         return payments.stream()
-                .map(p -> toResponse(p, byId.get(p.getReservationId())))
+                .map(p -> {
+                    Reservation r = byId.get(p.getReservationId());
+                    String ownerName = (r != null && r.getOwnerId() != null)
+                            ? nameByOwner.get(r.getOwnerId()) : null;
+                    return toResponse(p, r, ownerName);
+                })
                 .toList();
     }
 
-    private PagoHistorialResponse toResponse(Payment p, Reservation r) {
+    private PagoHistorialResponse toResponse(Payment p, Reservation r, String ownerName) {
         return new PagoHistorialResponse(
                 p.getId() != null ? p.getId().toString() : null,
                 p.getReservationId() != null ? p.getReservationId().toString() : null,
                 r != null ? r.getOwnerId() : null,
+                ownerName,
                 p.getAmount(),
                 p.getMethod() != null ? p.getMethod().name() : null,
                 p.getStatus() != null ? p.getStatus().name() : null,

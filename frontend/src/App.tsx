@@ -21,7 +21,9 @@ import { DetalleReservaPage } from './pages/DetalleReservaPage';
 import { PartidasAbiertasPage } from './pages/PartidasAbiertasPage';
 import { ConfirmarUnionPage } from './pages/ConfirmarUnionPage';
 import { CheckoutRedsysPage } from './pages/CheckoutRedsysPage';
+import { SimuladorPagoPage } from './pages/SimuladorPagoPage';
 import { PagoConfirmadoPage } from './pages/PagoConfirmadoPage';
+import { AdminPagosPage } from './pages/AdminPagosPage';
 import { reservasPaths } from './pages/reservasPaths';
 
 function App() {
@@ -65,6 +67,10 @@ function App() {
             {/* Checkout Redsys (pagos-redsys-online): se inicia desde la app con el
                 response de iniciar pago en el state de navegación. */}
             <Route path={reservasPaths.checkout} element={<CheckoutRedsysPage />} />
+
+            {/* Checkout simulado (pagos-simulador-gestion, D1): "pagar ahora" enruta
+                aquí mientras Redsys no está configurado. */}
+            <Route path={reservasPaths.simulador} element={<SimuladorPagoPage />} />
           </Route>
 
           {/* Rutas de administración — guard de rol ADMIN (D6) */}
@@ -72,6 +78,8 @@ function App() {
             <Route path="/admin/usuarios" element={<AdminUsuariosPage />} />
             {/* Dashboard del club (administracion-club, D5) */}
             <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+            {/* Panel de cobros (pagos-simulador-gestion, D3) */}
+            <Route path={reservasPaths.adminPagos} element={<AdminPagosPage />} />
           </Route>
         </Routes>
       </BrowserRouter>

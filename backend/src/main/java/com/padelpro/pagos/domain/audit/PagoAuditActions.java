@@ -12,6 +12,8 @@ public final class PagoAuditActions {
     public static final String PAYMENT_WEBHOOK_INVALID_SIGNATURE = "PAYMENT_WEBHOOK_INVALID_SIGNATURE";
     public static final String PAYMENT_WEBHOOK_ORDER_NOT_FOUND   = "PAYMENT_WEBHOOK_ORDER_NOT_FOUND";
     public static final String PAYMENT_CASH_REGISTERED           = "PAYMENT_CASH_REGISTERED";
+    public static final String PAYMENT_SIMULATED_APPROVED         = "PAYMENT_SIMULATED_APPROVED";
+    public static final String PAYMENT_SIMULATED_DECLINED         = "PAYMENT_SIMULATED_DECLINED";
 
     private PagoAuditActions() {
     }

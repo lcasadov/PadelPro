@@ -18,6 +18,12 @@ export const reservasPaths = {
   /** Checkout Redsys (pagos-redsys-online): auto-envía el form firmado al TPV.
    *  Se llega con el response de iniciar pago en el `state` de navegación. */
   checkout: '/pagos/checkout',
+  /** Checkout simulado (pagos-simulador-gestion, D1): pide tarjeta/caducidad/CVC y
+   *  llama a `POST /api/pagos/simular`. Provisional mientras Redsys no está
+   *  configurado; "pagar ahora" enruta aquí. */
+  simulador: '/pagos/simulador',
+  /** Panel admin de cobros (pagos-simulador-gestion, D3): lista y marca efectivo. */
+  adminPagos: '/admin/pagos',
   /** Retorno del TPV: pago aceptado (Redsys UrlOK). El estado real lo fija el
    *  webhook; la página lo consulta al backend, no confía en la URL. */
   pagoOk: '/pagos/ok',
@@ -33,6 +39,20 @@ export const reservasPaths = {
 export function pagoRetornoPath(base: string, reservaId: string): string {
   const params = new URLSearchParams({ reservaId });
   return `${base}?${params.toString()}`;
+}
+
+/**
+ * Construye el path del checkout simulado propagando la `reservaId` y el `importe`
+ * en la query, para que `SimuladorPagoPage` sea resistente a recargas (además del
+ * `state` de navegación). El importe es informativo (el autoritativo lo congela el
+ * backend); si no se conoce se omite.
+ */
+export function simuladorPath(reservaId: string, importe?: number): string {
+  const params = new URLSearchParams({ reservaId });
+  if (importe != null) {
+    params.set('importe', String(importe));
+  }
+  return `${reservasPaths.simulador}?${params.toString()}`;
 }
 
 /**

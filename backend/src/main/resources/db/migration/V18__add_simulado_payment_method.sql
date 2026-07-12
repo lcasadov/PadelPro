@@ -1,0 +1,11 @@
+-- Migration: add 'SIMULADO' to payment_method enum (change pagos-simulador-gestion, D2)
+-- Source of truth: openspec/changes/pagos-simulador-gestion/design.md §D2.
+--
+-- The provisional online payment simulator (POST /api/pagos/simular) marks an approved payment
+-- PAID with method = SIMULADO, keeping it distinguishable from real REDSYS / CASH collections.
+-- Java enum PaymentMethod gains the matching SIMULADO value; with ddl-auto=validate the DB enum
+-- must carry the label too.
+--
+-- Note: PostgreSQL 12+ allows ALTER TYPE ... ADD VALUE inside a transaction as long as the new
+-- value is not used in the same transaction (Flyway commits this migration before any code uses it).
+ALTER TYPE payment_method ADD VALUE IF NOT EXISTS 'SIMULADO';

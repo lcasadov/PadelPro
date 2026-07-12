@@ -128,6 +128,20 @@ export function HomePage() {
             <div className={styles.actionSub}>Ocupación, ingresos y export</div>
           </Link>
         )}
+
+        {/* Cobros — gestión de pagos, solo ADMIN (pagos-simulador-gestion, D3) */}
+        {role === 'ADMIN' && (
+          <Link to={reservasPaths.adminPagos} className={styles.action}>
+            <div className={styles.actionIco}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <rect x="2" y="5" width="20" height="14" rx="2" />
+                <line x1="2" y1="10" x2="22" y2="10" />
+              </svg>
+            </div>
+            <div className={styles.actionLabel}>Cobros</div>
+            <div className={styles.actionSub}>Pagos, efectivo y estado</div>
+          </Link>
+        )}
       </div>
 
       {/* ── Logout ── */}

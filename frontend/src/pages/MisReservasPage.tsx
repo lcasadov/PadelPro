@@ -18,13 +18,19 @@ import {
 } from '../services/reservasApi';
 import { iniciarPago } from '../services/pagosApi';
 import { EstadoBadge } from '../components/EstadoBadge';
-import { reservasPaths } from './reservasPaths';
+import { reservasPaths, simuladorPath } from './reservasPaths';
 import './pages.css';
 import styles from './MisReservasPage.module.css';
 
 /** Estados en los que una reserva admite cancelación desde la UI. La barrera real
  *  la impone el backend (422 INVALID_STATE_TRANSITION / CANCELLATION_DEADLINE_PASSED). */
 const ESTADOS_CANCELABLES: ReservationStatus[] = ['PENDING_CONFIRMATION', 'CONFIRMED'];
+
+/** Bandera provisional (pagos-simulador-gestion, D1): mientras Redsys no está
+ *  configurado, "pagar ahora" enruta al simulador. El flujo Redsys real (iniciarPago
+ *  → checkout firmado) queda intacto detrás de esta bandera para reactivarlo sin
+ *  reescribir nada cuando haya credenciales. */
+const USE_REDSYS: boolean = false;
 
 export function MisReservasPage() {
   const { accessToken, isAuthenticated, userId, loadUserId } = useAuth();
@@ -70,10 +76,15 @@ export function MisReservasPage() {
     return <Navigate to="/login" replace />;
   }
 
-  // "Pagar ahora" (pagos-redsys-online, D6): inicia el pago online y navega al
-  // checkout Redsys con el form firmado en el state. Solo owner con pago PENDING.
-  async function handlePagar(id: string) {
+  // "Pagar ahora": mientras Redsys no está configurado (D1) enruta al simulador
+  // provisional pasando reservaId + importe. Si USE_REDSYS se reactiva, vuelve al
+  // flujo real (iniciarPago → checkout firmado). Solo owner con pago PENDING.
+  async function handlePagar(id: string, importe?: number) {
     if (!accessToken) return;
+    if (!USE_REDSYS) {
+      navigate(simuladorPath(id, importe), { state: { reservaId: id, importe } });
+      return;
+    }
     setPagandoId(id);
     setPagoError(null);
     try {
@@ -197,7 +208,7 @@ export function MisReservasPage() {
                             <button
                               type="button"
                               className={styles.pagarBtn}
-                              onClick={() => handlePagar(r.id)}
+                              onClick={() => handlePagar(r.id, r.pago?.amount ?? r.priceTotal)}
                               disabled={pagandoId === r.id}
                             >
                               {pagandoId === r.id ? 'Iniciando…' : 'Pagar ahora'}
@@ -206,8 +217,9 @@ export function MisReservasPage() {
                         </div>
                         {diferidoId === r.id && (
                           <p className={styles.pagoInfo} role="status">
-                            El cobro se realizará de forma presencial en el club. No es necesario
-                            pagar ahora.
+                            El cobro se realizará de forma presencial en el club. La reserva
+                            seguirá figurando como <strong>Pendiente</strong> hasta que se
+                            confirme el pago.
                           </p>
                         )}
                         {pagoError?.id === r.id && (

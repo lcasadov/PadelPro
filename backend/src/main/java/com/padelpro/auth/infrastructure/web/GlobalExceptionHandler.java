@@ -13,6 +13,7 @@ import com.padelpro.pagos.domain.exception.PagoConflictException;
 import com.padelpro.pagos.domain.exception.PagoForbiddenException;
 import com.padelpro.pagos.domain.exception.PagoNotFoundException;
 import com.padelpro.pagos.domain.exception.PagoUnprocessableException;
+import com.padelpro.pagos.domain.exception.PagoValidationException;
 import com.padelpro.reservas.domain.exception.InvalidReservaStateException;
 import com.padelpro.reservas.domain.exception.ParticipacionDuplicadaException;
 import com.padelpro.reservas.domain.exception.ReservaForbiddenException;
@@ -260,6 +261,17 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.UNPROCESSABLE_ENTITY)
                 .body(new ErrorResponse(ex.getCode(), ex.getMessage()));
+    }
+
+    /**
+     * A malformed card field in the online payment simulator ({@code POST /api/pagos/simular}) → 400
+     * with code {@code VALIDATION_ERROR}. Card data / CVC are never echoed (RN-RGPD-04).
+     */
+    @ExceptionHandler(PagoValidationException.class)
+    public ResponseEntity<ErrorResponse> handlePagoValidation(PagoValidationException ex) {
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse("VALIDATION_ERROR", ex.getMessage()));
     }
 
     // -------------------------------------------------------------------------

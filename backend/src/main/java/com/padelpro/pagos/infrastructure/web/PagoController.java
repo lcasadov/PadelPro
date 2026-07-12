@@ -3,9 +3,12 @@ package com.padelpro.pagos.infrastructure.web;
 import com.padelpro.pagos.application.dto.IniciarPagoRequest;
 import com.padelpro.pagos.application.dto.IniciarPagoResponse;
 import com.padelpro.pagos.application.dto.PagoHistorialResponse;
+import com.padelpro.pagos.application.dto.SimularPagoRequest;
+import com.padelpro.pagos.application.dto.SimularPagoResponse;
 import com.padelpro.pagos.application.service.IniciarPagoService;
 import com.padelpro.pagos.application.service.PagoQueryService;
 import com.padelpro.pagos.application.service.ProcesarWebhookService;
+import com.padelpro.pagos.application.service.SimularPagoService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -32,18 +35,31 @@ public class PagoController {
     private final IniciarPagoService iniciarPagoService;
     private final ProcesarWebhookService procesarWebhookService;
     private final PagoQueryService pagoQueryService;
+    private final SimularPagoService simularPagoService;
 
     public PagoController(IniciarPagoService iniciarPagoService,
                           ProcesarWebhookService procesarWebhookService,
-                          PagoQueryService pagoQueryService) {
+                          PagoQueryService pagoQueryService,
+                          SimularPagoService simularPagoService) {
         this.iniciarPagoService = iniciarPagoService;
         this.procesarWebhookService = procesarWebhookService;
         this.pagoQueryService = pagoQueryService;
+        this.simularPagoService = simularPagoService;
     }
 
     @PostMapping("/iniciar")
     public ResponseEntity<IniciarPagoResponse> iniciar(@RequestBody IniciarPagoRequest request) {
         return ResponseEntity.ok(iniciarPagoService.iniciar(request.reservaId(), currentUserId()));
+    }
+
+    /**
+     * Provisional online payment simulator (change pagos-simulador-gestion, D2). Owner only; validates
+     * the card fields' format (400), decides APPROVED/DECLINED and, on APPROVED, marks the payment
+     * PAID/SIMULADO. Card data is never persisted or logged (RN-RGPD-04).
+     */
+    @PostMapping("/simular")
+    public ResponseEntity<SimularPagoResponse> simular(@RequestBody SimularPagoRequest request) {
+        return ResponseEntity.ok(simularPagoService.simular(request, currentUserId()));
     }
 
     /**
