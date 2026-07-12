@@ -1,9 +1,9 @@
 # Plan de ejecución — PadelPro OpenSpec
 
 **Generado:** 2026-05-31  
-**Última actualización:** 2026-07-06  
+**Última actualización:** 2026-07-12  
 **Base:** dependencias declaradas en `openspec/specs/*/spec.md`  
-**Estado:** 9/14 capabilities de producto implementadas (+ `notificaciones` parcial: email de eventos ✅, Telegram pendiente; + transversales: `ci-cd-deploy` ✅ y refuerzos de `auth-local`/`usuarios` en producción)
+**Estado:** **14/14 capabilities de producto implementadas** (`notificaciones` completa — email + Telegram; `auth-otp-telegram`, `exportaciones-rgpd` v1.0 y `administracion-club` cerradas el 2026-07-12) + transversal `ci-cd-deploy` ✅. Fuera de alcance v1.0 (Fase 2): exportación JSON RGPD (Art. 20) y confirmación de operaciones vía bot Telegram.
 
 ---
 
@@ -249,10 +249,14 @@ Wave 6  ────────└──── administracion-club  ← Fase 2
 
 ## Próximas acciones recomendadas
 
-> Estado 2026-07-05: la app está **desplegada y usable** (CI/CD a EC2 ✅, acceso/panel admin ✅). **UI reservas jugador ✅** (#188) + **refresh de sesión ✅** (#186) + **partidas ✅** (#191/#192) + **pago online Redsys ✅** (#194/#195: iniciar/webhook/efectivo, "pagar ahora" activo; gateway en CASH hasta configurar credenciales reales). Change activo: `reservas-ui-jugador` (#184) pendiente de archivar.
-> ✅ Resuelto (2026-07-12): crear reserva fallaba en el EC2 por `crypto.randomUUID()` (no existe en HTTP plano / secure-context) — fix en #201/PR #202 (helper `uuid()` con fallback). La sospecha del `SystemConfig` quedó descartada.
-> 🔒 En curso (2026-07-12): endurecimiento de producción — TLS/HTTPS vía Caddy (change `tls-https-ec2`, #203), E2E Playwright (`e2e-smoke-tests`), `auth-otp-telegram` (Wave 2B) y reconciliación de `openapi.yaml`.
+> **Estado 2026-07-12 — todas las capabilities de producto implementadas.** La app está desplegada y usable (CI/CD a EC2 ✅). En esta fecha se cerró el resto del roadmap:
+> - **Endurecimiento de producción:** TLS/HTTPS vía Caddy + Let's Encrypt/sslip.io (`archive/2026-07-12-tls-https-ec2`, #204); E2E smoke Playwright en CI que bloquea el deploy (`archive/2026-07-12-e2e-smoke-tests`, #206); fix `crypto.randomUUID` en HTTP (#202).
+> - **Capabilities:** `auth-otp-telegram` (#208), `notificaciones` pata Telegram (#213), `exportaciones-rgpd` v1.0 anonimización (#215), `administracion-club` dashboard (#217).
+> - **Deuda técnica saldada:** #181 rate-limit flaky (#218), purga TTL `idempotency_keys` (#218), `@Async` + retención `notification_log` #199 (#219), `openapi.yaml` reconciliado con el backend real (#209), Java 17 alineado en docs (#218/#220), Docker 29 ↔ Testcontainers documentado (#220).
 
-1. **`auth-otp-telegram` (Wave 2B)** — pendiente e independiente; habilita confirmación por Telegram y las notificaciones Telegram (la pata email de `notificaciones` ya está completa: `archive/2026-07-06-notificaciones-eventos-email`).
-2. **`notificaciones` — pata Telegram**: publicación en grupo + notificaciones de eventos por Telegram; bloqueada por `auth-otp-telegram`. Follow-ups no bloqueantes en #199 (`@Async` en handlers + retención RGPD de `notification_log`).
-3. **Deuda técnica** (tickets): #181 test flaky rate-limit; TTL/purga de `idempotency_keys`; migrar los 8 IT `@Testcontainers` restantes a la base portable; reconciliar `openapi.yaml` camelCase↔snake_case; TLS/dominio en el EC2; `docs/PROJECT.md` dice Java 21 vs pom 17.
+**Pendientes reales (Fase 2 / operación):**
+
+1. **Exportación JSON RGPD (Art. 20)** — `GET /api/usuarios/me/exportar`, diferido a Fase 2 por el spec de `exportaciones-rgpd`.
+2. **Operaciones vía bot Telegram** (confirmar/cancelar reserva por comando) — fuera del alcance de `auth-otp-telegram`.
+3. **Pasos de operación en el EC2** (no requieren código): aplicar el runbook §9 de TLS (Elastic IP + `PUBLIC_HOST` sslip.io + `docker-compose.prod.yml`); configurar `telegram_bot_token`/`telegram_group_id`/credenciales SMTP y Redsys reales en `system_config`/`.env`; registrar el webhook de Telegram (`setWebhook`).
+4. **Follow-ups menores:** reforzar el copy de confirmación del botón "eliminar usuario" (ahora anonimiza irreversiblemente); límite de rango de 12 meses en el dashboard; smoke E2E post-deploy contra el HTTPS real (para cazar regresiones de secure-context como #201).
