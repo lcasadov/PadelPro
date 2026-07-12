@@ -13,6 +13,7 @@ import { MiPerfilPage } from './pages/MiPerfilPage';
 import { VincularTelegramPage } from './pages/VincularTelegramPage';
 import { telegramPaths } from './pages/telegramPaths';
 import { AdminUsuariosPage } from './pages/AdminUsuariosPage';
+import { AdminDashboardPage } from './pages/AdminDashboardPage';
 import { DisponibilidadPage } from './pages/DisponibilidadPage';
 import { ConfirmarReservaPage } from './pages/ConfirmarReservaPage';
 import { MisReservasPage } from './pages/MisReservasPage';
@@ -69,6 +70,8 @@ function App() {
           {/* Rutas de administración — guard de rol ADMIN (D6) */}
           <Route element={<AdminRoute />}>
             <Route path="/admin/usuarios" element={<AdminUsuariosPage />} />
+            {/* Dashboard del club (administracion-club, D5) */}
+            <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
           </Route>
         </Routes>
       </BrowserRouter>

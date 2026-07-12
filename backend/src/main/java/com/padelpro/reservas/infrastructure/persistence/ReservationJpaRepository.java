@@ -77,4 +77,32 @@ public interface ReservationJpaRepository extends JpaRepository<Reservation, UUI
 
     /** Reservations owned by a user (own-payments history, pagos-redsys-online group 5). */
     List<Reservation> findByOwnerId(Long ownerId);
+
+    /**
+     * {@code SUM(duration_minutes)} of non-cancelled reservations whose date is within
+     * {@code [fechaInicio, fechaFin]} (administracion-club occupancy, RN-ADM-02). Aggregated in the
+     * database; {@code CANCELLED} reservations never count.
+     */
+    @Query("""
+            SELECT COALESCE(SUM(r.durationMinutes), 0)
+            FROM Reservation r
+            WHERE r.reservationDate BETWEEN :fechaInicio AND :fechaFin
+              AND r.status <> com.padelpro.reservas.domain.model.ReservationStatus.CANCELLED
+            """)
+    long sumActiveDurationMinutesInRange(@Param("fechaInicio") LocalDate fechaInicio,
+                                         @Param("fechaFin") LocalDate fechaFin);
+
+    /**
+     * Minimal usage rows {@code (reservation_date, duration_minutes)} of non-cancelled reservations in
+     * {@code [fechaInicio, fechaFin]} for the per-day usage report (administracion-club CSV). No
+     * owner or other personal columns are selected (RN-RGPD-04).
+     */
+    @Query("""
+            SELECT r.reservationDate, r.durationMinutes
+            FROM Reservation r
+            WHERE r.reservationDate BETWEEN :fechaInicio AND :fechaFin
+              AND r.status <> com.padelpro.reservas.domain.model.ReservationStatus.CANCELLED
+            """)
+    List<Object[]> findActiveUsageRowsInRange(@Param("fechaInicio") LocalDate fechaInicio,
+                                              @Param("fechaFin") LocalDate fechaFin);
 }

@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.OffsetDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -41,4 +42,34 @@ public interface PaymentJpaRepository extends JpaRepository<Payment, UUID> {
 
     /** All payments most-recent first (ADMIN history, pagos-redsys-online group 5). */
     List<Payment> findAllByOrderByCreatedAtDesc();
+
+    /**
+     * Income grouped by payment method for the admin dashboard (administracion-club, RN-ADM-03):
+     * {@code SUM(amount)} of PAID payments whose {@code paid_at} falls in the half-open range
+     * {@code [start, end)}. Aggregated in the database; returns one {@code Object[]{PaymentMethod,
+     * BigDecimal}} row per method that has at least one PAID payment.
+     */
+    @Query("""
+            SELECT p.method, COALESCE(SUM(p.amount), 0)
+            FROM Payment p
+            WHERE p.status = com.padelpro.reservas.domain.model.PaymentStatus.PAID
+              AND p.paidAt >= :start AND p.paidAt < :end
+            GROUP BY p.method
+            """)
+    List<Object[]> sumPaidAmountGroupedByMethod(@Param("start") OffsetDateTime start,
+                                                @Param("end") OffsetDateTime end);
+
+    /**
+     * Minimal PAID payment rows {@code (paid_at, amount, method)} in {@code [start, end)} for the
+     * per-day usage report (administracion-club CSV). No card, gateway or customer data is selected
+     * (RN-RGPD-04).
+     */
+    @Query("""
+            SELECT p.paidAt, p.amount, p.method
+            FROM Payment p
+            WHERE p.status = com.padelpro.reservas.domain.model.PaymentStatus.PAID
+              AND p.paidAt >= :start AND p.paidAt < :end
+            """)
+    List<Object[]> findPaidRowsInRange(@Param("start") OffsetDateTime start,
+                                       @Param("end") OffsetDateTime end);
 }

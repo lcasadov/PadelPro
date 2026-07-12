@@ -24,7 +24,7 @@
 | `notificaciones` | ✅ Implementada — email SMTP + bienvenida + eventos (confirmación/cancelación/recibo) + `notification_log` + reintentos; **pata Telegram** (directo + grupo, RN-NOT-01) | `archive/2026-07-03-usuarios-alta-edicion-email`, `archive/2026-07-06-notificaciones-eventos-email`, `archive/2026-07-12-notificaciones-telegram` |
 | `partidas` | ✅ Implementada (ver/unirse/abandonar partidas abiertas; pago compartido diferido a `pagos-redsys`) | `archive/2026-07-05-partidas-unirse` |
 | `exportaciones-rgpd` | ✅ Implementada v1.0 — anonimización irreversible en `DELETE /api/admin/usuarios/{id}` (campos personales + INACTIVE + revoca refresh_tokens + invalida otp_codes + participants + `USER_ANONYMIZED`). Export JSON (Art. 20) diferido a Fase 2 por el spec. | `archive/2026-07-12-exportaciones-rgpd-anonimizacion` |
-| `administracion-club` | 📋 Pendiente (Fase 2) | — |
+| `administracion-club` | ✅ Implementada — dashboard admin: `GET /api/admin/dashboard/{ocupacion,ingresos,exportar}` (ocupación %, ingresos con desglose REDSYS/CASH, export CSV; solo ADMIN) + página frontend | `archive/2026-07-12-administracion-club-dashboard` |
 | `ci-cd-deploy` *(transversal)* | ✅ Implementada — CI GitHub Actions + deploy EC2 en producción | `archive/2026-07-03-ci-cd-aws-deploy` |
 
 ---
