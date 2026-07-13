@@ -19,6 +19,7 @@
 | 7 | Log de auditoría | `audit_log` | Registro inmutable de todas las acciones del sistema | `BIGSERIAL` | EP-05 |
 | 8 | Log de notificaciones | `notification_log` | Registro de mensajes enviados (email; Telegram diferido) | `UUID` | EP-06 |
 | 9 | Configuración del sistema | `system_config` | Parámetros globales del club (singleton, id=1) | `BIGSERIAL` | EP-05 |
+| 10 | Bloqueo de pista | `bloqueo_pista` | Franjas horarias bloqueadas para eventos/torneos (V19) | `BIGSERIAL` | EP-02 |
 
 **Decisiones de modelado clave:**
 
@@ -444,7 +445,7 @@ CREATE UNIQUE INDEX idx_part_one_owner
 | `id` | `UUID` | NO | `gen_random_uuid()` | PK | Identificador externo. UUID evita correlación con volumen de negocio. |
 | `reservation_id` | `UUID` | NO | — | FK → `reservations(id)`, UK | Una reserva tiene exactamente un pago |
 | `amount` | `NUMERIC(12,2)` | NO | — | `chk_pay_amount` | Importe congelado en el momento de crear la reserva (precio/hora × duración/60) |
-| `method` | `payment_method` | SÍ | NULL | — | Método elegido. NULL hasta que se inicia el pago. |
+| `method` | `payment_method` | SÍ | NULL | — | Método elegido. NULL hasta que se inicia el pago. `SIMULADO` lo fija el simulador de pago al aprobar (V18). |
 | `status` | `payment_status` | NO | `'PENDING'` | — | Estado del ciclo de pago |
 | `redsys_order_id` | `VARCHAR(100)` | SÍ | NULL | UK | Referencia Redsys (Ds_Merchant_Order). Única por transacción. |
 | `payment_url` | `VARCHAR(500)` | SÍ | NULL | — | URL del TPV virtual Redsys generada para el pago online |
@@ -458,7 +459,7 @@ CREATE UNIQUE INDEX idx_part_one_owner
 **Enums usados:**
 
 ```sql
-CREATE TYPE payment_method  AS ENUM ('REDSYS', 'CASH');
+CREATE TYPE payment_method  AS ENUM ('REDSYS', 'CASH', 'SIMULADO'); -- SIMULADO añadido en V18 (simulador de pago)
 CREATE TYPE payment_status  AS ENUM ('PENDING', 'IN_PROGRESS', 'PAID', 'FAILED', 'CANCELLED', 'REFUNDED');
 CREATE TYPE payment_gateway AS ENUM ('REDSYS', 'STRIPE', 'PAYPAL');
 ```
@@ -719,6 +720,39 @@ ALTER TABLE system_config ADD CONSTRAINT chk_cfg_smtp_port
 
 ---
 
+### 3.10 `bloqueo_pista`
+
+**Tabla SQL:** `bloqueo_pista`
+
+> **Implementado en `V19__create_bloqueo_pista.sql`** (change `bloqueos-pista-eventos`). Una fila por franja horaria (de 60 min) bloqueada de una fecha, para reservar la pista a eventos/torneos. Las franjas bloqueadas se excluyen del cálculo de disponibilidad (`DisponibilidadService`) sin revelar el motivo al jugador.
+
+**Columnas:**
+
+| Nombre | Tipo SQL | Nullable | Default | Constraint | Descripción |
+|---|---|---|---|---|---|
+| `id` | `BIGSERIAL` | NO | — | PK | Identificador del bloqueo (usado por `DELETE /admin/bloqueos/{id}`) |
+| `fecha` | `DATE` | NO | — | UK (`fecha`,`hora`) | Día bloqueado |
+| `hora` | `TIME` | NO | — | UK (`fecha`,`hora`) | Hora de inicio de la franja de 60 min (granularidad alineada con la rejilla 8:00–23:00) |
+| `motivo` | `TEXT` | SÍ | NULL | — | Motivo del bloqueo (no se revela al jugador) |
+| `created_by_user_id` | `BIGINT` | SÍ | NULL | FK → `users(id)` ON DELETE SET NULL | Admin que creó el bloqueo |
+| `created_at` | `TIMESTAMPTZ` | NO | `now()` | — | Instante de creación |
+
+**PK:** `id BIGSERIAL`
+
+**Constraints:** `uq_bloqueo_fecha_hora UNIQUE (fecha, hora)` (idempotencia y anti-duplicado); `fk_bloqueo_created_by FOREIGN KEY (created_by_user_id) REFERENCES users(id) ON DELETE SET NULL`.
+
+**Índices:**
+
+| Índice | Columnas | Tipo | Justificación |
+|---|---|---|---|
+| `bloqueo_pista_pkey` | `id` | BTREE UNIQUE | PK automática |
+| `uq_bloqueo_fecha_hora` | `fecha`, `hora` | BTREE UNIQUE | Idempotencia del bloqueo por franja |
+| `idx_bloqueo_fecha` | `fecha` | BTREE | La disponibilidad consulta las horas bloqueadas por fecha |
+
+**Regla de negocio:** al crear un bloqueo, si alguna franja solicitada solapa una reserva **activa** (PENDING_CONFIRMATION/CONFIRMED; CANCELLED nunca cuenta, RN-RES-01) la operación se rechaza completa (HTTP 409, todo-o-nada). Crear/eliminar un bloqueo invalida la caché `available-slots` de la fecha.
+
+---
+
 ## 4. Relaciones y reglas de integridad
 
 ### 4.1 Relaciones principales
@@ -735,6 +769,7 @@ ALTER TABLE system_config ADD CONSTRAINT chk_cfg_smtp_port
 | `users` → `audit_log` | 1 : N (opcional) | Un usuario genera múltiples entradas. FK nullable (acciones del sistema). |
 | `users` → `notification_log` | 1 : N (opcional) | Un usuario puede recibir múltiples notificaciones. FK nullable (notificaciones al grupo). |
 | `users` → `system_config` | 1 : 0..1 | El admin que actualizó por última vez la configuración. |
+| `users` → `bloqueo_pista` | 1 : N (opcional) | Un admin puede crear múltiples bloqueos de franja. FK `created_by_user_id` nullable, ON DELETE SET NULL. |
 
 ### 4.2 Creación atómica de reserva + pago
 
