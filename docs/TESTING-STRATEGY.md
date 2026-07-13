@@ -101,8 +101,9 @@ Los flujos E2E cubren únicamente los tres casos de uso principales (CU-01, CU-0
 
 | Módulo | Unit | Integration | E2E |
 |---|---|---|---|
-| `reservas` | Entidades, domain service `ReservaDisponibilidadService`, mappers | Controller (MockMvc), repositorio (Testcontainers), solapamiento gist | CU-01, CU-02 |
-| `pagos` | `Pago` entidad, `PagoCalculoService`, HMAC calculation | Webhook adapter (WireMock), repositorio (Testcontainers) | CU-03 |
+| `reservas` | Entidades, domain service `ReservaDisponibilidadService`, mappers; `DisponibilidadService` excluye franjas bloqueadas | Controller (MockMvc), repositorio (Testcontainers), solapamiento gist | CU-01, CU-02 |
+| `pagos` | `Pago` entidad, `PagoCalculoService`, HMAC calculation; `SimularPagoService` (APPROVED/DECLINED por tarjetas mágicas, no persiste tarjeta) | Webhook adapter (WireMock), repositorio (Testcontainers) | CU-03, pago-simulador, pago-efectivo |
+| `bloqueos` | `BloqueoService` (crear todo-o-nada con conflicto 409, idempotencia, eliminar, invalidación de caché) | Persistencia `bloqueo_pista` + exclusión en disponibilidad (Testcontainers) | bloqueos-pista (bloquear → desaparece de disponibilidad → desbloquear) |
 | `usuarios` | `Usuario` entidad, `PasswordPolicyService`, `AuthApplicationService` | `AuthController` (MockMvc), lockout, refresh token | Login + logout |
 | `mensajeria` | Parser de comandos Telegram, routing | `BotTelegramAdapter` (WireMock), secret header | — |
 | `otp` | `Otp.estaExpirado()`, `estaUsado()`, generación SHA-256 | `OtpApplicationService` con repositorio real | OTP flow |

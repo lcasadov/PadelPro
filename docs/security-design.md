@@ -216,8 +216,12 @@ Extraídos del README y backlog:
 | `PATCH /api/admin/reservas/{id}/estado` | — | ❌ | ✅ | — |
 | `GET /api/pagos` | — | ✅ (propios) | ✅ | — |
 | `POST /api/pagos/iniciar` | — | ✅ (si owner) | ✅ | — |
+| `POST /api/pagos/simular` | — | ✅ (si owner) | ✅ | — |
 | `POST /api/admin/pagos/{reservaId}/efectivo` | — | ❌ | ✅ | — |
 | `GET /api/admin/pagos` | — | ❌ | ✅ | — |
+| `POST /api/admin/bloqueos` | — | ❌ | ✅ | — |
+| `GET /api/admin/bloqueos` | — | ❌ | ✅ | — |
+| `DELETE /api/admin/bloqueos/{id}` | — | ❌ | ✅ | — |
 | `POST /api/otp/verificar` | — | ✅ | ✅ | — |
 | `POST /api/bot/telegram` (webhook Telegram) | — | — | — | ✅ (Telegram) |
 | `POST /api/pagos/webhook` (webhook Redsys) | — | — | — | ✅ (Redsys) |
@@ -532,6 +536,8 @@ PadelPro **no procesa ni almacena datos de tarjeta**. Todo ocurre en el entorno 
 | Fecha de caducidad | ❌ Nunca | — |
 | Titular de la tarjeta | ❌ Nunca | — |
 | `Ds_MerchantParameters` completo | ⚠️ Solo en audit_log con PII eliminado | `audit_log.details` |
+
+> **Simulador de pago (`POST /api/pagos/simular`, change `pagos-simulador-gestion`):** provisional mientras Redsys no está activo. El endpoint **recibe** `cardNumber`/`expiry`/`cvc` en el cuerpo, pero los usa **solo en memoria** para decidir el resultado y los **descarta sin persistir ni loguear** (RN-RGPD-04) — no se guardan en `payments`, `audit_log` ni logs. Al aprobar marca el pago `PAID` con método `SIMULADO`.
 
 ### 6.4 Reconciliación: qué pasa si el webhook no llega
 

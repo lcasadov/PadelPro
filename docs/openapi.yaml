@@ -45,6 +45,8 @@ tags:
     description: Verificación de códigos de un solo uso para operaciones críticas
   - name: Sistema
     description: Configuración global del club (singleton, solo ADMIN)
+  - name: Bloqueos
+    description: Bloqueo de franjas horarias de la pista para eventos/torneos (solo ADMIN)
 
 # ---------------------------------------------------------------------------
 # Webhooks (server-to-server, no JWT)
@@ -1117,6 +1119,47 @@ paths:
         '200':
           description: Notificación procesada (siempre 200, incluso ante firma inválida)
 
+  /pagos/simular:
+    post:
+      tags: [Pagos]
+      operationId: simularPago
+      summary: Simular pago con tarjeta (provisional, mientras Redsys no está configurado)
+      description: |
+        Simulador de pago (change `pagos-simulador-gestion`, D2). Mientras la integración real de
+        Redsys no está activa, "pagar ahora" enruta a este endpoint. Recibe los datos de la tarjeta y
+        decide el resultado con tarjetas mágicas deterministas (`4111…` aprueba, `4000 0000 0000 0002`
+        rechaza; el resto ~85% aprueba vía `SecureRandom`). En APPROVED marca el pago `PAID` con método
+        `SIMULADO`; en DECLINED el pago sigue `PENDING`. Los datos de tarjeta se usan solo en memoria y
+        se descartan: NUNCA se persisten ni se registran (RN-RGPD-04). El titular debe ser el usuario
+        autenticado. Requiere ROLE_USER o ROLE_ADMIN.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SimularPagoRequest'
+      responses:
+        '200':
+          description: Resultado de la simulación (APPROVED o DECLINED)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimularPagoResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: La reserva no está en un estado que admite pagos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /admin/pagos/{reservaId}/efectivo:
     post:
       tags: [Pagos]
@@ -1172,6 +1215,101 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/PagoHistorialResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  # ─── Bloqueos de pista ────────────────────────────────────────────────────
+
+  /admin/bloqueos:
+    post:
+      tags: [Bloqueos]
+      operationId: crearBloqueos
+      summary: Bloquear franjas horarias de la pista (ADMIN)
+      description: |
+        Bloquea una o varias franjas horarias (granularidad 60 min) de una fecha, para eventos o
+        torneos (change `bloqueos-pista-eventos`). Operación todo-o-nada: si ALGUNA franja solicitada
+        solapa una reserva activa, se rechaza (409) sin crear ninguna; si no, inserta las que falten
+        (idempotente sobre `(fecha, hora)`). Las franjas bloqueadas dejan de aparecer en la
+        disponibilidad del jugador (sin revelar el motivo). Requiere ROLE_ADMIN.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CrearBloqueoRequest'
+      responses:
+        '201':
+          description: Franjas bloqueadas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BloqueoResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: |
+            Alguna franja solicitada solapa una reserva activa; no se bloqueó ninguna.
+            `error: "CONFLICT"`; `details` enumera las franjas en conflicto (`HH:mm`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    get:
+      tags: [Bloqueos]
+      operationId: listarBloqueos
+      summary: Listar bloqueos de una fecha (ADMIN)
+      description: |
+        Devuelve los bloqueos existentes de la fecha indicada, ordenados por hora. Requiere ROLE_ADMIN.
+      parameters:
+        - name: fecha
+          in: query
+          required: true
+          description: Fecha a consultar (ISO yyyy-MM-dd)
+          schema:
+            type: string
+            format: date
+            example: "2026-08-01"
+      responses:
+        '200':
+          description: Lista de bloqueos de la fecha
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BloqueoResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /admin/bloqueos/{id}:
+    delete:
+      tags: [Bloqueos]
+      operationId: eliminarBloqueo
+      summary: Desbloquear una franja (ADMIN)
+      description: |
+        Elimina un bloqueo, liberando esa franja para reservas. Idempotente (un id inexistente también
+        responde 204). Requiere ROLE_ADMIN.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Identificador del bloqueo
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: Bloqueo eliminado
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1474,10 +1612,13 @@ components:
 
     PaymentMethod:
       type: string
-      description: Método de pago utilizado
+      description: |
+        Método de pago utilizado. `SIMULADO` lo fija el simulador de pago
+        (change `pagos-simulador-gestion`, migración V18) al aprobar un pago sin TPV real.
       enum:
         - REDSYS
         - CASH
+        - SIMULADO
       example: REDSYS
 
     OtpType:
@@ -2580,6 +2721,13 @@ components:
           format: int64
           nullable: true
           example: 3
+        ownerName:
+          type: string
+          nullable: true
+          description: |
+            Nombre completo del titular de la reserva. Presente en el historial admin
+            (`GET /admin/pagos`) para mostrar el nombre en vez del id; nulo en el historial propio.
+          example: "Ana García"
         amount:
           type: number
           format: double
@@ -2617,6 +2765,99 @@ components:
           format: date-time
           nullable: true
           example: "2026-07-05T09:00:00Z"
+
+    SimularPagoRequest:
+      type: object
+      description: |
+        Cuerpo de `POST /pagos/simular`. Los datos de tarjeta se usan solo en memoria para decidir el
+        resultado y se descartan: nunca se persisten ni se registran (RN-RGPD-04).
+      required:
+        - reservaId
+        - cardNumber
+        - expiry
+        - cvc
+      properties:
+        reservaId:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        cardNumber:
+          type: string
+          description: Número de tarjeta (puede llevar espacios; se normaliza en servidor)
+          example: "4111 1111 1111 1111"
+        expiry:
+          type: string
+          description: Caducidad en formato MM/AA
+          example: "12/30"
+        cvc:
+          type: string
+          example: "123"
+
+    SimularPagoResponse:
+      type: object
+      description: Resultado de la simulación de pago.
+      required:
+        - resultado
+      properties:
+        resultado:
+          type: string
+          enum: [APPROVED, DECLINED]
+          description: APPROVED → pago a PAID/SIMULADO; DECLINED → pago sigue PENDING
+          example: APPROVED
+        motivo:
+          type: string
+          nullable: true
+          description: Motivo legible; presente solo en DECLINED (nulo en APPROVED)
+          example: null
+
+    CrearBloqueoRequest:
+      type: object
+      description: Cuerpo de `POST /admin/bloqueos` — franjas a bloquear de una fecha.
+      required:
+        - fecha
+        - horas
+      properties:
+        fecha:
+          type: string
+          format: date
+          example: "2026-08-01"
+        horas:
+          type: array
+          description: Horas de inicio de franja (granularidad 60 min), formato HH:mm
+          items:
+            type: string
+            example: "18:00"
+          example: ["18:00", "19:00"]
+        motivo:
+          type: string
+          nullable: true
+          description: Motivo del bloqueo (no se revela al jugador)
+          example: "Torneo"
+
+    BloqueoResponse:
+      type: object
+      description: Vista de una franja bloqueada.
+      required:
+        - id
+        - fecha
+        - hora
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 7
+        fecha:
+          type: string
+          format: date
+          example: "2026-08-01"
+        hora:
+          type: string
+          description: Hora de inicio de la franja bloqueada (HH:mm)
+          example: "18:00"
+        motivo:
+          type: string
+          nullable: true
+          example: "Torneo"
 
     PaginatedPagosResponse:
       allOf:
