@@ -24,6 +24,7 @@ import { CheckoutRedsysPage } from './pages/CheckoutRedsysPage';
 import { SimuladorPagoPage } from './pages/SimuladorPagoPage';
 import { PagoConfirmadoPage } from './pages/PagoConfirmadoPage';
 import { AdminPagosPage } from './pages/AdminPagosPage';
+import { ConfiguracionPage } from './pages/ConfiguracionPage';
 import { reservasPaths } from './pages/reservasPaths';
 
 function App() {
@@ -80,6 +81,8 @@ function App() {
             <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
             {/* Panel de cobros (pagos-simulador-gestion, D3) */}
             <Route path={reservasPaths.adminPagos} element={<AdminPagosPage />} />
+            {/* Configuración del club (admin-config-club) */}
+            <Route path="/admin/config" element={<ConfiguracionPage />} />
           </Route>
         </Routes>
       </BrowserRouter>
