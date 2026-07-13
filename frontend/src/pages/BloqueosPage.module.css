@@ -1,0 +1,255 @@
+/* BloqueosPage — bloqueo de franjas (bloqueos-pista-eventos) */
+
+.adminPage {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--cream);
+  max-width: 620px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 20px 24px 48px;
+  gap: 4px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.header .p-logo {
+  text-decoration: none;
+  color: var(--ink);
+}
+
+.badge {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--lime);
+  background: var(--ink);
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.titleBlock {
+  padding: 24px 0 8px;
+}
+
+.eyebrow {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.titleBlock h1 {
+  font-family: var(--font-display);
+  font-size: 40px;
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+  margin: 4px 0 0;
+  color: var(--ink);
+}
+
+.titleBlock em {
+  font-style: italic;
+  color: var(--olive);
+}
+
+.fechaField,
+.motivoField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 0;
+}
+
+.fechaField > span,
+.motivoField > span {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.fechaField input,
+.motivoField input {
+  font-family: var(--font-body);
+  font-size: 15px;
+  color: var(--ink);
+  background: var(--white, #fff);
+  border: 1.5px solid rgba(13, 13, 13, 0.2);
+  border-radius: 8px;
+  padding: 10px 12px;
+  box-sizing: border-box;
+}
+
+.fechaField input:focus,
+.motivoField input:focus {
+  outline: none;
+  border-color: var(--olive);
+}
+
+.ok {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--olive);
+  background: rgba(120, 140, 80, 0.12);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin: 8px 0 0;
+}
+
+.grid {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+}
+
+.slot {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 1.5px solid rgba(13, 13, 13, 0.14);
+  border-radius: 10px;
+  padding: 10px 12px;
+  min-height: 66px;
+}
+
+.slotHora {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.slot_LIBRE {
+  background: var(--white, #fff);
+}
+
+.slot_OCUPADA {
+  background: rgba(13, 13, 13, 0.04);
+  opacity: 0.75;
+}
+
+.slot_BLOQUEADA {
+  background: rgba(200, 90, 70, 0.1);
+  border-color: rgba(200, 90, 70, 0.4);
+}
+
+.slotSelected {
+  border-color: var(--olive);
+  box-shadow: 0 0 0 1.5px var(--olive) inset;
+}
+
+.slotCheck {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.slotTag {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.slot_BLOQUEADA .slotTag {
+  color: #b3503c;
+}
+
+.slotBloqueada {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+}
+
+.unblockBtn {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 8px;
+  border: 1.5px solid #b3503c;
+  background: transparent;
+  color: #b3503c;
+  cursor: pointer;
+}
+
+.unblockBtn:hover {
+  background: #b3503c;
+  color: var(--white, #fff);
+}
+
+.actionBar {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  padding-top: 16px;
+  flex-wrap: wrap;
+}
+
+.motivoField {
+  flex: 1;
+  min-width: 200px;
+}
+
+.blockBtn {
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 700;
+  padding: 12px 20px;
+  border-radius: 999px;
+  border: none;
+  background: var(--ink);
+  color: var(--cream);
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+  white-space: nowrap;
+}
+
+.blockBtn:hover:not(:disabled) {
+  opacity: 0.88;
+}
+
+.blockBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.loadingWrapper {
+  display: flex;
+  justify-content: center;
+  padding: 48px 0;
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(13, 13, 13, 0.15);
+  border-top-color: var(--olive);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

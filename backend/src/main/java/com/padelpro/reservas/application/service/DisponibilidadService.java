@@ -3,6 +3,7 @@ package com.padelpro.reservas.application.service;
 import com.padelpro.auth.domain.model.SystemConfig;
 import com.padelpro.auth.domain.model.SystemConfig.PistaState;
 import com.padelpro.auth.domain.port.out.SystemConfigRepositoryPort;
+import com.padelpro.bloqueos.domain.port.out.BloqueoQueryPort;
 import com.padelpro.reservas.application.dto.DisponibilidadResponse;
 import com.padelpro.reservas.application.dto.TramoDisponible;
 import com.padelpro.reservas.domain.model.ReservationOccupancy;
@@ -15,6 +16,7 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Computes court availability per date (capability disponibilidad-pistas, US-006 / #13).
@@ -50,11 +52,14 @@ public class DisponibilidadService implements DisponibilidadCacheInvalidator {
 
     private final ReservationQueryPort reservationQueryPort;
     private final SystemConfigRepositoryPort systemConfigRepositoryPort;
+    private final BloqueoQueryPort bloqueoQueryPort;
 
     public DisponibilidadService(ReservationQueryPort reservationQueryPort,
-                                 SystemConfigRepositoryPort systemConfigRepositoryPort) {
+                                 SystemConfigRepositoryPort systemConfigRepositoryPort,
+                                 BloqueoQueryPort bloqueoQueryPort) {
         this.reservationQueryPort = reservationQueryPort;
         this.systemConfigRepositoryPort = systemConfigRepositoryPort;
+        this.bloqueoQueryPort = bloqueoQueryPort;
     }
 
     /**
@@ -78,11 +83,18 @@ public class DisponibilidadService implements DisponibilidadCacheInvalidator {
 
         int maxParticipants = config.getMaxParticipantsPerPista();
         List<ReservationOccupancy> occupancies = reservationQueryPort.findActiveOccupanciesByDate(fecha);
+        // D4 — blocked slots are dropped from the offered tramos without revealing the reason.
+        Set<LocalTime> horasBloqueadas = bloqueoQueryPort.findHorasBloqueadasByFecha(fecha);
 
         List<TramoDisponible> tramos = new ArrayList<>();
         for (int hour = OPEN_HOUR; hour < CLOSE_HOUR; hour++) {
             LocalTime slotStart = LocalTime.of(hour, 0);
             LocalTime slotEnd = slotStart.plusMinutes(SLOT_MINUTES);
+
+            // A blocked slot is not offered at all (neither creatable nor joinable).
+            if (horasBloqueadas.contains(slotStart)) {
+                continue;
+            }
 
             int occupied = 0;
             for (ReservationOccupancy occ : occupancies) {

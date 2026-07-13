@@ -1,6 +1,7 @@
 package com.padelpro.reservas.infrastructure.config;
 
 import com.padelpro.auth.domain.port.out.SystemConfigRepositoryPort;
+import com.padelpro.bloqueos.domain.port.out.BloqueoQueryPort;
 import com.padelpro.reservas.application.service.DisponibilidadCacheInvalidator;
 import com.padelpro.reservas.application.service.DisponibilidadService;
 import com.padelpro.reservas.domain.port.out.ReservationQueryPort;
@@ -20,8 +21,9 @@ public class DisponibilidadConfig {
     @Bean
     public DisponibilidadService disponibilidadService(
             ReservationQueryPort reservationQueryPort,
-            SystemConfigRepositoryPort systemConfigRepositoryPort) {
-        return new DisponibilidadService(reservationQueryPort, systemConfigRepositoryPort);
+            SystemConfigRepositoryPort systemConfigRepositoryPort,
+            BloqueoQueryPort bloqueoQueryPort) {
+        return new DisponibilidadService(reservationQueryPort, systemConfigRepositoryPort, bloqueoQueryPort);
     }
 
     @Bean
