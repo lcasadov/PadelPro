@@ -2,7 +2,7 @@
 
 ### Requirement: Crear bloqueos de franjas horarias
 
-**El sistema DEBE permitir al ADMIN bloquear una o varias franjas horarias (granularidad 60 min) de una fecha, con un motivo, siempre que ninguna franja solicitada solape una reserva activa. Si alguna solapa, la operación completa se rechaza informando de los conflictos.**
+**El sistema DEBE (MUST) permitir al ADMIN bloquear una o varias franjas horarias (granularidad 60 min) de una fecha, con un motivo, siempre que ninguna franja solicitada solape una reserva activa. Si alguna solapa, la operación completa se rechaza informando de los conflictos.**
 
 #### Scenario: ADMIN bloquea franjas libres
 
@@ -38,7 +38,7 @@
 
 ### Requirement: Listar bloqueos de una fecha
 
-**El sistema DEBE permitir al ADMIN consultar los bloqueos existentes de una fecha.**
+**El sistema DEBE (MUST) permitir al ADMIN consultar los bloqueos existentes de una fecha.**
 
 #### Scenario: ADMIN lista los bloqueos de una fecha
 
@@ -49,7 +49,7 @@
 
 ### Requirement: Eliminar un bloqueo
 
-**El sistema DEBE permitir al ADMIN eliminar un bloqueo, liberando esa franja para reservas.**
+**El sistema DEBE (MUST) permitir al ADMIN eliminar un bloqueo, liberando esa franja para reservas.**
 
 #### Scenario: ADMIN desbloquea una franja
 

@@ -1,6 +1,6 @@
 # Capability: disponibilidad-pistas
 
-## Resumen
+## Purpose
 Consulta de franjas horarias libres de la pista para una fecha concreta. Permite a los usuarios autenticados conocer qué horas tienen plazas disponibles antes de crear o unirse a una reserva. El cálculo tiene en cuenta las reservas activas (`status <> 'CANCELLED'`) que solapan la franja, el estado operativo de la pista y el número máximo de participantes configurado. Los resultados se cachean 30 segundos e se invalidan automáticamente al crearse o cancelarse una reserva.
 
 ## Fase
@@ -33,12 +33,11 @@ Consulta de franjas horarias libres de la pista para una fecha concreta. Permite
 | Consultar disponibilidad (`GET /api/reservas/disponibles`) | Permitido | Permitido | Denegado (401) |
 
 ---
-
 ## Requirements
 
 ### Requirement 1: Devolver tramos libres para una fecha sin reservas activas
 
-**El sistema DEBE devolver todos los tramos horarios del día como disponibles cuando no existe ninguna reserva activa para esa fecha.**
+**El sistema DEBE (MUST) devolver todos los tramos horarios del día como disponibles cuando no existe ninguna reserva activa para esa fecha.**
 
 #### Scenario: Consulta de un día sin ninguna reserva activa
 - **GIVEN** un usuario autenticado (USER o ADMIN)
@@ -49,7 +48,7 @@ Consulta de franjas horarias libres de la pista para una fecha concreta. Permite
 
 ### Requirement 2: Devolver tramos con plazas parciales cuando existe una reserva incompleta
 
-**El sistema DEBE devolver el tramo horario con el número correcto de plazas libres cuando existe una reserva activa en ese tramo con menos participantes que el máximo.**
+**El sistema DEBE (MUST) devolver el tramo horario con el número correcto de plazas libres cuando existe una reserva activa en ese tramo con menos participantes que el máximo.**
 
 #### Scenario: Consulta de un día con una reserva parcialmente ocupada
 - **GIVEN** existe la reserva UUID-D con `reservation_date=2025-08-05`, `start_time=10:00`, `duration_minutes=60`, `status=CONFIRMED` y 2 participantes
@@ -68,7 +67,7 @@ Consulta de franjas horarias libres de la pista para una fecha concreta. Permite
 
 ### Requirement 3: Devolver lista vacía cuando la pista está en mantenimiento
 
-**El sistema DEBE devolver `tramosDisponibles` vacío para cualquier fecha cuando la pista está en estado MANTENIMIENTO, sin revelar el motivo en la respuesta de disponibilidad.**
+**El sistema DEBE (MUST) devolver `tramosDisponibles` vacío para cualquier fecha cuando la pista está en estado MANTENIMIENTO, sin revelar el motivo en la respuesta de disponibilidad.**
 
 #### Scenario: Consulta de disponibilidad con pista en mantenimiento
 - **GIVEN** la configuración del sistema indica que la pista está en estado MANTENIMIENTO (via `system_config`)
@@ -89,7 +88,7 @@ Consulta de franjas horarias libres de la pista para una fecha concreta. Permite
 
 ### Requirement 4: Reservas pendientes de confirmar bloquean franja
 
-**El sistema DEBE contar las reservas en estado `PENDING_CONFIRMATION` igual que las `CONFIRMED` al calcular las plazas libres, y DEBE excluir siempre las reservas en estado `CANCELLED`.**
+**El sistema DEBE (MUST) contar las reservas en estado `PENDING_CONFIRMATION` igual que las `CONFIRMED` al calcular las plazas libres, y DEBE excluir siempre las reservas en estado `CANCELLED`.**
 
 #### Scenario: Reserva pendiente reduce plazas libres
 - **GIVEN** existe una reserva `PENDING_CONFIRMATION` de 1 participante en el tramo 18:00–19:00
@@ -104,7 +103,7 @@ Consulta de franjas horarias libres de la pista para una fecha concreta. Permite
 
 ### Requirement 5: Autenticación obligatoria para consultar disponibilidad
 
-**El sistema DEBE exigir un JWT válido para consultar la disponibilidad; las peticiones no autenticadas DEBEN recibir 401.**
+**El sistema DEBE (MUST) exigir un JWT válido para consultar la disponibilidad; las peticiones no autenticadas DEBEN recibir 401.**
 
 #### Scenario: Petición sin autenticación
 - **WHEN** se envía `GET /api/reservas/disponibles?fecha=2025-08-01` sin cabecera `Authorization`
@@ -113,6 +112,33 @@ Consulta de franjas horarias libres de la pista para una fecha concreta. Permite
 #### Scenario: Petición con token expirado
 - **WHEN** se envía la consulta con un JWT expirado
 - **THEN** el sistema responde 401 y no devuelve datos de disponibilidad
+
+### Requirement: Excluir franjas bloqueadas de la disponibilidad
+
+**El cálculo de tramos disponibles DEBE (MUST) excluir las franjas horarias bloqueadas para la fecha consultada, además de las ocupadas por reservas activas. Una franja bloqueada no aparece como reservable ni como parcialmente disponible, sin revelar el motivo del bloqueo.**
+
+#### Scenario: Una franja bloqueada no aparece en disponibilidad
+
+- **GIVEN** un usuario autenticado
+- **AND** la franja de las 18:00 del `2026-08-01` está bloqueada (motivo "Torneo")
+- **AND** esa franja no tiene reservas
+- **WHEN** consulta `GET /api/reservas/disponibilidad?fecha=2026-08-01`
+- **THEN** la respuesta `200` NO incluye el tramo de las 18:00
+- **AND** el resto de tramos libres del día sí aparecen
+- **AND** la respuesta no revela que el motivo sea un bloqueo
+
+#### Scenario: Desbloquear devuelve la franja a disponibilidad
+
+- **GIVEN** la franja de las 18:00 del `2026-08-01` estaba bloqueada y se elimina el bloqueo
+- **AND** la franja no tiene reservas
+- **WHEN** un usuario consulta la disponibilidad de `2026-08-01`
+- **THEN** el tramo de las 18:00 vuelve a aparecer como disponible
+
+#### Scenario: Franjas no bloqueadas no se ven afectadas
+
+- **GIVEN** solo la franja de las 18:00 está bloqueada
+- **WHEN** un usuario consulta la disponibilidad de esa fecha
+- **THEN** las franjas 8:00–17:00 y 19:00–22:00 con plazas libres siguen apareciendo con normalidad
 
 ## Casos límite
 - Fecha en el pasado: el sistema puede responder con los tramos (histórico) o con 400; en v1.0 se acepta responder 200 con los tramos históricos para facilitar la consulta del ADMIN, pero no se garantiza exactitud si los datos fueron modificados.
