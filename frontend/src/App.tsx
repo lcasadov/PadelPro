@@ -25,6 +25,7 @@ import { SimuladorPagoPage } from './pages/SimuladorPagoPage';
 import { PagoConfirmadoPage } from './pages/PagoConfirmadoPage';
 import { AdminPagosPage } from './pages/AdminPagosPage';
 import { ConfiguracionPage } from './pages/ConfiguracionPage';
+import { BloqueosPage } from './pages/BloqueosPage';
 import { reservasPaths } from './pages/reservasPaths';
 
 function App() {
@@ -83,6 +84,8 @@ function App() {
             <Route path={reservasPaths.adminPagos} element={<AdminPagosPage />} />
             {/* Configuración del club (admin-config-club) */}
             <Route path="/admin/config" element={<ConfiguracionPage />} />
+            {/* Bloqueo de franjas para eventos (bloqueos-pista-eventos) */}
+            <Route path="/admin/bloqueos" element={<BloqueosPage />} />
           </Route>
         </Routes>
       </BrowserRouter>

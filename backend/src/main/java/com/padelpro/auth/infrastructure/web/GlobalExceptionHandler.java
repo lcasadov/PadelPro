@@ -9,6 +9,7 @@ import com.padelpro.auth.domain.exception.TokenExpiredException;
 import com.padelpro.auth.domain.exception.TokenInvalidException;
 import com.padelpro.auth.domain.exception.ValidationException;
 import com.padelpro.auth.infrastructure.web.dto.ErrorResponse;
+import com.padelpro.bloqueos.domain.exception.BloqueoConflictException;
 import com.padelpro.pagos.domain.exception.PagoConflictException;
 import com.padelpro.pagos.domain.exception.PagoForbiddenException;
 import com.padelpro.pagos.domain.exception.PagoNotFoundException;
@@ -299,5 +300,21 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.FORBIDDEN)
                 .body(new ErrorResponse("TELEGRAM_WEBHOOK_FORBIDDEN", ex.getMessage()));
+    }
+
+    // -------------------------------------------------------------------------
+    // bloqueos-pista-eventos change
+    // -------------------------------------------------------------------------
+
+    /**
+     * A court-block create whose requested hours overlap an active reservation (change
+     * bloqueos-pista-eventos, D3) → 409 {@code CONFLICT}. The operation is all-or-nothing (nothing is
+     * inserted); {@code details} enumerates the conflicting slots as {@code HH:mm} strings.
+     */
+    @ExceptionHandler(BloqueoConflictException.class)
+    public ResponseEntity<ErrorResponse> handleBloqueoConflict(BloqueoConflictException ex) {
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse("CONFLICT", ex.getMessage(), ex.getConflictingSlots()));
     }
 }

@@ -4,6 +4,7 @@ import com.padelpro.auth.domain.model.SystemConfig;
 import com.padelpro.auth.domain.model.SystemConfig.PaymentGateway;
 import com.padelpro.auth.domain.model.SystemConfig.PistaState;
 import com.padelpro.auth.domain.port.out.SystemConfigRepositoryPort;
+import com.padelpro.bloqueos.domain.port.out.BloqueoQueryPort;
 import com.padelpro.reservas.application.dto.DisponibilidadResponse;
 import com.padelpro.reservas.application.dto.TramoDisponible;
 import com.padelpro.reservas.domain.model.ReservationOccupancy;
@@ -20,6 +21,7 @@ import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.lenient;
@@ -45,11 +47,16 @@ class DisponibilidadServiceTest {
     @Mock
     private SystemConfigRepositoryPort systemConfigRepositoryPort;
 
+    @Mock
+    private BloqueoQueryPort bloqueoQueryPort;
+
     private DisponibilidadService service;
 
     @BeforeEach
     void setUp() {
-        service = new DisponibilidadService(reservationQueryPort, systemConfigRepositoryPort);
+        service = new DisponibilidadService(reservationQueryPort, systemConfigRepositoryPort, bloqueoQueryPort);
+        // By default no slot is blocked; individual tests override this as needed.
+        lenient().when(bloqueoQueryPort.findHorasBloqueadasByFecha(FECHA)).thenReturn(Set.of());
     }
 
     private void configWith(PistaState state, int maxParticipants) {
@@ -202,6 +209,26 @@ class DisponibilidadServiceTest {
 
         assertThat(resp.fecha()).isEqualTo("2025-08-01");
         assertThat(resp.tramosDisponibles()).isEmpty();
+    }
+
+    // bloqueos-pista-eventos (D4) — una franja bloqueada NO aparece en disponibilidad, sin revelar motivo
+    @Test
+    @DisplayName("bloqueo: una franja bloqueada no aparece en disponibilidad")
+    void should_hide_blocked_slot() {
+        configWith(PistaState.ACTIVA, 4);
+        when(reservationQueryPort.findActiveOccupanciesByDate(FECHA)).thenReturn(List.of());
+        // Solo la franja de las 18:00 está bloqueada (sin reservas).
+        when(bloqueoQueryPort.findHorasBloqueadasByFecha(FECHA))
+                .thenReturn(Set.of(LocalTime.of(18, 0)));
+
+        DisponibilidadResponse resp = service.getDisponibilidad(FECHA);
+
+        // El tramo bloqueado desaparece; los vecinos libres siguen apareciendo.
+        assertThat(slotAt(resp, "18:00")).isNull();
+        assertThat(slotAt(resp, "17:00")).isNotNull();
+        assertThat(slotAt(resp, "19:00")).isNotNull();
+        // Un tramo menos que el total (15 - 1 bloqueado).
+        assertThat(resp.tramosDisponibles()).hasSize(TOTAL_SLOTS - 1);
     }
 
     // Extra — reserva de 90 min solapa dos tramos consecutivos (tsrange '[)')
