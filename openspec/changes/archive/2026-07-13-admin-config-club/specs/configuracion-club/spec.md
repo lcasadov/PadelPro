@@ -2,7 +2,7 @@
 
 ### Requirement: Interfaz de administración de la configuración
 
-**El panel de administración DEBE ofrecer una pantalla, accesible solo a usuarios ADMIN, para leer y actualizar la configuración global del club, consumiendo los endpoints `GET`/`PATCH /api/admin/sistema/config`, respetando el enmascarado de secretos y la semántica de actualización parcial.**
+**El panel de administración DEBE (MUST) ofrecer una pantalla, accesible solo a usuarios ADMIN, para leer y actualizar la configuración global del club, consumiendo los endpoints `GET`/`PATCH /api/admin/sistema/config`, respetando el enmascarado de secretos y la semántica de actualización parcial.**
 
 #### Scenario: ADMIN abre la pantalla de configuración
 

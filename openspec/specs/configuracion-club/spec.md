@@ -1,6 +1,6 @@
 # Capability: configuracion-club
 
-## Resumen
+## Purpose
 
 Gestiona los parámetros globales del club almacenados en la tabla `system_config` (singleton, `id=1`). Incluye precio por hora, horario de apertura y cierre, máximo de participantes por reserva, política de cancelación, divisa, zona horaria y configuración de los servicios externos (Redsys, Telegram, SMTP). Los campos sensibles (`redsys_secret_key`, `telegram_bot_token`, `smtp_password`) se cifran con AES-256-GCM y nunca se devuelven en claro en las respuestas de la API (RN-SEC-02).
 
@@ -45,12 +45,11 @@ Fase 1
 |---|---|---|---|
 | `GET /api/admin/sistema/config` | Permitido | Denegado (403) | Denegado (401) |
 | `PATCH /api/admin/sistema/config` | Permitido | Denegado (403) | Denegado (401) |
-
 ## Requirements
 
 ### Requirement 1: Lectura de configuración del sistema
 
-**El sistema DEBE devolver la configuración global del club al ADMIN, omitiendo los valores en claro de los campos sensibles cifrados. El ADMIN accede mediante un punto único de configuración (singleton system_config) con encriptación AES-256-GCM para secretos.**
+**El sistema DEBE (MUST) devolver la configuración global del club al ADMIN, omitiendo los valores en claro de los campos sensibles cifrados. El ADMIN accede mediante un punto único de configuración (singleton system_config) con encriptación AES-256-GCM para secretos.**
 
 #### Scenario: ADMIN lee la configuración del sistema
 
@@ -93,7 +92,7 @@ Fase 1
 
 ### Requirement 2: Actualización de configuración del sistema
 
-**El sistema DEBE permitir al ADMIN actualizar uno o más parámetros de la configuración global con semántica PATCH. Solo los campos incluidos en el cuerpo se actualizan. Requiere validación de credenciales para pasarelas de pago y encriptación AES-256-GCM de secretos.**
+**El sistema DEBE (MUST) permitir al ADMIN actualizar uno o más parámetros de la configuración global con semántica PATCH. Solo los campos incluidos en el cuerpo se actualizan. Requiere validación de credenciales para pasarelas de pago y encriptación AES-256-GCM de secretos.**
 
 #### Scenario: ADMIN actualiza el máximo de participantes
 
@@ -176,7 +175,7 @@ Fase 1
 
 ### Requirement 3: Integridad del singleton de configuración
 
-**El sistema DEBE garantizar que siempre existe exactamente una fila en `system_config` (id=1). No se permiten operaciones de creación ni eliminación de la configuración.**
+**El sistema DEBE (MUST) garantizar que siempre existe exactamente una fila en `system_config` (id=1). No se permiten operaciones de creación ni eliminación de la configuración.**
 
 #### Scenario: La configuración siempre existe (inicialización)
 
@@ -189,7 +188,7 @@ Fase 1
 
 ### Requirement 4: Los logs de configuración no contienen secretos
 
-**El sistema DEBE garantizar que ningún log, metric, o error message contiene valores de secretos en plaintext.**
+**El sistema DEBE (MUST) garantizar que ningún log, metric, o error message contiene valores de secretos en plaintext.**
 
 #### Scenario: Cambio de configuración se audita sin exponer secreto
 
@@ -199,6 +198,53 @@ Fase 1
 - **AND** el campo `details` usa mascarado (`***REDACTED***`) en lugar de valores reales
 
 ---
+
+### Requirement: Interfaz de administración de la configuración
+
+**El panel de administración DEBE (MUST) ofrecer una pantalla, accesible solo a usuarios ADMIN, para leer y actualizar la configuración global del club, consumiendo los endpoints `GET`/`PATCH /api/admin/sistema/config`, respetando el enmascarado de secretos y la semántica de actualización parcial.**
+
+#### Scenario: ADMIN abre la pantalla de configuración
+
+- **GIVEN** un usuario autenticado con `role=ADMIN`
+- **WHEN** navega a `/admin/config`
+- **THEN** la pantalla carga la configuración actual vía `GET /api/admin/sistema/config`
+- **AND** muestra el precio por hora, el estado de la pista, el aforo máximo, el plazo de cancelación y la pasarela de pago con sus valores actuales
+- **AND** los campos de secreto (bot token de Telegram, webhook secret, claves Redsys) se muestran enmascarados, nunca en claro
+
+#### Scenario: ADMIN actualiza el precio por hora desde la UI
+
+- **GIVEN** un ADMIN en `/admin/config`
+- **WHEN** cambia el precio por hora a `12.50` y guarda
+- **THEN** la pantalla envía `PATCH /api/admin/sistema/config` con `{ "pricePerHour": 12.50 }`
+- **AND** al responder `200` muestra confirmación y el nuevo valor persiste al recargar
+
+#### Scenario: Dejar un secreto en blanco conserva el valor almacenado
+
+- **GIVEN** un ADMIN en `/admin/config` con un bot token de Telegram ya configurado (mostrado enmascarado)
+- **WHEN** modifica otro campo (p.ej. el precio) y guarda sin teclear un nuevo bot token
+- **THEN** el `PATCH` NO incluye `telegramBotToken`
+- **AND** el bot token almacenado permanece intacto
+
+#### Scenario: ADMIN configura las credenciales de Telegram
+
+- **GIVEN** un ADMIN en `/admin/config`
+- **WHEN** introduce un bot token y un webhook secret nuevos y guarda
+- **THEN** el `PATCH` incluye `telegramBotToken` y `telegramWebhookSecret`
+- **AND** el backend los cifra (AES-256-GCM) y la respuesta los devuelve enmascarados
+
+#### Scenario: Un USER no puede acceder a la pantalla de configuración
+
+- **GIVEN** un usuario autenticado con `role=USER`
+- **WHEN** intenta navegar a `/admin/config`
+- **THEN** el cliente le deniega/redirige el acceso
+- **AND** cualquier llamada a `PATCH /api/admin/sistema/config` responde `403`
+
+#### Scenario: Valores inválidos se avisan en cliente y el backend los rechaza
+
+- **GIVEN** un ADMIN en `/admin/config`
+- **WHEN** introduce `pricePerHour <= 0` o `maxParticipants < 1`
+- **THEN** la UI marca el campo como inválido y no permite guardar
+- **AND** si aun así se enviara, el backend responde `400` con `ErrorResponse` indicando el campo
 
 ## Casos límite
 
