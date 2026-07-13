@@ -2,7 +2,7 @@
 
 ### Requirement: Excluir franjas bloqueadas de la disponibilidad
 
-**El cálculo de tramos disponibles DEBE excluir las franjas horarias bloqueadas para la fecha consultada, además de las ocupadas por reservas activas. Una franja bloqueada no aparece como reservable ni como parcialmente disponible, sin revelar el motivo del bloqueo.**
+**El cálculo de tramos disponibles DEBE (MUST) excluir las franjas horarias bloqueadas para la fecha consultada, además de las ocupadas por reservas activas. Una franja bloqueada no aparece como reservable ni como parcialmente disponible, sin revelar el motivo del bloqueo.**
 
 #### Scenario: Una franja bloqueada no aparece en disponibilidad
 
