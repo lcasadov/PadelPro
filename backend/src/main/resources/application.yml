@@ -40,6 +40,13 @@ app:
       enabled: ${NOTIFICATION_PURGE_ENABLED:true}
   mail:
     from: ${MAIL_FROM:no-reply@padelpro.local}
+  # Account-lockout (H-1 / OWASP A07): per-account brute-force defence layered on top of the per-IP
+  # rate limiter. After max-attempts consecutive failed logins the account is locked for
+  # duration-minutes, independent of the source IP (so IP rotation does not bypass it).
+  auth:
+    lockout:
+      max-attempts: ${AUTH_LOCKOUT_MAX_ATTEMPTS:10}
+      duration-minutes: ${AUTH_LOCKOUT_DURATION_MINUTES:15}
   jwt:
     secret: ${JWT_SECRET}
     access-token-expiry-minutes: 15

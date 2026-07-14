@@ -15,6 +15,7 @@ import com.padelpro.auth.domain.port.out.AuditLogRepositoryPort;
 import com.padelpro.auth.domain.port.out.RefreshTokenRepositoryPort;
 import com.padelpro.auth.domain.port.out.UserRepositoryPort;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -67,6 +68,12 @@ public class AuthService implements LoginUseCase, RefreshTokenUseCase {
     // unit tests without a Spring context still apply the rule; Spring overrides via setter.
     private AccountAccessPolicy accessPolicy = new AccountAccessPolicy(Duration.ofHours(48));
 
+    // Account-lockout policy (H-1 / OWASP A07): per-account brute-force defence that survives IP
+    // rotation. Eagerly initialised with safe defaults so unit tests without a Spring context apply
+    // the rule; Spring overrides via setLockoutPolicy from app.auth.lockout.*.
+    private int maxLoginAttempts = 10;
+    private Duration lockoutDuration = Duration.ofMinutes(15);
+
     // Real BCrypt(12) hash of "__dummy_anti_timing__" — used when email is not found
     // to keep timing indistinguishable from a real password check (RN-AUTH-06).
     private static final String DUMMY_HASH =
@@ -113,6 +120,21 @@ public class AuthService implements LoginUseCase, RefreshTokenUseCase {
         }
     }
 
+    /**
+     * Configures the account-lockout policy. Wired by Spring from {@code app.auth.lockout.*} and
+     * callable directly from unit tests to use a lower threshold.
+     *
+     * @param maxLoginAttempts consecutive failures that lock the account
+     * @param lockoutMinutes   lock duration in minutes
+     */
+    @Autowired
+    public void setLockoutPolicy(
+            @Value("${app.auth.lockout.max-attempts:10}") int maxLoginAttempts,
+            @Value("${app.auth.lockout.duration-minutes:15}") long lockoutMinutes) {
+        this.maxLoginAttempts = maxLoginAttempts;
+        this.lockoutDuration = Duration.ofMinutes(lockoutMinutes);
+    }
+
     // -------------------------------------------------------------------------
     // LoginUseCase
     // -------------------------------------------------------------------------
@@ -120,13 +142,31 @@ public class AuthService implements LoginUseCase, RefreshTokenUseCase {
     @Override
     public TokenPair login(LoginCommand command) {
         Optional<User> userOpt = userRepository.findByEmail(command.email().toLowerCase());
+        OffsetDateTime now = OffsetDateTime.now();
 
         // Always run BCrypt to prevent timing-based user enumeration (RN-AUTH-06).
         // If the user does not exist, compare against a dummy hash.
         String hashToVerify = userOpt.map(User::getPasswordHash).orElse(DUMMY_HASH);
         boolean passwordMatches = passwordEncoder.matches(command.password(), hashToVerify);
 
+        // Account lockout (H-1 / OWASP A07 — defence in depth over the per-IP rate limiter):
+        // a locked account is rejected regardless of the password so brute force cannot proceed
+        // even by rotating source IPs. The response is the generic AUTH_INVALID_CREDENTIALS to
+        // preserve anti-enumeration (RN-AUTH-06) — a locked account is indistinguishable from a
+        // wrong password to an external caller.
+        if (userOpt.isPresent() && userOpt.get().isLocked(now)) {
+            saveAuditLog("LOGIN_FAILURE", userOpt.get(), null);
+            throw new AuthenticationException();
+        }
+
         if (userOpt.isEmpty() || !passwordMatches) {
+            // Count the failure against the account (if it exists) and lock it once the threshold
+            // is reached. Unknown emails have no row to update — consistent with anti-enumeration.
+            if (userOpt.isPresent()) {
+                User failed = userOpt.get();
+                failed.registerFailedLogin(maxLoginAttempts, lockoutDuration, now);
+                userRepository.save(failed);
+            }
             saveAuditLog("LOGIN_FAILURE", userOpt.orElse(null), null);
             throw new AuthenticationException();
         }
@@ -135,16 +175,18 @@ public class AuthService implements LoginUseCase, RefreshTokenUseCase {
 
         // Provisional-access policy (D8): ACTIVE always; PENDING only within the 48h grace
         // window from registration; INACTIVE never. Otherwise → 403 ACCOUNT_NOT_ACTIVE.
-        if (!accessPolicy.isAccessAllowed(user.getStatus(), user.getRegisteredAt(), OffsetDateTime.now())) {
+        if (!accessPolicy.isAccessAllowed(user.getStatus(), user.getRegisteredAt(), now)) {
             throw new AccountNotActiveException();
         }
+
+        // Successful authentication — clear any accumulated failed-login state.
+        user.clearFailedLogins();
 
         // Generate JWT access token
         String accessToken = jwtService.generateAccessToken(user);
 
         // Generate and persist refresh token (7-day expiry)
         String rawRefreshToken = generateRawRefreshToken();
-        OffsetDateTime now = OffsetDateTime.now();
 
         if (refreshTokenRepository != null) {
             RefreshToken refreshToken = new RefreshToken(

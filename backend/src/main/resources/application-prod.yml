@@ -52,6 +52,16 @@ server:
   compression:
     enabled: true
     min-response-size: 1024
+  # H-1 / OWASP A05+A07 — the app runs behind a trusted reverse proxy/gateway (Nginx, ALB…).
+  # NATIVE activates Tomcat's RemoteIpValve so X-Forwarded-For is honoured ONLY for requests
+  # arriving from an internal (trusted) proxy; getRemoteAddr() then returns the real client IP and
+  # untrusted callers can no longer spoof it to defeat the rate limiter. RemoteIpValve's default
+  # internal-proxies regex already matches RFC-1918/loopback ranges; override via the env var below
+  # if the proxy sits outside those ranges.
+  forward-headers-strategy: native
+  tomcat:
+    remoteip:
+      internal-proxies: ${TOMCAT_INTERNAL_PROXIES:10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}|127\.\d{1,3}\.\d{1,3}\.\d{1,3}|0:0:0:0:0:0:0:1|::1}
 
 # JWT Configuration
 jwt:
@@ -67,6 +77,11 @@ encryption:
 app:
   mail:
     from: ${MAIL_FROM:no-reply@padelpro.local}
+  # Account-lockout (H-1 / OWASP A07). See application.yml for the rationale.
+  auth:
+    lockout:
+      max-attempts: ${AUTH_LOCKOUT_MAX_ATTEMPTS:10}
+      duration-minutes: ${AUTH_LOCKOUT_DURATION_MINUTES:15}
 
 # Logging
 logging:
