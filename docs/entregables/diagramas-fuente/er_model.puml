@@ -1,0 +1,82 @@
+@startuml
+skinparam backgroundColor #F6F3EA
+skinparam shadowing false
+skinparam defaultFontName Segoe UI
+skinparam class {
+  BackgroundColor #FFFFFF
+  BorderColor #55632E
+  ArrowColor #55632E
+}
+hide methods
+hide circle
+
+entity users {
+  * id : BIGSERIAL
+  --
+  email : UNIQUE
+  password_hash
+  role, status
+  telegram_chat_id
+}
+entity refresh_tokens {
+  * id : BIGSERIAL
+  user_id : FK
+}
+entity reservations {
+  * id : UUID
+  --
+  owner_id : FK
+  reservation_date, start_time
+  duration_minutes, status
+}
+entity participants {
+  * id : BIGSERIAL
+  reservation_id : FK
+  user_id : FK (nullable)
+  is_owner
+}
+entity payments {
+  * id : UUID
+  reservation_id : FK UNIQUE
+  amount, method, status
+  gateway, transaction_id
+}
+entity otp_codes {
+  * id : BIGSERIAL
+  user_id : FK
+  code_hash, type, used
+}
+entity audit_log {
+  * id : BIGSERIAL
+  user_id : FK (nullable)
+  action, entity_type
+}
+entity notification_log {
+  * id : UUID
+  user_id : FK (nullable)
+  type, status, channel
+}
+entity system_config {
+  * id = 1 (singleton)
+  price_per_hour, pista_state
+  payment_gateway
+  telegram_bot_token (cifrado)
+}
+entity bloqueo_pista {
+  * id : BIGSERIAL
+  fecha, hora  (UNIQUE)
+  motivo
+  created_by_user_id : FK
+}
+
+users ||--o{ refresh_tokens
+users ||--o{ reservations
+users ||--o{ participants
+users ||--o{ otp_codes
+users ||--o{ audit_log
+users ||--o{ notification_log
+users ||--o{ bloqueo_pista
+users ||--o| system_config
+reservations ||--|{ participants
+reservations ||--|| payments
+@enduml

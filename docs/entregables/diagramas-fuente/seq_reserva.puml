@@ -1,0 +1,29 @@
+@startuml
+skinparam backgroundColor #F6F3EA
+skinparam shadowing false
+skinparam defaultFontName Segoe UI
+skinparam sequence {
+  ArrowColor #55632E
+  LifeLineBorderColor #55632E
+  ParticipantBorderColor #55632E
+  ParticipantBackgroundColor #FFFFFF
+  ActorBorderColor #55632E
+}
+actor Jugador
+participant "Frontend" as FE
+participant "Backend" as BE
+database "PostgreSQL" as DB
+
+Jugador -> FE : "Reservar pista"
+FE -> BE : GET /api/reservas/disponibles?fecha
+BE -> DB : reservas activas + franjas bloqueadas de la fecha
+DB --> BE : ocupación
+BE --> FE : tramos disponibles (excluye ocupadas y bloqueadas)
+Jugador -> FE : elige tramo + participantes + duración
+FE -> BE : POST /api/reservas (Idempotency-Key)
+BE -> BE : validar franja libre (anti-solapamiento)
+BE -> DB : crear reserva (PENDING) + pago (PENDING) atómico
+DB --> BE : reserva creada
+BE --> FE : 201 { reserva }
+FE --> Jugador : "Reserva pendiente de confirmación"
+@enduml

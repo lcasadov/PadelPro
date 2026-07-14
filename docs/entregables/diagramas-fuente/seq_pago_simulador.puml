@@ -1,0 +1,31 @@
+@startuml
+skinparam backgroundColor #F6F3EA
+skinparam shadowing false
+skinparam defaultFontName Segoe UI
+skinparam sequence {
+  ArrowColor #55632E
+  LifeLineBorderColor #55632E
+  ParticipantBorderColor #55632E
+  ParticipantBackgroundColor #FFFFFF
+  ActorBorderColor #55632E
+}
+actor Jugador
+participant "Frontend" as FE
+participant "Backend\nSimularPagoService" as BE
+database "PostgreSQL" as DB
+
+Jugador -> FE : "Pagar ahora" (reserva PENDING)
+FE -> FE : USE_REDSYS=false -> /pagos/simulador
+Jugador -> FE : tarjeta + caducidad + CVC
+FE -> BE : POST /api/pagos/simular
+note right of BE : datos de tarjeta solo en memoria\nNUNCA se persisten (RN-RGPD-04)
+BE -> BE : tarjetas mágicas / SecureRandom (~85% aprueba)
+alt APPROVED
+  BE -> DB : pago -> PAID (método SIMULADO)
+  BE --> FE : 200 { resultado: APPROVED }
+  FE --> Jugador : redirige a /pagos/ok
+else DECLINED
+  BE --> FE : 200 { resultado: DECLINED, motivo }
+  FE --> Jugador : pantalla KO con "Reintentar"
+end
+@enduml

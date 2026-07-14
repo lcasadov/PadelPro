@@ -1,0 +1,28 @@
+@startuml
+skinparam backgroundColor #F6F3EA
+skinparam shadowing false
+skinparam defaultFontName Segoe UI
+skinparam sequence {
+  ArrowColor #55632E
+  LifeLineBorderColor #55632E
+  ParticipantBorderColor #55632E
+  ParticipantBackgroundColor #FFFFFF
+  ActorBorderColor #55632E
+}
+actor Jugador
+participant "Frontend\n(Perfil)" as FE
+participant "Backend" as BE
+participant "Telegram\n(Bot API)" as TG
+database "PostgreSQL" as DB
+
+Jugador -> FE : "Vincular Telegram"
+FE -> BE : solicitar código de vinculación
+BE -> DB : generar OTP (6 dígitos, TTL 10 min)
+BE --> FE : muestra el código
+Jugador -> TG : envía "/vincular 123456" al bot
+TG -> BE : POST /api/bot/telegram (X-Telegram-Bot-Api-Secret-Token)
+BE -> BE : valida secret (403 si no coincide) + resuelve OTP
+BE -> DB : vincula chat_id al usuario
+BE -> TG : sendMessage "Cuenta vinculada"
+TG --> Jugador : confirmación en el chat
+@enduml

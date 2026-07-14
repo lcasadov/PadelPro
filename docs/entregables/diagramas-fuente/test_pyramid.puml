@@ -1,0 +1,14 @@
+@startuml
+skinparam backgroundColor #F6F3EA
+skinparam shadowing false
+skinparam defaultFontName Segoe UI
+skinparam rectangle {
+  BorderColor #55632E
+  FontColor #14140F
+}
+rectangle "E2E — Playwright (15 journeys)\nstack real docker-compose, sin mocks" as E #B6D94C
+rectangle "Integración — Testcontainers (Postgres real)\ncontrollers MockMvc + repositorios" as I #D8E6A0
+rectangle "Unitarias — JUnit5/Mockito (backend 417) · Vitest+MSW (frontend 234)\ndominio, servicios, componentes" as U #ECE8DB
+U -[hidden]up- I
+I -[hidden]up- E
+@enduml
