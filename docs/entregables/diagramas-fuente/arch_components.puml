@@ -1,0 +1,48 @@
+@startuml
+skinparam backgroundColor #F6F3EA
+skinparam shadowing false
+skinparam defaultFontName Segoe UI
+skinparam componentStyle rectangle
+skinparam component {
+  BackgroundColor #FFFFFF
+  BorderColor #55632E
+  ArrowColor #55632E
+}
+skinparam databaseBackgroundColor #FFFFFF
+skinparam databaseBorderColor #55632E
+skinparam rectangleBackgroundColor #ECE8DB
+skinparam rectangleBorderColor #55632E
+skinparam cloudBackgroundColor #ECE8DB
+skinparam cloudBorderColor #55632E
+
+actor "Usuario\nnavegador" as User
+
+rectangle "AWS EC2 — Docker Compose" {
+  component "Caddy\nreverse-proxy TLS" as Caddy
+  component "Frontend\nReact 18 + Vite + TS" as FE
+  rectangle "Backend — Spring Boot 3 hexagonal" {
+    component "Infrastructure\nControllers REST / JPA" as INFRA
+    component "Application\nServices y puertos" as APP
+    component "Domain\nModelo y reglas" as DOM
+  }
+  database "PostgreSQL 15\ncon Flyway" as DB
+}
+
+cloud "Servicios externos" {
+  component "Redsys TPV\nsimulado" as Redsys
+  component "Telegram Bot API" as TG
+  component "SMTP" as SMTP
+}
+
+User --> Caddy : HTTPS 443
+Caddy --> FE : /
+Caddy --> INFRA : /api y /actuator
+FE --> INFRA : REST con JWT
+INFRA --> APP
+APP --> DOM
+APP --> DB : Spring Data JPA
+INFRA ..> TG : webhook
+APP ..> TG : sendMessage
+APP ..> Redsys : integracion diferida
+APP ..> SMTP : emails de eventos
+@enduml

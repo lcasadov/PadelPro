@@ -1,0 +1,33 @@
+@startuml
+skinparam backgroundColor #F6F3EA
+skinparam shadowing false
+skinparam defaultFontName Segoe UI
+skinparam sequence {
+  ArrowColor #55632E
+  LifeLineBorderColor #55632E
+  ParticipantBorderColor #55632E
+  ParticipantBackgroundColor #FFFFFF
+  ActorBorderColor #55632E
+}
+actor Administrador as Ad
+participant "Frontend\n(/admin/bloqueos)" as FE
+participant "Backend\nBloqueoService" as BE
+database "PostgreSQL" as DB
+
+Ad -> FE : elige fecha + franjas libres + motivo
+FE -> BE : POST /api/admin/bloqueos
+BE -> DB : reservas activas de la fecha
+DB --> BE : ocupación
+alt alguna franja solapa reserva activa
+  BE --> FE : 409 CONFLICT (details: franjas)
+  FE --> Ad : aviso, no se bloquea nada (todo-o-nada)
+else sin conflicto
+  BE -> DB : insertar bloqueos (idempotente) + invalidar caché
+  BE --> FE : 201 [bloqueos]
+  FE --> Ad : franjas "Bloqueadas"
+end
+== Efecto en el jugador ==
+actor Jugador as J
+J -> BE : GET /api/reservas/disponibles?fecha
+BE --> J : tramos SIN las franjas bloqueadas
+@enduml

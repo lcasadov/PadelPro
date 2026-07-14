@@ -1,0 +1,27 @@
+@startuml
+skinparam backgroundColor #F6F3EA
+skinparam shadowing false
+skinparam defaultFontName Segoe UI
+skinparam sequence {
+  ArrowColor #55632E
+  LifeLineBorderColor #55632E
+  ParticipantBorderColor #55632E
+  ParticipantBackgroundColor #FFFFFF
+  ActorBorderColor #55632E
+}
+actor Jugador
+participant "Frontend\n(React)" as FE
+participant "Backend\n(Spring)" as BE
+database "PostgreSQL" as DB
+
+Jugador -> FE : introduce email + contraseña
+FE -> BE : POST /api/auth/login
+BE -> BE : RateLimitFilter (5/min/IP)
+BE -> DB : buscar usuario por email
+DB --> BE : usuario (hash BCrypt)
+BE -> BE : verificar contraseña + estado ACTIVE
+BE -> DB : registrar LOGIN_SUCCESS en audit_log
+BE --> FE : 200 { access_token (JWT), role }\n+ cookie refresh_token (httpOnly)
+FE -> FE : guarda access token en memoria (RN-AUTH-09)
+FE --> Jugador : redirige a /home
+@enduml

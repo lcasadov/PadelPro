@@ -1,0 +1,53 @@
+@startuml
+skinparam backgroundColor #F6F3EA
+skinparam shadowing false
+skinparam defaultFontName Segoe UI
+skinparam actorStyle awesome
+skinparam usecase {
+  BackgroundColor #FFFFFF
+  BorderColor #55632E
+  ArrowColor #55632E
+}
+left to right direction
+
+actor "Jugador" as U
+actor "Administrador" as A
+actor "Redsys\n(simulado)" as R
+actor "Telegram" as T
+
+rectangle "PadelPro" {
+  usecase "Registrarse" as UC1
+  usecase "Iniciar sesión" as UC2
+  usecase "Ver disponibilidad" as UC3
+  usecase "Crear reserva" as UC4
+  usecase "Unirse a partida" as UC5
+  usecase "Cancelar reserva" as UC6
+  usecase "Pagar reserva" as UC7
+  usecase "Ver mis reservas y pagos" as UC8
+  usecase "Vincular Telegram" as UC9
+  usecase "Gestionar usuarios" as UC10
+  usecase "Ver cobros / marcar efectivo" as UC11
+  usecase "Configurar club" as UC12
+  usecase "Bloquear franjas" as UC13
+  usecase "Ver dashboard" as UC14
+}
+
+U --> UC1
+U --> UC2
+U --> UC3
+U --> UC4
+U --> UC5
+U --> UC6
+U --> UC7
+U --> UC8
+U --> UC9
+A --> UC2
+A --> UC10
+A --> UC11
+A --> UC12
+A --> UC13
+A --> UC14
+UC7 ..> R : <<include>>
+UC9 ..> T : <<include>>
+UC4 ..> UC3 : <<extend>>
+@enduml
