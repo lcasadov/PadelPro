@@ -1,0 +1,15 @@
+# Tratar como binarios (nunca aplicar conversión de fin de línea CRLF/LF).
+# core.autocrlf=true corrompía los .docx al normalizarlos como texto.
+*.docx binary
+*.doc  binary
+*.xlsx binary
+*.pdf  binary
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.jar  binary
+*.pem  binary
+*.p12  binary
+*.keystore binary
