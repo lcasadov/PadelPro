@@ -159,11 +159,19 @@ public class RateLimitFilter extends OncePerRequestFilter {
         return uri;
     }
 
+    /**
+     * Resolves the client IP used to key the rate-limit bucket.
+     *
+     * <p><b>Security (H-1 / OWASP A05, A07):</b> this must NOT trust a raw {@code X-Forwarded-For}
+     * header. Reverse proxies <em>append</em> to XFF, so its left-most value is attacker-controlled;
+     * keying on it let a caller mint a fresh bucket per request by rotating a fake IP, defeating the
+     * brute-force throttle. Instead we rely on {@link HttpServletRequest#getRemoteAddr()}, which is
+     * the real socket peer — and, when the app runs behind a trusted proxy with
+     * {@code server.forward-headers-strategy=native} (see application-prod.yml), Tomcat's
+     * RemoteIpValve rewrites it to the forwarded client IP <em>only</em> for requests arriving from
+     * a configured internal proxy. Untrusted callers can no longer spoof it.
+     */
     private String extractClientIp(HttpServletRequest request) {
-        String forwarded = request.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isBlank()) {
-            return forwarded.split(",")[0].trim();
-        }
         return request.getRemoteAddr();
     }
 }

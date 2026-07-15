@@ -2,6 +2,7 @@ package com.padelpro.auth.application.service;
 
 import com.padelpro.auth.application.dto.LoginCommand;
 import com.padelpro.auth.application.dto.TokenPair;
+import com.padelpro.auth.domain.exception.AuthenticationException;
 import com.padelpro.auth.domain.model.AuditLog;
 import com.padelpro.auth.domain.model.User;
 import com.padelpro.auth.domain.model.UserRole;
@@ -401,5 +402,65 @@ class AuthServiceTest {
         assertThat(logged.getDetails())
                 .as("email must NOT be stored in audit_log details (anti-PII, RN-RGPD-04)")
                 .isNull();
+    }
+
+    // -------------------------------------------------------------------------
+    // H-1 — Account lockout (OWASP A07): brute-force defence that survives IP rotation
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("H-1: account locks after N consecutive failures and then rejects even the correct password")
+    void should_lock_account_after_max_failures_and_reject_correct_password_while_locked() {
+        // Arrange — low threshold so the test stays fast; 3 failures → lock for 15 min.
+        String email = "lockme@example.com";
+        User user = buildActiveUser(email);
+        org.mockito.Mockito.lenient()
+                .when(userRepository.findByEmail(email))
+                .thenReturn(Optional.of(user));
+        authService.setLockoutPolicy(3, 15);
+
+        // Act — 3 wrong-password attempts trip the lock.
+        for (int i = 0; i < 3; i++) {
+            assertThatThrownBy(() -> authService.login(new LoginCommand(email, "WrongPassword1")))
+                    .isInstanceOf(AuthenticationException.class);
+        }
+
+        // Assert — the account is now locked...
+        assertThat(user.isLocked(OffsetDateTime.now())).isTrue();
+
+        // ...and even the CORRECT password is refused while the lock holds, with the SAME generic
+        // error (anti-enumeration preserved).
+        assertThatThrownBy(() -> authService.login(new LoginCommand(email, "Password1")))
+                .isInstanceOf(AuthenticationException.class)
+                .satisfies(ex -> assertThat(ex.getMessage()).containsIgnoringCase("AUTH_INVALID_CREDENTIALS"));
+    }
+
+    @Test
+    @DisplayName("H-1: a successful login clears the accumulated failed-attempt counter")
+    void should_reset_failed_attempts_on_successful_login() {
+        // Arrange
+        String email = "reset@example.com";
+        User user = buildActiveUser(email);
+        org.mockito.Mockito.lenient()
+                .when(userRepository.findByEmail(email))
+                .thenReturn(Optional.of(user));
+        org.mockito.Mockito.lenient()
+                .when(userRepository.save(user))
+                .thenReturn(user);
+        authService.setLockoutPolicy(3, 15);
+
+        // Two failures — below the threshold, so no lock yet.
+        for (int i = 0; i < 2; i++) {
+            try { authService.login(new LoginCommand(email, "WrongPassword1")); }
+            catch (AuthenticationException ignored) { /* expected */ }
+        }
+        assertThat(user.getFailedLoginAttempts()).isEqualTo(2);
+
+        // Act — a valid login must reset the counter and leave the account unlocked.
+        authService.login(new LoginCommand(email, "Password1"));
+
+        // Assert
+        assertThat(user.getFailedLoginAttempts()).isZero();
+        assertThat(user.getLockedUntil()).isNull();
     }
 }

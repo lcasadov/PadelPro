@@ -24,10 +24,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * :5433) and in CI (Testcontainers), replacing the previous direct {@code @Testcontainers} setup.
  *
  * <p>The {@link com.padelpro.auth.infrastructure.web.filter.RateLimitFilter} keys its buckets by
- * client IP. Under MockMvc every request reports the same remote address, and the bucket store is a
- * singleton shared across the cached Spring context — so buckets would leak between test methods.
- * To keep each scenario independent, every method uses a distinct {@code X-Forwarded-For} IP (the
- * filter honours that header), giving it a fresh bucket regardless of execution order.
+ * client IP via {@code getRemoteAddr()} (it deliberately does NOT trust a raw X-Forwarded-For
+ * header — see H-1). To keep each scenario independent, every method sets a distinct remote address
+ * on the mock request, giving it a fresh bucket; {@code PostgresIntegrationTest} also resets the
+ * (singleton, context-cached) bucket store before each method.
  *
  * <p>Scenarios covered: R-4.2 (login rate limit) and R-4.3 (register rate limit).
  * Thresholds: 5 login attempts / min per IP, 3 register attempts / min per IP.
@@ -68,7 +68,7 @@ class RateLimitIntegrationTest extends PostgresIntegrationTest {
 
     private ResultActions performLogin(String email) throws Exception {
         return mockMvc.perform(post("/api/auth/login")
-                .header("X-Forwarded-For", clientIp)
+                .with(r -> { r.setRemoteAddr(clientIp); return r; })
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(loginJson(email, "WrongPassword1")));
     }
@@ -76,7 +76,7 @@ class RateLimitIntegrationTest extends PostgresIntegrationTest {
     private ResultActions performRegister(String emailSuffix) throws Exception {
         // Unique email per run so a re-run against a non-cleaned DB never hits 409 before 429.
         return mockMvc.perform(post("/api/auth/register")
-                .header("X-Forwarded-For", clientIp)
+                .with(r -> { r.setRemoteAddr(clientIp); return r; })
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(registerJson("rate-" + UUID.randomUUID() + "-" + emailSuffix + "@example.com")));
     }
@@ -124,7 +124,7 @@ class RateLimitIntegrationTest extends PostgresIntegrationTest {
 
         // The 6th request must carry Retry-After
         mockMvc.perform(post("/api/auth/login")
-                        .header("X-Forwarded-For", clientIp)
+                        .with(r -> { r.setRemoteAddr(clientIp); return r; })
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(loginJson("retryafter@example.com", "WrongPassword1")))
                 .andExpect(status().isTooManyRequests())

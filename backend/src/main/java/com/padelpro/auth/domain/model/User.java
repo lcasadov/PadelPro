@@ -1,6 +1,7 @@
 package com.padelpro.auth.domain.model;
 
 import jakarta.persistence.*;
+import java.time.Duration;
 import java.time.OffsetDateTime;
 
 /**
@@ -63,6 +64,21 @@ public class User {
 
     @Column(name = "telegram_linked_at")
     private OffsetDateTime telegramLinkedAt;
+
+    /**
+     * Consecutive failed-login counter (account lockout, H-1 / OWASP A07). Incremented on every
+     * failed attempt and reset to 0 on a successful login or when the threshold triggers a lock.
+     */
+    @Column(name = "failed_login_attempts", nullable = false)
+    private int failedLoginAttempts = 0;
+
+    /**
+     * Instant until which the account is temporarily locked after too many failed logins
+     * ({@code null} = not locked). Independent of the source IP, so it survives IP rotation
+     * that would otherwise defeat the per-IP rate limiter.
+     */
+    @Column(name = "locked_until")
+    private OffsetDateTime lockedUntil;
 
     // -------------------------------------------------------------------------
     // Constructors
@@ -133,4 +149,49 @@ public class User {
 
     public OffsetDateTime getTelegramLinkedAt() { return telegramLinkedAt; }
     public void setTelegramLinkedAt(OffsetDateTime telegramLinkedAt) { this.telegramLinkedAt = telegramLinkedAt; }
+
+    public int getFailedLoginAttempts() { return failedLoginAttempts; }
+    public void setFailedLoginAttempts(int failedLoginAttempts) { this.failedLoginAttempts = failedLoginAttempts; }
+
+    public OffsetDateTime getLockedUntil() { return lockedUntil; }
+    public void setLockedUntil(OffsetDateTime lockedUntil) { this.lockedUntil = lockedUntil; }
+
+    // -------------------------------------------------------------------------
+    // Account-lockout domain behaviour (H-1 / OWASP A07 — brute-force defence)
+    // -------------------------------------------------------------------------
+
+    /**
+     * @return {@code true} if the account is currently locked (i.e. {@code lockedUntil} is set and
+     *         still in the future relative to {@code now}).
+     */
+    public boolean isLocked(OffsetDateTime now) {
+        return lockedUntil != null && lockedUntil.isAfter(now);
+    }
+
+    /**
+     * Records one failed login. When the consecutive-failure count reaches {@code maxAttempts} the
+     * account is locked for {@code lockoutDuration} and the counter is reset to 0 (so a fresh set of
+     * attempts is available once the lock expires). No-op while already locked, so repeated attempts
+     * during a lock window do not indefinitely extend it.
+     *
+     * @param maxAttempts     consecutive failures that trigger a lock (must be ≥ 1)
+     * @param lockoutDuration how long the lock lasts once triggered
+     * @param now             current instant
+     */
+    public void registerFailedLogin(int maxAttempts, Duration lockoutDuration, OffsetDateTime now) {
+        if (isLocked(now)) {
+            return;
+        }
+        this.failedLoginAttempts++;
+        if (this.failedLoginAttempts >= maxAttempts) {
+            this.lockedUntil = now.plus(lockoutDuration);
+            this.failedLoginAttempts = 0;
+        }
+    }
+
+    /** Clears any accumulated failure state (called after a successful authentication). */
+    public void clearFailedLogins() {
+        this.failedLoginAttempts = 0;
+        this.lockedUntil = null;
+    }
 }
