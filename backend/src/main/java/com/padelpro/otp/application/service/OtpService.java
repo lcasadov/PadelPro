@@ -125,6 +125,22 @@ public class OtpService {
         return otp;
     }
 
+    /**
+     * Whether the user currently has a non-expired, unused code of the given type. Used by the
+     * Telegram dispatcher (bot-telegram-reservas, D-4) to disambiguate {@code /confirmar} between a
+     * pending {@code RESERVATION_CONFIRM} and a {@code CANCELLATION_CONFIRM} <em>without</em> a
+     * verification attempt (a wrong-type {@link #verify} would consume an attempt against a valid
+     * code). Read-only: it neither consumes the code nor records an attempt.
+     *
+     * @return {@code true} iff an active (unused, unexpired) code of {@code type} exists for the user
+     */
+    @Transactional(readOnly = true)
+    public boolean hasActiveCode(Long userId, OtpType type) {
+        OffsetDateTime now = OffsetDateTime.now();
+        return repository.findByUserIdAndTypeAndUsedFalseOrderByCreatedAtDesc(userId, type).stream()
+                .anyMatch(otp -> !otp.isExpired(now));
+    }
+
     /** Consume (single-use) an already-resolved OTP and audit the verification. */
     @Transactional
     public void consume(OtpCode otp) {

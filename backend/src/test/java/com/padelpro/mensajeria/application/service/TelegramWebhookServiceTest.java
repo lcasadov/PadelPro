@@ -12,6 +12,10 @@ import com.padelpro.otp.domain.exception.OtpVerificationException;
 import com.padelpro.otp.domain.model.OtpCode;
 import com.padelpro.otp.domain.model.OtpType;
 import com.padelpro.otp.application.service.OtpService;
+import com.padelpro.reservas.application.service.CancelarReservaService;
+import com.padelpro.reservas.application.service.ConfirmarReservaService;
+import com.padelpro.reservas.application.service.CrearReservaService;
+import com.padelpro.reservas.application.service.ReservaQueryService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -36,13 +40,18 @@ class TelegramWebhookServiceTest {
     @Mock private UserRepositoryPort userRepositoryPort;
     @Mock private TelegramAuditRecorder auditRecorder;
     @Mock private TelegramPort telegramPort;
+    @Mock private CrearReservaService crearReservaService;
+    @Mock private ConfirmarReservaService confirmarReservaService;
+    @Mock private CancelarReservaService cancelarReservaService;
+    @Mock private ReservaQueryService reservaQueryService;
 
     private TelegramWebhookService service;
 
     @BeforeEach
     void setUp() {
         service = new TelegramWebhookService(configService, otpService, userRepositoryPort,
-                auditRecorder, telegramPort, new ObjectMapper(), "http://host/perfil");
+                auditRecorder, telegramPort, new ObjectMapper(), "http://host/perfil",
+                crearReservaService, confirmarReservaService, cancelarReservaService, reservaQueryService);
     }
 
     private static User userWithId(long id, String chatId) {
