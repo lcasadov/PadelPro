@@ -35,7 +35,7 @@
 
 ## 6. Integración y verificación
 
-- [ ] 6.1 Test de integración del webhook (Testcontainers): update JSON → dispatch → efecto en BD, para `/reservar`, `/confirmar`, `/cancelar`
+- [x] 6.1 Test de integración del webhook (Testcontainers): update JSON → dispatch → efecto en BD, para `/reservar`, `/confirmar`, `/cancelar`
 - [ ] 6.2 Test E2E de la pata Telegram: journey vincular → reservar → confirmar → cancelar (extiende `e2e-telegram`)
 - [ ] 6.3 Actualizar `/ayuda` y documentación de comandos; verificación adversarial (permisos, chat no vinculado, reserva ajena, formato inválido)
 - [ ] 6.4 Actualizar `openspec/specs/` (nueva capability) al archivar el change
