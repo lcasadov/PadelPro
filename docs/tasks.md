@@ -34,6 +34,19 @@ Resuelta la duplicación entre el backlog original (US-001..025 #8–#32) y las 
 
 Filtrable en GitHub: `label:superseded` (19) y `label:wontfix` (5). Nota: #13 (US-006) y #14 (US-007) ya tenían PR directa (#157/#162), no son duplicados.
 
+### 2026-07-19 — Links PR nativos en el tablero (Project column)
+
+Descubierto que un comentario mencionando `#PR` **no** rellena la columna "linked PR" del Project — solo lo hace un *closing reference* nativo (`Closes #N` en el cuerpo de la PR). Se editó el cuerpo de **22 PRs mergeadas** añadiendo `Closes #N` para las ~45 tasks/bugs/US canónicas.
+
+| Grupo | Detalle |
+|-------|---------|
+| Tasks/bugs canónicos vinculados | ~45 issues → su PR real (verificado por GraphQL `closedByPullRequestsReferences`) |
+| #181, #199 (OPEN) | Vinculados a #218/#219 y **cerrados** (trabajo terminado) |
+| #51 observabilidad | Vinculado a #155 (parcial: logging básico + actuator sí; logging estructurado JSON **no** implementado) |
+| #15, #25, #26, #39, #40 | `wontfix` (integración Telegram crear/cancelar/confirmar reserva: descartada) |
+
+**Estado final de trazabilidad** — issues sin PR nativa restantes son solo legítimos: 42 `duplicate`, contenedores (27 features + 9 épicas + 10 stories), 19 `superseded`, 6 `wontfix`. Cero tasks/bugs canónicos sin PR.
+
 ## Notas de proceso
 
 - **Regla de trazabilidad** (2026-07-19): toda task futura debe referenciarse en su PR (`Closes #<task>`), no solo la User Story padre. Ver memoria `feedback_task_pr_traceability`.
