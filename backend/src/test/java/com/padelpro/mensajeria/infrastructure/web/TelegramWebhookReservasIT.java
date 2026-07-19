@@ -62,7 +62,9 @@ class TelegramWebhookReservasIT extends PostgresIntegrationTest {
     private static final String OWNER_CHAT = "700100100";
     private static final String OTHER_CHAT = "700200200";
     private static final String UNLINKED_CHAT = "700999999";
-    private static final Pattern SIX_DIGITS = Pattern.compile("(?<!\\d)(\\d{6})(?!\\d)");
+    // Anchor on the code position (it always follows "/confirmar <ref> ") so the 8-hex short
+    // reference — which can contain its own 6-digit run — is never mistaken for the OTP.
+    private static final Pattern CONFIRM_CODE = Pattern.compile("/confirmar\\s+\\S+\\s+(\\d{6})(?!\\d)");
 
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
@@ -244,7 +246,7 @@ class TelegramWebhookReservasIT extends PostgresIntegrationTest {
     /** Extract the 6-digit OTP the bot embedded in one of its replies. */
     private static String extractCode(List<String> replies) {
         for (String reply : replies) {
-            Matcher m = SIX_DIGITS.matcher(reply);
+            Matcher m = CONFIRM_CODE.matcher(reply);
             if (m.find()) {
                 return m.group(1);
             }

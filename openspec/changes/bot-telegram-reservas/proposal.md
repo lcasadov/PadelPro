@@ -10,7 +10,7 @@ El MVP cerró con la gestión de reservas **solo por web**: Telegram quedó como
 - **`/cancelar <ref>`**: inicia cancelación; emite OTP `CANCELLATION_CONFIRM` y, tras confirmación, invoca `CancelarReservaService.cancelar(id, userId, admin=false)`.
 - **`/misreservas`**: lista las reservas del usuario (`ReservaQueryService.listForUser`) con una **referencia corta** manejable en el chat (índice o primeros 8 chars del UUID), ya que los IDs son UUID.
 - **`/ayuda`**: enumera los comandos y su formato.
-- **Mapeo chat→usuario y RBAC**: cada comando resuelve el usuario por `telegram_chat_id` (`findByTelegramChatId`); solo opera sobre reservas propias (rol jugador). Reutiliza la validación de solape/anti-overlap y el ciclo de vida atómico del módulo `reservas` — sin duplicar reglas de negocio.
+- **Mapeo chat→usuario y RBAC**: cada comando resuelve el usuario por `telegram_chat_id` (`findByTelegramChatId`); solo opera sobre reservas propias (rol `USER`). Reutiliza la validación de solape/anti-overlap y el ciclo de vida atómico del módulo `reservas` — sin duplicar reglas de negocio.
 - **Auditoría**: nuevas acciones (`TELEGRAM_RESERVA_CREATED`, `TELEGRAM_RESERVA_CONFIRMED`, `TELEGRAM_RESERVA_CANCELLED`, `TELEGRAM_COMMAND_REJECTED`).
 
 ## Capabilities
