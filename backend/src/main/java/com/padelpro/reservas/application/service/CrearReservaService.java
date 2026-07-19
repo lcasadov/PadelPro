@@ -62,11 +62,29 @@ public class CrearReservaService {
     }
 
     /**
+     * Create a reservation through the WEB channel.
+     *
      * @param ownerId        authenticated user id (JWT subject) — always the reservation owner
      * @param idempotencyKey optional {@code Idempotency-Key} header value (D2)
      */
     @Transactional
     public ReservaResponse crear(Long ownerId, CrearReservaRequest request, String idempotencyKey) {
+        return crear(ownerId, request, idempotencyKey, ReservationChannel.WEB);
+    }
+
+    /**
+     * Create a reservation through the given {@code channel} (bot-telegram-reservas: the Telegram
+     * dispatcher passes {@link ReservationChannel#TELEGRAM} so the reservation and its participants are
+     * attributed to the bot rather than the web). The web path keeps its {@code WEB} default via the
+     * three-argument overload.
+     *
+     * @param ownerId        authenticated user id — always the reservation owner
+     * @param idempotencyKey optional idempotency key (D2)
+     * @param channel        the channel the reservation and its participants are created through
+     */
+    @Transactional
+    public ReservaResponse crear(Long ownerId, CrearReservaRequest request, String idempotencyKey,
+                                 ReservationChannel channel) {
         // D2 — idempotency short-circuit (before any validation side effects matter).
         if (idempotencyKey != null && !idempotencyKey.isBlank()) {
             Optional<IdempotencyKey> existing =
@@ -85,9 +103,9 @@ public class CrearReservaService {
         validateParticipantsLimit(request, config.getMaxParticipantsPerPista());
 
         Reservation reservation = Reservation.create(
-                ownerId, reservationDate, startTime, duration, ReservationChannel.WEB, request.notes());
-        reservation.addParticipant(Participant.owner(ownerId, ReservationChannel.WEB));
-        addAdditionalParticipants(reservation, request);
+                ownerId, reservationDate, startTime, duration, channel, request.notes());
+        reservation.addParticipant(Participant.owner(ownerId, channel));
+        addAdditionalParticipants(reservation, request, channel);
 
         // Persist reservation (+ participants via cascade). gist overlap → 409 here (D1).
         Reservation saved = reservationCommandPort.save(reservation);
@@ -123,7 +141,8 @@ public class CrearReservaService {
                 .orElseThrow(() -> new IllegalStateException("System configuration not found"));
     }
 
-    private void addAdditionalParticipants(Reservation reservation, CrearReservaRequest request) {
+    private void addAdditionalParticipants(Reservation reservation, CrearReservaRequest request,
+                                           ReservationChannel channel) {
         List<CrearReservaRequest.ParticipanteAdicional> extras = request.participantesAdicionales();
         if (extras == null || extras.isEmpty()) {
             return;
@@ -146,10 +165,10 @@ public class CrearReservaService {
                             "El participante registrado no existe o no es un usuario activo");
                 }
                 reservation.addParticipant(
-                        Participant.registered(p.userId(), slot, ReservationChannel.WEB));
+                        Participant.registered(p.userId(), slot, channel));
             } else {
                 reservation.addParticipant(
-                        Participant.external(p.externalName(), p.externalPhone(), slot, ReservationChannel.WEB));
+                        Participant.external(p.externalName(), p.externalPhone(), slot, channel));
             }
             slot++;
         }

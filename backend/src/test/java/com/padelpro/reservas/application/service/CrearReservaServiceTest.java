@@ -107,6 +107,38 @@ class CrearReservaServiceTest {
     }
 
     @Test
+    @DisplayName("the three-argument overload defaults to the WEB channel")
+    void defaults_to_web_channel() {
+        stubConfig(4);
+        stubSaveHappyPath();
+
+        ReservaResponse response = service.crear(OWNER, request(FUTURE_DATE, "18:00", 90, null), null);
+
+        assertThat(response.channel()).isEqualTo("WEB");
+    }
+
+    @Test
+    @DisplayName("an explicit TELEGRAM channel is applied to the reservation and its participants")
+    void telegram_channel_applied() {
+        stubConfig(4);
+        stubSaveHappyPath();
+        org.mockito.ArgumentCaptor<Reservation> saved =
+                org.mockito.ArgumentCaptor.forClass(Reservation.class);
+
+        ReservaResponse response = service.crear(OWNER, request(FUTURE_DATE, "18:00", 90,
+                        List.of(new ParticipanteAdicional(null, "Invitado", null))),
+                null, com.padelpro.reservas.domain.model.ReservationChannel.TELEGRAM);
+
+        assertThat(response.channel()).isEqualTo("TELEGRAM");
+        verify(reservationCommandPort).save(saved.capture());
+        assertThat(saved.getValue().getChannel())
+                .isEqualTo(com.padelpro.reservas.domain.model.ReservationChannel.TELEGRAM);
+        assertThat(saved.getValue().getParticipants())
+                .allSatisfy(p -> assertThat(p.getJoinedVia())
+                        .isEqualTo(com.padelpro.reservas.domain.model.ReservationChannel.TELEGRAM));
+    }
+
+    @Test
     @DisplayName("blank idempotency key is treated as absent (short-circuit skipped, key not recorded)")
     void blank_idem_key_is_absent() {
         stubConfig(4);

@@ -2,44 +2,85 @@ package com.padelpro.mensajeria.application.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.padelpro.auth.domain.exception.ValidationException;
 import com.padelpro.auth.domain.model.User;
 import com.padelpro.auth.domain.port.out.UserRepositoryPort;
 import com.padelpro.mensajeria.domain.audit.TelegramAuditActions;
 import com.padelpro.mensajeria.domain.exception.TelegramWebhookForbiddenException;
 import com.padelpro.mensajeria.domain.port.out.TelegramPort;
+import com.padelpro.otp.application.dto.GeneratedOtp;
+import com.padelpro.otp.application.service.OtpService;
 import com.padelpro.otp.domain.exception.OtpVerificationException;
 import com.padelpro.otp.domain.model.OtpCode;
-import com.padelpro.otp.application.service.OtpService;
+import com.padelpro.otp.domain.model.OtpType;
+import com.padelpro.reservas.application.dto.CrearReservaRequest;
+import com.padelpro.reservas.application.dto.ReservaResponse;
+import com.padelpro.reservas.application.service.CancelarReservaService;
+import com.padelpro.reservas.application.service.ConfirmarReservaService;
+import com.padelpro.reservas.application.service.CrearReservaService;
+import com.padelpro.reservas.application.service.ReservaQueryService;
+import com.padelpro.reservas.domain.exception.InvalidReservaStateException;
+import com.padelpro.reservas.domain.exception.ReservaForbiddenException;
+import com.padelpro.reservas.domain.exception.ReservaNotFoundException;
+import com.padelpro.reservas.domain.exception.SlotConflictException;
+import com.padelpro.reservas.domain.model.ReservationChannel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
-import java.util.regex.Matcher;
+import java.util.UUID;
 import java.util.regex.Pattern;
 
 /**
- * Processes Telegram Bot webhook updates (auth-otp-telegram, spec Requirement 1 & 4, D-OTP-04).
+ * Processes Telegram Bot webhook updates and dispatches slash commands (capabilities
+ * auth-otp-telegram + bot-telegram-reservas).
  *
  * <p>Flow:
  * <ol>
- *   <li>Validate {@code X-Telegram-Bot-Api-Secret-Token} against the configured secret (RN-TEL-01);
- *       a missing/incorrect secret is audited and rejected with 403 <em>before</em> any parsing.</li>
- *   <li>Parse the update and dispatch the {@code /vincular XXXXXX} command: resolve the
- *       {@code TELEGRAM_LINK} OTP, guard against a chat already linked to another account, commit the
- *       link, mark the OTP used and confirm via the bot.</li>
- *   <li>Any other message from an unlinked chat gets the "link first" reply; no business op runs.</li>
+ *   <li>Validate {@code X-Telegram-Bot-Api-Secret-Token} against the configured secret (RN-TEL-01)
+ *       <em>before</em> any parsing; a missing/incorrect secret is audited and rejected with 403.</li>
+ *   <li>Parse the update and route the first token to a command handler: {@code /vincular} (account
+ *       linking), {@code /reservar}, {@code /misreservas}, {@code /cancelar}, {@code /confirmar} and
+ *       {@code /ayuda}. Every business command resolves the account by {@code telegram_chat_id}
+ *       ({@link UserRepositoryPort#findByTelegramChatId}); an unlinked chat gets "link first" and no
+ *       business operation runs (spec Requirement "solo cuentas vinculadas").</li>
  * </ol>
  *
- * <p>The clear OTP is never logged (RN-RGPD-04).
+ * <p><b>Transactions (design D-3):</b> this service is a conversational adapter — an orchestrator,
+ * not a transaction boundary. It is intentionally <em>not</em> {@code @Transactional}: each collaborator
+ * ({@link OtpService}, {@link CrearReservaService}, {@link CancelarReservaService},
+ * {@link ConfirmarReservaService}) owns its own transaction, so a business rejection can be caught here
+ * to produce a friendly reply without dooming a surrounding transaction to {@code rollback-only}.
+ *
+ * <p>The clear OTP is never logged (RN-RGPD-04): it is only ever passed to {@link TelegramPort}; audit
+ * records the action and reason, never the code.
  */
 public class TelegramWebhookService {
 
     private static final Logger log = LoggerFactory.getLogger(TelegramWebhookService.class);
-    private static final Pattern VINCULAR = Pattern.compile("^/vincular(?:@\\w+)?\\s+(\\d{6})\\b");
+
+    private static final Pattern VINCULAR_CODE = Pattern.compile("^\\d{6}$");
+    private static final Pattern DATE_TOKEN = Pattern.compile("^\\d{4}-\\d{2}-\\d{2}$");
+    private static final Pattern TIME_TOKEN = Pattern.compile("^\\d{1,2}:\\d{2}$");
+    private static final Pattern DURATION_TOKEN = Pattern.compile("^\\d{1,3}$");
+
+    /** Default slot length (minutes) when {@code /reservar} omits the duration (Open Question resolved). */
+    private static final int DEFAULT_DURATION_MINUTES = 90;
+
+    private static final String HELP_TEXT = """
+            Comandos disponibles de PadelPro:
+            • /reservar <fecha> <hora> [duración] [@jugador...] — crea una reserva. Ej: /reservar 2026-08-01 18:00 90 @juan
+            • /misreservas — lista tus reservas con su referencia
+            • /confirmar <ref> <código> — confirma una reserva o una cancelación con el código recibido
+            • /cancelar <ref> — inicia la cancelación de una reserva (recibirás un código)
+            • /ayuda — muestra esta ayuda
+            La fecha usa formato AAAA-MM-DD y la hora HH:mm. La duración (min) es opcional (por defecto 90).""";
 
     private final TelegramConfigService configService;
     private final OtpService otpService;
@@ -49,13 +90,22 @@ public class TelegramWebhookService {
     private final ObjectMapper objectMapper;
     private final String profileUrl;
 
+    private final CrearReservaService crearReservaService;
+    private final ConfirmarReservaService confirmarReservaService;
+    private final CancelarReservaService cancelarReservaService;
+    private final ReservaQueryService reservaQueryService;
+
     public TelegramWebhookService(TelegramConfigService configService,
                                   OtpService otpService,
                                   UserRepositoryPort userRepositoryPort,
                                   TelegramAuditRecorder auditRecorder,
                                   TelegramPort telegramPort,
                                   ObjectMapper objectMapper,
-                                  String profileUrl) {
+                                  String profileUrl,
+                                  CrearReservaService crearReservaService,
+                                  ConfirmarReservaService confirmarReservaService,
+                                  CancelarReservaService cancelarReservaService,
+                                  ReservaQueryService reservaQueryService) {
         this.configService = configService;
         this.otpService = otpService;
         this.userRepositoryPort = userRepositoryPort;
@@ -63,6 +113,10 @@ public class TelegramWebhookService {
         this.telegramPort = telegramPort;
         this.objectMapper = objectMapper;
         this.profileUrl = profileUrl;
+        this.crearReservaService = crearReservaService;
+        this.confirmarReservaService = confirmarReservaService;
+        this.cancelarReservaService = cancelarReservaService;
+        this.reservaQueryService = reservaQueryService;
     }
 
     /**
@@ -70,14 +124,17 @@ public class TelegramWebhookService {
      *
      * @throws TelegramWebhookForbiddenException (→ 403) when the secret is missing/incorrect
      */
-    @Transactional
     public void handleUpdate(String secretHeader, String rawBody) {
         validateSecret(secretHeader);
-        parseAndDispatch(rawBody);
+        ParsedUpdate update = parse(rawBody);
+        if (update == null) {
+            return;
+        }
+        dispatch(update);
     }
 
     // -------------------------------------------------------------------------
-    // Secret validation (RN-TEL-01)
+    // Secret validation (RN-TEL-01) — always before parsing
     // -------------------------------------------------------------------------
 
     private void validateSecret(String secretHeader) {
@@ -95,35 +152,85 @@ public class TelegramWebhookService {
     }
 
     // -------------------------------------------------------------------------
-    // Update parsing + command dispatch
+    // Parsing + routing
     // -------------------------------------------------------------------------
 
-    private void parseAndDispatch(String rawBody) {
+    private ParsedUpdate parse(String rawBody) {
         if (rawBody == null || rawBody.isBlank()) {
-            return;
+            return null;
         }
-        JsonNode message;
+        JsonNode root;
         try {
-            message = objectMapper.readTree(rawBody).path("message");
+            root = objectMapper.readTree(rawBody);
         } catch (Exception e) {
             log.warn("Telegram webhook: unparseable update body ({})", e.getClass().getSimpleName());
-            return;
+            return null;
         }
+        JsonNode message = root.path("message");
         String chatId = message.path("chat").path("id").asText(null);
-        String text = message.path("text").asText("");
         if (chatId == null || chatId.isBlank()) {
-            return;
+            return null;
         }
+        String text = message.path("text").asText("");
+        // Idempotency source (Open Question D): the Telegram update_id uniquely identifies a delivery,
+        // so a webhook retry of the same update reuses the same key and never double-creates (D2 of reservas).
+        String updateId = root.path("update_id").isMissingNode() ? null : root.path("update_id").asText(null);
+        return new ParsedUpdate(chatId, text == null ? "" : text.trim(), updateId);
+    }
 
-        Matcher matcher = VINCULAR.matcher(text.trim());
-        if (matcher.find()) {
-            handleVincular(chatId, matcher.group(1));
-        } else {
-            handleOtherMessage(chatId);
+    private void dispatch(ParsedUpdate update) {
+        String command = commandToken(update.text());
+        switch (command) {
+            case "/vincular"    -> handleVincular(update);
+            case "/reservar"    -> handleReservar(update);
+            case "/misreservas" -> handleMisReservas(update);
+            case "/cancelar"    -> handleCancelar(update);
+            case "/confirmar"   -> handleConfirmar(update);
+            case "/ayuda"       -> telegramPort.enviarMensaje(update.chatId(), HELP_TEXT);
+            default             -> handleUnknown(update);
         }
     }
 
-    private void handleVincular(String chatId, String code) {
+    /** First whitespace-delimited token, lowercased and stripped of a {@code @botname} suffix. */
+    private static String commandToken(String text) {
+        if (text.isEmpty()) {
+            return "";
+        }
+        String first = text.split("\\s+", 2)[0].toLowerCase(Locale.ROOT);
+        int at = first.indexOf('@');
+        return at >= 0 ? first.substring(0, at) : first;
+    }
+
+    /**
+     * Anything that is not a known command. A linked account gets the help text (spec: unknown command
+     * → help); an unlinked chat gets "link first" (preserving the pre-existing behaviour). A plain
+     * (non-slash) message from a linked account triggers no reply and no business operation.
+     */
+    private void handleUnknown(ParsedUpdate update) {
+        Optional<User> linked = userRepositoryPort.findByTelegramChatId(update.chatId());
+        if (linked.isEmpty()) {
+            telegramPort.enviarMensaje(update.chatId(), "Vincula primero tu cuenta en " + profileUrl);
+            return;
+        }
+        if (update.text().startsWith("/")) {
+            telegramPort.enviarMensaje(update.chatId(), HELP_TEXT);
+        }
+        // A linked account sending a non-command message triggers no business operation in this scope.
+    }
+
+    // -------------------------------------------------------------------------
+    // /vincular (auth-otp-telegram, spec Requirement 1) — unchanged behaviour
+    // -------------------------------------------------------------------------
+
+    private void handleVincular(ParsedUpdate update) {
+        String chatId = update.chatId();
+        String[] tokens = update.text().split("\\s+");
+        if (tokens.length < 2 || !VINCULAR_CODE.matcher(tokens[1]).matches()) {
+            telegramPort.enviarMensaje(chatId, "Formato: /vincular <código de 6 dígitos>");
+            return;
+        }
+        String code = tokens[1];
+
         OtpCode otp;
         try {
             otp = otpService.resolveActiveLinkOtp(code);
@@ -159,11 +266,351 @@ public class TelegramWebhookService {
         telegramPort.enviarMensaje(chatId, "Tu cuenta de PadelPro ha quedado vinculada correctamente.");
     }
 
-    private void handleOtherMessage(String chatId) {
-        Optional<User> linked = userRepositoryPort.findByTelegramChatId(chatId);
-        if (linked.isEmpty()) {
-            telegramPort.enviarMensaje(chatId, "Vincula primero tu cuenta en " + profileUrl);
+    // -------------------------------------------------------------------------
+    // /misreservas (bot-telegram-reservas, spec "Listar mis reservas")
+    // -------------------------------------------------------------------------
+
+    private void handleMisReservas(ParsedUpdate update) {
+        User user = requireLinked(update);
+        if (user == null) {
+            return;
         }
-        // A linked account sending a non-command message triggers no business operation in this scope.
+        List<ReservaResponse> reservas = reservaQueryService.listForUser(user.getId());
+        if (reservas.isEmpty()) {
+            telegramPort.enviarMensaje(update.chatId(),
+                    "No tienes reservas. Crea una con /reservar <fecha> <hora>. Ej: /reservar 2026-08-01 18:00");
+            return;
+        }
+        StringBuilder sb = new StringBuilder("Tus reservas:\n");
+        for (ReservaResponse r : reservas) {
+            sb.append("• ").append(shortRef(r.id()))
+              .append(" — ").append(r.reservationDate()).append(' ').append(r.startTime())
+              .append(" (").append(r.durationMinutes()).append(" min) — ").append(estado(r.status()))
+              .append('\n');
+        }
+        sb.append("Usa la referencia con /confirmar o /cancelar.");
+        telegramPort.enviarMensaje(update.chatId(), sb.toString().trim());
+    }
+
+    // -------------------------------------------------------------------------
+    // /reservar (bot-telegram-reservas, spec "Crear reserva")
+    // -------------------------------------------------------------------------
+
+    private void handleReservar(ParsedUpdate update) {
+        User user = requireLinked(update);
+        if (user == null) {
+            return;
+        }
+
+        CrearReservaRequest request;
+        try {
+            request = parseReservar(update.text());
+        } catch (CommandFormatException ex) {
+            auditRecorder.record(TelegramAuditActions.TELEGRAM_COMMAND_REJECTED, user.getId(),
+                    "command=/reservar,reason=format");
+            telegramPort.enviarMensaje(update.chatId(), ex.getMessage());
+            return;
+        } catch (ParticipantResolutionException ex) {
+            auditRecorder.record(TelegramAuditActions.TELEGRAM_COMMAND_REJECTED, user.getId(),
+                    "command=/reservar,reason=unknown_participant");
+            telegramPort.enviarMensaje(update.chatId(), ex.getMessage());
+            return;
+        }
+
+        String idempotencyKey = update.updateId() == null ? null : "tg-" + update.updateId();
+
+        ReservaResponse created;
+        try {
+            created = crearReservaService.crear(user.getId(), request, idempotencyKey, ReservationChannel.TELEGRAM);
+        } catch (SlotConflictException | InvalidReservaStateException | ValidationException | ReservaForbiddenException ex) {
+            auditRecorder.record(TelegramAuditActions.TELEGRAM_COMMAND_REJECTED, user.getId(),
+                    "command=/reservar,reason=" + ex.getClass().getSimpleName());
+            telegramPort.enviarMensaje(update.chatId(), "No se pudo crear la reserva: " + ex.getMessage());
+            return;
+        }
+
+        UUID reservationId = UUID.fromString(created.id());
+        String ref = shortRef(created.id());
+
+        // Webhook-retry idempotency: crear short-circuits on the update_id key and returns the SAME
+        // reservation. If that reservation already has an active confirmation OTP, this is a replay —
+        // do not emit a fresh code (which would invalidate the one the user already received) nor
+        // re-audit; just re-send the instructions without exposing a code (RN-RGPD-04).
+        if (otpService.peekActiveReservationType(user.getId(), reservationId).isPresent()) {
+            telegramPort.enviarMensaje(update.chatId(),
+                    "Esa reserva ya estaba registrada (referencia: " + ref + "). Confírmala con el código"
+                            + " que te envié: /confirmar " + ref + " <código>.");
+            return;
+        }
+
+        // Emit the confirmation OTP bound to this reservation so /confirmar targets it unambiguously (D-4).
+        GeneratedOtp otp = otpService.generate(user.getId(), OtpType.RESERVATION_CONFIRM, reservationId);
+        auditRecorder.record(TelegramAuditActions.TELEGRAM_RESERVA_CREATED, user.getId(),
+                "reservationId=" + created.id());
+
+        telegramPort.enviarMensaje(update.chatId(),
+                "Reserva creada (" + estado(created.status()) + "). Referencia: " + ref
+                        + "\nPara confirmarla envía: /confirmar " + ref + " " + otp.code()
+                        + "\n(El código caduca en 10 minutos.)");
+    }
+
+    // -------------------------------------------------------------------------
+    // /cancelar (bot-telegram-reservas, spec "Cancelar reserva") — step 1: emit OTP (D-4)
+    // -------------------------------------------------------------------------
+
+    private void handleCancelar(ParsedUpdate update) {
+        User user = requireLinked(update);
+        if (user == null) {
+            return;
+        }
+        String[] tokens = update.text().split("\\s+");
+        if (tokens.length < 2) {
+            telegramPort.enviarMensaje(update.chatId(),
+                    "Formato: /cancelar <referencia>. Consulta tus referencias con /misreservas.");
+            return;
+        }
+
+        RefResolution resolution = resolveOwnedReservation(user.getId(), tokens[1]);
+        if (rejectIfUnresolved(update, user, "/cancelar", resolution)) {
+            return;
+        }
+        ReservaResponse reserva = resolution.reservation();
+
+        UUID reservationId = UUID.fromString(reserva.id());
+        GeneratedOtp otp = otpService.generate(user.getId(), OtpType.CANCELLATION_CONFIRM, reservationId);
+        String ref = shortRef(reserva.id());
+        telegramPort.enviarMensaje(update.chatId(),
+                "Para confirmar la cancelación de la reserva " + ref + " envía: /confirmar " + ref + " " + otp.code()
+                        + "\n(El código caduca en 10 minutos.)");
+    }
+
+    // -------------------------------------------------------------------------
+    // /confirmar (bot-telegram-reservas, spec "Confirmar/Cancelar con OTP") — step 2 (D-4)
+    // -------------------------------------------------------------------------
+
+    private void handleConfirmar(ParsedUpdate update) {
+        User user = requireLinked(update);
+        if (user == null) {
+            return;
+        }
+        String[] tokens = update.text().split("\\s+");
+        if (tokens.length < 3) {
+            telegramPort.enviarMensaje(update.chatId(),
+                    "Formato: /confirmar <referencia> <código>. Ej: /confirmar a1b2c3d4 123456");
+            return;
+        }
+        String ref = tokens[1];
+        String code = tokens[2];
+
+        RefResolution resolution = resolveOwnedReservation(user.getId(), ref);
+        if (rejectIfUnresolved(update, user, "/confirmar", resolution)) {
+            return;
+        }
+        ReservaResponse reserva = resolution.reservation();
+        UUID reservationId = UUID.fromString(reserva.id());
+
+        // Determine the pending operation from the OTP bound to THIS reservation (D-4). Peeked read-only
+        // so /confirmar always operates on the referenced reservation — never picks an operation of a
+        // different reservation by type precedence, and a wrong peek never burns a verification attempt.
+        Optional<OtpType> pending = otpService.peekActiveReservationType(user.getId(), reservationId);
+        if (pending.isEmpty()) {
+            auditRecorder.record(TelegramAuditActions.TELEGRAM_COMMAND_REJECTED, user.getId(),
+                    "command=/confirmar,reason=no_pending_operation,reservationId=" + reserva.id());
+            telegramPort.enviarMensaje(update.chatId(),
+                    "Esa reserva no tiene ninguna operación pendiente de confirmar. Inicia una con /reservar o /cancelar.");
+            return;
+        }
+        OtpType pendingType = pending.get();
+
+        try {
+            otpService.verifyForReservation(user.getId(), reservationId, code);
+        } catch (OtpVerificationException ex) {
+            auditRecorder.record(TelegramAuditActions.TELEGRAM_COMMAND_REJECTED, user.getId(),
+                    "command=/confirmar,reason=" + ex.getCode());
+            telegramPort.enviarMensaje(update.chatId(), ex.getMessage());
+            return;
+        }
+
+        try {
+            if (pendingType == OtpType.CANCELLATION_CONFIRM) {
+                cancelarReservaService.cancelar(reservationId, user.getId(), false);
+                auditRecorder.record(TelegramAuditActions.TELEGRAM_RESERVA_CANCELLED, user.getId(),
+                        "reservationId=" + reserva.id());
+                telegramPort.enviarMensaje(update.chatId(),
+                        "Tu reserva " + shortRef(reserva.id()) + " ha sido cancelada.");
+            } else {
+                confirmarReservaService.confirmar(reservationId, user.getId());
+                auditRecorder.record(TelegramAuditActions.TELEGRAM_RESERVA_CONFIRMED, user.getId(),
+                        "reservationId=" + reserva.id());
+                telegramPort.enviarMensaje(update.chatId(),
+                        "Tu reserva " + shortRef(reserva.id()) + " ha sido confirmada.");
+            }
+        } catch (SlotConflictException | InvalidReservaStateException | ValidationException
+                 | ReservaForbiddenException | ReservaNotFoundException ex) {
+            auditRecorder.record(TelegramAuditActions.TELEGRAM_COMMAND_REJECTED, user.getId(),
+                    "command=/confirmar,reason=" + ex.getClass().getSimpleName());
+            telegramPort.enviarMensaje(update.chatId(), "No se pudo completar la operación: " + ex.getMessage());
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Helpers
+    // -------------------------------------------------------------------------
+
+    /**
+     * Resolve the account behind the chat, or reply "link first" and return {@code null}. Every
+     * business command funnels through here so an unlinked chat can never trigger a business operation.
+     */
+    private User requireLinked(ParsedUpdate update) {
+        Optional<User> linked = userRepositoryPort.findByTelegramChatId(update.chatId());
+        if (linked.isEmpty()) {
+            telegramPort.enviarMensaje(update.chatId(), "Vincula primero tu cuenta en " + profileUrl);
+            return null;
+        }
+        return linked.get();
+    }
+
+    /**
+     * Resolve a short reference (8-hex UUID prefix, D-2) or a full UUID to a reservation the user
+     * <em>owns</em>, searching only the caller's own reservations (BOLA prevention — a reservation the
+     * user does not own is indistinguishable from a non-existent one). Distinguishes "not found" from
+     * "ambiguous prefix" (D-2: on a prefix collision the bot asks for the full identifier).
+     */
+    private RefResolution resolveOwnedReservation(Long userId, String ref) {
+        String needle = normalizeRef(ref);
+        if (needle.isEmpty()) {
+            return RefResolution.notFound();
+        }
+        List<ReservaResponse> matches = new ArrayList<>();
+        for (ReservaResponse r : reservaQueryService.listForUser(userId)) {
+            if (!userId.equals(r.ownerId())) {
+                continue; // only the owner may confirm/cancel (RN-AUTH-02)
+            }
+            if (normalizeRef(r.id()).startsWith(needle)) {
+                matches.add(r);
+            }
+        }
+        if (matches.size() == 1) {
+            return RefResolution.found(matches.get(0));
+        }
+        return matches.isEmpty() ? RefResolution.notFound() : RefResolution.ambiguousMatch();
+    }
+
+    /**
+     * Reply and audit a rejection when a reference does not resolve to exactly one owned reservation.
+     *
+     * @return {@code true} when the command was rejected (caller must stop); {@code false} to proceed
+     */
+    private boolean rejectIfUnresolved(ParsedUpdate update, User user, String command, RefResolution resolution) {
+        if (resolution.reservation() != null) {
+            return false;
+        }
+        if (resolution.ambiguous()) {
+            auditRecorder.record(TelegramAuditActions.TELEGRAM_COMMAND_REJECTED, user.getId(),
+                    "command=" + command + ",reason=ambiguous_ref");
+            telegramPort.enviarMensaje(update.chatId(),
+                    "Esa referencia coincide con varias reservas. Indica el identificador completo (UUID) "
+                            + "que aparece en /misreservas.");
+        } else {
+            auditRecorder.record(TelegramAuditActions.TELEGRAM_COMMAND_REJECTED, user.getId(),
+                    "command=" + command + ",reason=not_found_or_not_owned");
+            telegramPort.enviarMensaje(update.chatId(),
+                    "No encuentro esa reserva entre las tuyas. Revisa la referencia con /misreservas.");
+        }
+        return true;
+    }
+
+    private CrearReservaRequest parseReservar(String text) {
+        String[] tokens = text.split("\\s+");
+        if (tokens.length < 3
+                || !DATE_TOKEN.matcher(tokens[1]).matches()
+                || !TIME_TOKEN.matcher(tokens[2]).matches()) {
+            throw new CommandFormatException(
+                    "Formato: /reservar <fecha AAAA-MM-DD> <hora HH:mm> [duración] [@jugador...]\n"
+                            + "Ejemplo: /reservar 2026-08-01 18:00 90 @juan");
+        }
+        String date = tokens[1];
+        String time = tokens[2];
+
+        int idx = 3;
+        Integer duration = DEFAULT_DURATION_MINUTES;
+        if (tokens.length > 3 && DURATION_TOKEN.matcher(tokens[3]).matches()) {
+            duration = Integer.parseInt(tokens[3]);
+            idx = 4;
+        }
+
+        List<CrearReservaRequest.ParticipanteAdicional> participants = new ArrayList<>();
+        for (int i = idx; i < tokens.length; i++) {
+            String token = tokens[i];
+            if (token.startsWith("@")) {
+                String handle = token.substring(1);
+                User participant = userRepositoryPort.findByLogin(handle)
+                        .orElseThrow(() -> new ParticipantResolutionException(
+                                "No se pudo añadir a @" + handle + ": no es un usuario de PadelPro. "
+                                        + "Revisa el identificador o añádelo como invitado (sin @)."));
+                participants.add(new CrearReservaRequest.ParticipanteAdicional(participant.getId(), null, null));
+            } else {
+                participants.add(new CrearReservaRequest.ParticipanteAdicional(null, token, null));
+            }
+        }
+
+        return new CrearReservaRequest(date, time, duration, null,
+                participants.isEmpty() ? null : participants);
+    }
+
+    /** Short reference shown in chat: the first 8 hex characters of the reservation UUID (D-2). */
+    private static String shortRef(String reservationId) {
+        String hex = normalizeRef(reservationId);
+        return hex.length() >= 8 ? hex.substring(0, 8) : hex;
+    }
+
+    private static String normalizeRef(String ref) {
+        return ref == null ? "" : ref.toLowerCase(Locale.ROOT).replace("-", "").trim();
+    }
+
+    private static String estado(String status) {
+        return switch (status) {
+            case "PENDING_CONFIRMATION" -> "pendiente de confirmación";
+            case "CONFIRMED" -> "confirmada";
+            case "CANCELLED" -> "cancelada";
+            case "COMPLETED" -> "completada";
+            default -> status;
+        };
+    }
+
+    // -------------------------------------------------------------------------
+    // Internal value types
+    // -------------------------------------------------------------------------
+
+    private record ParsedUpdate(String chatId, String text, String updateId) {
+    }
+
+    /** Outcome of resolving a short reference: a unique match, nothing, or an ambiguous prefix (D-2). */
+    private record RefResolution(ReservaResponse reservation, boolean ambiguous) {
+        static RefResolution found(ReservaResponse reservation) {
+            return new RefResolution(reservation, false);
+        }
+
+        static RefResolution notFound() {
+            return new RefResolution(null, false);
+        }
+
+        static RefResolution ambiguousMatch() {
+            return new RefResolution(null, true);
+        }
+    }
+
+    /** Raised by the strict {@code /reservar} parser when the text does not match the expected format. */
+    private static final class CommandFormatException extends RuntimeException {
+        CommandFormatException(String message) {
+            super(message);
+        }
+    }
+
+    /** Raised when a {@code @handle} participant cannot be resolved to a linked account (D-5). */
+    private static final class ParticipantResolutionException extends RuntimeException {
+        ParticipantResolutionException(String message) {
+            super(message);
+        }
     }
 }

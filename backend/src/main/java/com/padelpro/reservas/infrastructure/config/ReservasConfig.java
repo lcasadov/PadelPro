@@ -5,6 +5,7 @@ import com.padelpro.auth.domain.port.out.UserRepositoryPort;
 import com.padelpro.reservas.application.service.AbandonarReservaService;
 import com.padelpro.reservas.application.service.AdminReservaService;
 import com.padelpro.reservas.application.service.CancelarReservaService;
+import com.padelpro.reservas.application.service.ConfirmarReservaService;
 import com.padelpro.reservas.application.service.CrearReservaService;
 import com.padelpro.reservas.application.service.DisponibilidadCacheInvalidator;
 import com.padelpro.reservas.application.service.IdempotencyKeyPurgeService;
@@ -65,6 +66,14 @@ public class ReservasConfig {
             ApplicationEventPublisher eventPublisher) {
         return new AdminReservaService(reservationCommandPort, paymentCommandPort, cacheInvalidator,
                 eventPublisher);
+    }
+
+    @Bean
+    public ConfirmarReservaService confirmarReservaService(
+            ReservationCommandPort reservationCommandPort,
+            PaymentCommandPort paymentCommandPort,
+            ApplicationEventPublisher eventPublisher) {
+        return new ConfirmarReservaService(reservationCommandPort, paymentCommandPort, eventPublisher);
     }
 
     @Bean

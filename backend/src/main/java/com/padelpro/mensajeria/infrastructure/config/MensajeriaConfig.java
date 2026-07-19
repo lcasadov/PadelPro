@@ -11,6 +11,10 @@ import com.padelpro.mensajeria.application.service.TelegramWebhookService;
 import com.padelpro.mensajeria.domain.port.out.TelegramPort;
 import com.padelpro.mensajeria.infrastructure.telegram.TelegramApiAdapter;
 import com.padelpro.otp.application.service.OtpService;
+import com.padelpro.reservas.application.service.CancelarReservaService;
+import com.padelpro.reservas.application.service.ConfirmarReservaService;
+import com.padelpro.reservas.application.service.CrearReservaService;
+import com.padelpro.reservas.application.service.ReservaQueryService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -50,8 +54,13 @@ public class MensajeriaConfig {
                                                          TelegramAuditRecorder telegramAuditRecorder,
                                                          TelegramPort telegramPort,
                                                          ObjectMapper objectMapper,
-                                                         @Value("${app.telegram.profile-url:http://localhost:5173/perfil}") String profileUrl) {
+                                                         @Value("${app.telegram.profile-url:http://localhost:5173/perfil}") String profileUrl,
+                                                         CrearReservaService crearReservaService,
+                                                         ConfirmarReservaService confirmarReservaService,
+                                                         CancelarReservaService cancelarReservaService,
+                                                         ReservaQueryService reservaQueryService) {
         return new TelegramWebhookService(telegramConfigService, otpService, userRepositoryPort,
-                telegramAuditRecorder, telegramPort, objectMapper, profileUrl);
+                telegramAuditRecorder, telegramPort, objectMapper, profileUrl,
+                crearReservaService, confirmarReservaService, cancelarReservaService, reservaQueryService);
     }
 }

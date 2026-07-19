@@ -56,6 +56,17 @@ public interface UserRepositoryPort {
     Optional<User> findByTelegramChatId(String telegramChatId);
 
     /**
+     * Find a user by their unique {@code login}. Used by the Telegram reservation dispatcher
+     * (bot-telegram-reservas, D-5) to resolve a {@code @handle} participant token to a registered
+     * account. The concrete Spring Data adapter already derives this query; exposing it on the port
+     * keeps the application layer free of infrastructure coupling.
+     *
+     * @param login the login to look up
+     * @return the matching user, or empty if none
+     */
+    Optional<User> findByLogin(String login);
+
+    /**
      * Batch-load users by id (anti-N+1). Used to resolve participant display names for the
      * open-matches listing without one query per participant. The signature coincides with
      * {@code JpaRepository.findAllById} under type erasure, so the Spring Data proxy supplies it.
