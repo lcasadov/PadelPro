@@ -12,6 +12,8 @@ import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Core OTP service (auth-otp-telegram, RN-AUTH-07 / RN-RGPD-04).
@@ -64,6 +66,96 @@ public class OtpService {
 
         auditRecorder.record(OtpAuditActions.OTP_GENERATED, userId, "type=" + type);
         return new GeneratedOtp(code, otp.getExpiresAt());
+    }
+
+    /**
+     * Generate a fresh OTP for {@code userId} of {@code type} bound to {@code reservationId}
+     * (bot-telegram-reservas, D-4). Invalidates any prior active code bound to the <em>same
+     * reservation</em> (any type), so a cancellation request supersedes a pending confirmation for that
+     * reservation while leaving codes of <em>other</em> reservations untouched.
+     *
+     * @return the clear code + expiry (never logged); the caller delivers it to the user
+     */
+    @Transactional
+    public GeneratedOtp generate(Long userId, OtpType type, UUID reservationId) {
+        for (OtpCode previous
+                : repository.findByUserIdAndReservationIdAndUsedFalseOrderByCreatedAtDesc(userId, reservationId)) {
+            previous.markUsed();
+            repository.save(previous);
+        }
+
+        String code = generateCode();
+        OffsetDateTime now = OffsetDateTime.now();
+        OtpCode otp = new OtpCode(userId, OtpHasher.sha256Hex(code), type,
+                now.plus(TTL), now, reservationId);
+        repository.save(otp);
+
+        auditRecorder.record(OtpAuditActions.OTP_GENERATED, userId,
+                "type=" + type + ",reservationId=" + reservationId);
+        return new GeneratedOtp(code, otp.getExpiresAt());
+    }
+
+    /**
+     * Peek (read-only) the type of the active, unexpired code bound to {@code reservationId} for the
+     * user — i.e. which operation is pending on that reservation (bot-telegram-reservas, D-4). Records
+     * no attempt and consumes nothing, so a caller can decide confirm-vs-cancel <em>before</em>
+     * verifying without burning an attempt against a valid code.
+     *
+     * @return the pending {@link OtpType} for the reservation, or empty if none is active
+     */
+    @Transactional(readOnly = true)
+    public Optional<OtpType> peekActiveReservationType(Long userId, UUID reservationId) {
+        OffsetDateTime now = OffsetDateTime.now();
+        return repository.findByUserIdAndReservationIdAndUsedFalseOrderByCreatedAtDesc(userId, reservationId)
+                .stream()
+                .filter(otp -> !otp.isExpired(now))
+                .map(OtpCode::getType)
+                .findFirst();
+    }
+
+    /**
+     * Verify a clear {@code code} against the active code bound to {@code reservationId} for the user
+     * (RN-AUTH-07). Marks it used on success; a wrong code increments attempts and auto-invalidates on
+     * the 3rd failure — exactly like {@link #verify}, but scoped to a single reservation so the code of
+     * one reservation can never be spent against another.
+     *
+     * @throws OtpVerificationException when the code is invalid, expired or the attempt limit is reached
+     */
+    @Transactional
+    public void verifyForReservation(Long userId, UUID reservationId, String code) {
+        List<OtpCode> active =
+                repository.findByUserIdAndReservationIdAndUsedFalseOrderByCreatedAtDesc(userId, reservationId);
+        if (active.isEmpty()) {
+            auditRecorder.record(OtpAuditActions.OTP_VERIFICATION_FAILED, userId,
+                    "reservationId=" + reservationId + ",reason=no_active_code");
+            throw OtpVerificationException.invalid();
+        }
+
+        OtpCode otp = active.get(0);
+        if (otp.isExpired(OffsetDateTime.now())) {
+            auditRecorder.record(OtpAuditActions.OTP_VERIFICATION_FAILED, userId,
+                    "reservationId=" + reservationId + ",reason=expired");
+            throw OtpVerificationException.expired();
+        }
+
+        if (otp.getCodeHash().equals(OtpHasher.sha256Hex(code))) {
+            otp.markUsed();
+            repository.save(otp);
+            auditRecorder.record(OtpAuditActions.OTP_VERIFIED, userId,
+                    "type=" + otp.getType() + ",reservationId=" + reservationId);
+            return;
+        }
+
+        boolean invalidated = otp.registerFailedAttempt();
+        repository.save(otp);
+        auditRecorder.record(OtpAuditActions.OTP_VERIFICATION_FAILED, userId,
+                "reservationId=" + reservationId + ",attempts=" + otp.getAttempts());
+        if (invalidated) {
+            auditRecorder.record(OtpAuditActions.OTP_INVALIDATED, userId,
+                    "reservationId=" + reservationId + ",reason=max_attempts");
+            throw OtpVerificationException.maxAttempts();
+        }
+        throw OtpVerificationException.invalid();
     }
 
     /**
@@ -123,22 +215,6 @@ public class OtpService {
             throw OtpVerificationException.expired();
         }
         return otp;
-    }
-
-    /**
-     * Whether the user currently has a non-expired, unused code of the given type. Used by the
-     * Telegram dispatcher (bot-telegram-reservas, D-4) to disambiguate {@code /confirmar} between a
-     * pending {@code RESERVATION_CONFIRM} and a {@code CANCELLATION_CONFIRM} <em>without</em> a
-     * verification attempt (a wrong-type {@link #verify} would consume an attempt against a valid
-     * code). Read-only: it neither consumes the code nor records an attempt.
-     *
-     * @return {@code true} iff an active (unused, unexpired) code of {@code type} exists for the user
-     */
-    @Transactional(readOnly = true)
-    public boolean hasActiveCode(Long userId, OtpType type) {
-        OffsetDateTime now = OffsetDateTime.now();
-        return repository.findByUserIdAndTypeAndUsedFalseOrderByCreatedAtDesc(userId, type).stream()
-                .anyMatch(otp -> !otp.isExpired(now));
     }
 
     /** Consume (single-use) an already-resolved OTP and audit the verification. */

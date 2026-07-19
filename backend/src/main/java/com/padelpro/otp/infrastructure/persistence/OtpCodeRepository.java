@@ -11,6 +11,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Spring Data JPA adapter for {@link OtpCode}, implementing {@link OtpCodeRepositoryPort} so the
@@ -27,6 +28,9 @@ public interface OtpCodeRepository extends JpaRepository<OtpCode, Long>, OtpCode
 
     @Override
     List<OtpCode> findByUserIdAndUsedFalse(Long userId);
+
+    @Override
+    List<OtpCode> findByUserIdAndReservationIdAndUsedFalseOrderByCreatedAtDesc(Long userId, UUID reservationId);
 
     @Override
     List<OtpCode> findByCodeHashAndTypeAndUsedFalse(String codeHash, OtpType type);

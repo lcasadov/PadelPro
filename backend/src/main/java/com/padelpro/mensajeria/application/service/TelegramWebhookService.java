@@ -23,6 +23,7 @@ import com.padelpro.reservas.domain.exception.InvalidReservaStateException;
 import com.padelpro.reservas.domain.exception.ReservaForbiddenException;
 import com.padelpro.reservas.domain.exception.ReservaNotFoundException;
 import com.padelpro.reservas.domain.exception.SlotConflictException;
+import com.padelpro.reservas.domain.model.ReservationChannel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -320,7 +321,7 @@ public class TelegramWebhookService {
 
         ReservaResponse created;
         try {
-            created = crearReservaService.crear(user.getId(), request, idempotencyKey);
+            created = crearReservaService.crear(user.getId(), request, idempotencyKey, ReservationChannel.TELEGRAM);
         } catch (SlotConflictException | InvalidReservaStateException | ValidationException | ReservaForbiddenException ex) {
             auditRecorder.record(TelegramAuditActions.TELEGRAM_COMMAND_REJECTED, user.getId(),
                     "command=/reservar,reason=" + ex.getClass().getSimpleName());
@@ -328,12 +329,25 @@ public class TelegramWebhookService {
             return;
         }
 
-        // Emit the confirmation OTP so the reservation can be confirmed with /confirmar (D-4).
-        GeneratedOtp otp = otpService.generate(user.getId(), OtpType.RESERVATION_CONFIRM);
+        UUID reservationId = UUID.fromString(created.id());
+        String ref = shortRef(created.id());
+
+        // Webhook-retry idempotency: crear short-circuits on the update_id key and returns the SAME
+        // reservation. If that reservation already has an active confirmation OTP, this is a replay —
+        // do not emit a fresh code (which would invalidate the one the user already received) nor
+        // re-audit; just re-send the instructions without exposing a code (RN-RGPD-04).
+        if (otpService.peekActiveReservationType(user.getId(), reservationId).isPresent()) {
+            telegramPort.enviarMensaje(update.chatId(),
+                    "Esa reserva ya estaba registrada (referencia: " + ref + "). Confírmala con el código"
+                            + " que te envié: /confirmar " + ref + " <código>.");
+            return;
+        }
+
+        // Emit the confirmation OTP bound to this reservation so /confirmar targets it unambiguously (D-4).
+        GeneratedOtp otp = otpService.generate(user.getId(), OtpType.RESERVATION_CONFIRM, reservationId);
         auditRecorder.record(TelegramAuditActions.TELEGRAM_RESERVA_CREATED, user.getId(),
                 "reservationId=" + created.id());
 
-        String ref = shortRef(created.id());
         telegramPort.enviarMensaje(update.chatId(),
                 "Reserva creada (" + estado(created.status()) + "). Referencia: " + ref
                         + "\nPara confirmarla envía: /confirmar " + ref + " " + otp.code()
@@ -356,16 +370,14 @@ public class TelegramWebhookService {
             return;
         }
 
-        ReservaResponse reserva = resolveOwnedReservation(user.getId(), tokens[1]);
-        if (reserva == null) {
-            auditRecorder.record(TelegramAuditActions.TELEGRAM_COMMAND_REJECTED, user.getId(),
-                    "command=/cancelar,reason=not_found_or_not_owned");
-            telegramPort.enviarMensaje(update.chatId(),
-                    "No encuentro esa reserva entre las tuyas. Revisa la referencia con /misreservas.");
+        RefResolution resolution = resolveOwnedReservation(user.getId(), tokens[1]);
+        if (rejectIfUnresolved(update, user, "/cancelar", resolution)) {
             return;
         }
+        ReservaResponse reserva = resolution.reservation();
 
-        GeneratedOtp otp = otpService.generate(user.getId(), OtpType.CANCELLATION_CONFIRM);
+        UUID reservationId = UUID.fromString(reserva.id());
+        GeneratedOtp otp = otpService.generate(user.getId(), OtpType.CANCELLATION_CONFIRM, reservationId);
         String ref = shortRef(reserva.id());
         telegramPort.enviarMensaje(update.chatId(),
                 "Para confirmar la cancelación de la reserva " + ref + " envía: /confirmar " + ref + " " + otp.code()
@@ -390,32 +402,28 @@ public class TelegramWebhookService {
         String ref = tokens[1];
         String code = tokens[2];
 
-        ReservaResponse reserva = resolveOwnedReservation(user.getId(), ref);
-        if (reserva == null) {
-            auditRecorder.record(TelegramAuditActions.TELEGRAM_COMMAND_REJECTED, user.getId(),
-                    "command=/confirmar,reason=not_found_or_not_owned");
-            telegramPort.enviarMensaje(update.chatId(),
-                    "No encuentro esa reserva entre las tuyas. Revisa la referencia con /misreservas.");
+        RefResolution resolution = resolveOwnedReservation(user.getId(), ref);
+        if (rejectIfUnresolved(update, user, "/confirmar", resolution)) {
             return;
         }
+        ReservaResponse reserva = resolution.reservation();
+        UUID reservationId = UUID.fromString(reserva.id());
 
-        // Determine the pending operation by the active OTP type (D-4). Peeked read-only so a wrong
-        // guess never burns a verification attempt against a valid code.
-        OtpType pendingType;
-        if (otpService.hasActiveCode(user.getId(), OtpType.CANCELLATION_CONFIRM)) {
-            pendingType = OtpType.CANCELLATION_CONFIRM;
-        } else if (otpService.hasActiveCode(user.getId(), OtpType.RESERVATION_CONFIRM)) {
-            pendingType = OtpType.RESERVATION_CONFIRM;
-        } else {
+        // Determine the pending operation from the OTP bound to THIS reservation (D-4). Peeked read-only
+        // so /confirmar always operates on the referenced reservation — never picks an operation of a
+        // different reservation by type precedence, and a wrong peek never burns a verification attempt.
+        Optional<OtpType> pending = otpService.peekActiveReservationType(user.getId(), reservationId);
+        if (pending.isEmpty()) {
             auditRecorder.record(TelegramAuditActions.TELEGRAM_COMMAND_REJECTED, user.getId(),
-                    "command=/confirmar,reason=no_pending_operation");
+                    "command=/confirmar,reason=no_pending_operation,reservationId=" + reserva.id());
             telegramPort.enviarMensaje(update.chatId(),
-                    "No hay ninguna operación pendiente de confirmar. Inicia una con /reservar o /cancelar.");
+                    "Esa reserva no tiene ninguna operación pendiente de confirmar. Inicia una con /reservar o /cancelar.");
             return;
         }
+        OtpType pendingType = pending.get();
 
         try {
-            otpService.verify(user.getId(), pendingType, code);
+            otpService.verifyForReservation(user.getId(), reservationId, code);
         } catch (OtpVerificationException ex) {
             auditRecorder.record(TelegramAuditActions.TELEGRAM_COMMAND_REJECTED, user.getId(),
                     "command=/confirmar,reason=" + ex.getCode());
@@ -423,7 +431,6 @@ public class TelegramWebhookService {
             return;
         }
 
-        UUID reservationId = UUID.fromString(reserva.id());
         try {
             if (pendingType == OtpType.CANCELLATION_CONFIRM) {
                 cancelarReservaService.cancelar(reservationId, user.getId(), false);
@@ -466,13 +473,13 @@ public class TelegramWebhookService {
     /**
      * Resolve a short reference (8-hex UUID prefix, D-2) or a full UUID to a reservation the user
      * <em>owns</em>, searching only the caller's own reservations (BOLA prevention — a reservation the
-     * user does not own is indistinguishable from a non-existent one). Returns {@code null} when the
-     * reference matches no owned reservation or is ambiguous.
+     * user does not own is indistinguishable from a non-existent one). Distinguishes "not found" from
+     * "ambiguous prefix" (D-2: on a prefix collision the bot asks for the full identifier).
      */
-    private ReservaResponse resolveOwnedReservation(Long userId, String ref) {
+    private RefResolution resolveOwnedReservation(Long userId, String ref) {
         String needle = normalizeRef(ref);
         if (needle.isEmpty()) {
-            return null;
+            return RefResolution.notFound();
         }
         List<ReservaResponse> matches = new ArrayList<>();
         for (ReservaResponse r : reservaQueryService.listForUser(userId)) {
@@ -483,7 +490,34 @@ public class TelegramWebhookService {
                 matches.add(r);
             }
         }
-        return matches.size() == 1 ? matches.get(0) : null;
+        if (matches.size() == 1) {
+            return RefResolution.found(matches.get(0));
+        }
+        return matches.isEmpty() ? RefResolution.notFound() : RefResolution.ambiguousMatch();
+    }
+
+    /**
+     * Reply and audit a rejection when a reference does not resolve to exactly one owned reservation.
+     *
+     * @return {@code true} when the command was rejected (caller must stop); {@code false} to proceed
+     */
+    private boolean rejectIfUnresolved(ParsedUpdate update, User user, String command, RefResolution resolution) {
+        if (resolution.reservation() != null) {
+            return false;
+        }
+        if (resolution.ambiguous()) {
+            auditRecorder.record(TelegramAuditActions.TELEGRAM_COMMAND_REJECTED, user.getId(),
+                    "command=" + command + ",reason=ambiguous_ref");
+            telegramPort.enviarMensaje(update.chatId(),
+                    "Esa referencia coincide con varias reservas. Indica el identificador completo (UUID) "
+                            + "que aparece en /misreservas.");
+        } else {
+            auditRecorder.record(TelegramAuditActions.TELEGRAM_COMMAND_REJECTED, user.getId(),
+                    "command=" + command + ",reason=not_found_or_not_owned");
+            telegramPort.enviarMensaje(update.chatId(),
+                    "No encuentro esa reserva entre las tuyas. Revisa la referencia con /misreservas.");
+        }
+        return true;
     }
 
     private CrearReservaRequest parseReservar(String text) {
@@ -549,6 +583,21 @@ public class TelegramWebhookService {
     // -------------------------------------------------------------------------
 
     private record ParsedUpdate(String chatId, String text, String updateId) {
+    }
+
+    /** Outcome of resolving a short reference: a unique match, nothing, or an ambiguous prefix (D-2). */
+    private record RefResolution(ReservaResponse reservation, boolean ambiguous) {
+        static RefResolution found(ReservaResponse reservation) {
+            return new RefResolution(reservation, false);
+        }
+
+        static RefResolution notFound() {
+            return new RefResolution(null, false);
+        }
+
+        static RefResolution ambiguousMatch() {
+            return new RefResolution(null, true);
+        }
     }
 
     /** Raised by the strict {@code /reservar} parser when the text does not match the expected format. */

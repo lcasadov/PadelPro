@@ -19,6 +19,7 @@ import com.padelpro.reservas.application.service.CrearReservaService;
 import com.padelpro.reservas.application.service.ReservaQueryService;
 import com.padelpro.reservas.domain.exception.InvalidReservaStateException;
 import com.padelpro.reservas.domain.exception.SlotConflictException;
+import com.padelpro.reservas.domain.model.ReservationChannel;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -50,7 +51,8 @@ import static org.mockito.Mockito.when;
 /**
  * Unit tests for the Telegram reservation command dispatcher (capability bot-telegram-reservas):
  * {@code /ayuda}, {@code /misreservas}, {@code /reservar}, {@code /cancelar}, {@code /confirmar},
- * account-linking guard, strict parsing, OTP flows (D-4) and auditing (RN-RGPD-04: no OTP in clear).
+ * account-linking guard, strict parsing, reservation-bound OTP flows (D-4), webhook-retry idempotency,
+ * prefix-collision handling (D-2) and auditing (RN-RGPD-04: no OTP in clear).
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("TelegramWebhookService — reservation command dispatcher (bot-telegram-reservas)")
@@ -212,19 +214,38 @@ class TelegramDispatcherReservasTest {
     class Reservar {
 
         @Test
-        @DisplayName("valid command creates the reservation, emits a RESERVATION_CONFIRM OTP and audits")
+        @DisplayName("valid command creates the reservation (TELEGRAM channel), emits a reservation-bound OTP and audits")
         void creates_and_emits_otp() {
             linked();
-            when(crearReservaService.crear(eq(USER_ID), any(CrearReservaRequest.class), eq("tg-7001")))
+            when(crearReservaService.crear(eq(USER_ID), any(CrearReservaRequest.class), eq("tg-7001"),
+                    eq(ReservationChannel.TELEGRAM)))
                     .thenReturn(reserva(RES_ID, USER_ID, "PENDING_CONFIRMATION"));
-            when(otpService.generate(USER_ID, OtpType.RESERVATION_CONFIRM))
+            when(otpService.peekActiveReservationType(USER_ID, RES_ID)).thenReturn(Optional.empty());
+            when(otpService.generate(USER_ID, OtpType.RESERVATION_CONFIRM, RES_ID))
                     .thenReturn(new GeneratedOtp("246810", OffsetDateTime.now().plusMinutes(10)));
 
             service.handleUpdate("s3cret", update("/reservar 2026-08-01 18:00 90"));
 
-            verify(otpService).generate(USER_ID, OtpType.RESERVATION_CONFIRM);
+            verify(otpService).generate(USER_ID, OtpType.RESERVATION_CONFIRM, RES_ID);
             verify(auditRecorder).record(eq(TelegramAuditActions.TELEGRAM_RESERVA_CREATED), eq(USER_ID), any());
             verify(telegramPort).enviarMensaje(eq(CHAT), contains(REF));
+        }
+
+        @Test
+        @DisplayName("webhook retry (reservation already has an active OTP) does not re-emit or re-audit")
+        void retry_is_idempotent() {
+            linked();
+            // crear short-circuits on the idempotency key and returns the same reservation.
+            when(crearReservaService.crear(eq(USER_ID), any(), eq("tg-7001"), eq(ReservationChannel.TELEGRAM)))
+                    .thenReturn(reserva(RES_ID, USER_ID, "PENDING_CONFIRMATION"));
+            when(otpService.peekActiveReservationType(USER_ID, RES_ID))
+                    .thenReturn(Optional.of(OtpType.RESERVATION_CONFIRM));
+
+            service.handleUpdate("s3cret", update("/reservar 2026-08-01 18:00 90"));
+
+            verify(otpService, never()).generate(anyLong(), any(), any());
+            verify(auditRecorder, never()).record(eq(TelegramAuditActions.TELEGRAM_RESERVA_CREATED), any(), any());
+            verify(telegramPort).enviarMensaje(eq(CHAT), contains("ya estaba registrada"));
         }
 
         @Test
@@ -232,9 +253,10 @@ class TelegramDispatcherReservasTest {
         void default_duration_applied() {
             linked();
             ArgumentCaptor<CrearReservaRequest> req = ArgumentCaptor.forClass(CrearReservaRequest.class);
-            when(crearReservaService.crear(eq(USER_ID), req.capture(), any()))
+            when(crearReservaService.crear(eq(USER_ID), req.capture(), any(), eq(ReservationChannel.TELEGRAM)))
                     .thenReturn(reserva(RES_ID, USER_ID, "PENDING_CONFIRMATION"));
-            when(otpService.generate(anyLong(), any()))
+            when(otpService.peekActiveReservationType(anyLong(), any())).thenReturn(Optional.empty());
+            when(otpService.generate(anyLong(), any(), any()))
                     .thenReturn(new GeneratedOtp("111111", OffsetDateTime.now().plusMinutes(10)));
 
             service.handleUpdate("s3cret", update("/reservar 2026-08-01 18:00"));
@@ -250,7 +272,7 @@ class TelegramDispatcherReservasTest {
             service.handleUpdate("s3cret", update("/reservar mañana por la tarde"));
 
             verify(telegramPort).enviarMensaje(eq(CHAT), contains("Ejemplo"));
-            verify(crearReservaService, never()).crear(any(), any(), any());
+            verify(crearReservaService, never()).crear(any(), any(), any(), any());
             verify(auditRecorder).record(eq(TelegramAuditActions.TELEGRAM_COMMAND_REJECTED), eq(USER_ID), any());
         }
 
@@ -258,14 +280,14 @@ class TelegramDispatcherReservasTest {
         @DisplayName("slot conflict from the service is relayed legibly and audited")
         void slot_conflict_relayed() {
             linked();
-            when(crearReservaService.crear(any(), any(), any()))
+            when(crearReservaService.crear(any(), any(), any(), any()))
                     .thenThrow(new SlotConflictException("El tramo ya está ocupado"));
 
             service.handleUpdate("s3cret", update("/reservar 2026-08-01 18:00 90"));
 
             verify(telegramPort).enviarMensaje(eq(CHAT), contains("No se pudo crear"));
             verify(auditRecorder).record(eq(TelegramAuditActions.TELEGRAM_COMMAND_REJECTED), eq(USER_ID), any());
-            verify(otpService, never()).generate(any(), any());
+            verify(otpService, never()).generate(anyLong(), any(), any());
         }
 
         @Test
@@ -274,9 +296,10 @@ class TelegramDispatcherReservasTest {
             linked();
             when(userRepositoryPort.findByLogin("ana")).thenReturn(Optional.of(userWithId(7L, "ana")));
             ArgumentCaptor<CrearReservaRequest> req = ArgumentCaptor.forClass(CrearReservaRequest.class);
-            when(crearReservaService.crear(eq(USER_ID), req.capture(), any()))
+            when(crearReservaService.crear(eq(USER_ID), req.capture(), any(), eq(ReservationChannel.TELEGRAM)))
                     .thenReturn(reserva(RES_ID, USER_ID, "PENDING_CONFIRMATION"));
-            when(otpService.generate(anyLong(), any()))
+            when(otpService.peekActiveReservationType(anyLong(), any())).thenReturn(Optional.empty());
+            when(otpService.generate(anyLong(), any(), any()))
                     .thenReturn(new GeneratedOtp("222222", OffsetDateTime.now().plusMinutes(10)));
 
             service.handleUpdate("s3cret", update("/reservar 2026-08-01 18:00 90 @ana Invitado"));
@@ -296,7 +319,7 @@ class TelegramDispatcherReservasTest {
             service.handleUpdate("s3cret", update("/reservar 2026-08-01 18:00 90 @ghost"));
 
             verify(telegramPort).enviarMensaje(eq(CHAT), contains("@ghost"));
-            verify(crearReservaService, never()).crear(any(), any(), any());
+            verify(crearReservaService, never()).crear(any(), any(), any(), any());
             verify(auditRecorder).record(eq(TelegramAuditActions.TELEGRAM_COMMAND_REJECTED), eq(USER_ID), any());
         }
     }
@@ -308,17 +331,17 @@ class TelegramDispatcherReservasTest {
     class Cancelar {
 
         @Test
-        @DisplayName("an owned reservation emits a CANCELLATION_CONFIRM OTP and asks to confirm")
+        @DisplayName("an owned reservation emits a reservation-bound CANCELLATION_CONFIRM OTP")
         void owned_emits_cancellation_otp() {
             linked();
             when(reservaQueryService.listForUser(USER_ID))
                     .thenReturn(List.of(reserva(RES_ID, USER_ID, "CONFIRMED")));
-            when(otpService.generate(USER_ID, OtpType.CANCELLATION_CONFIRM))
+            when(otpService.generate(USER_ID, OtpType.CANCELLATION_CONFIRM, RES_ID))
                     .thenReturn(new GeneratedOtp("333333", OffsetDateTime.now().plusMinutes(10)));
 
             service.handleUpdate("s3cret", update("/cancelar " + REF));
 
-            verify(otpService).generate(USER_ID, OtpType.CANCELLATION_CONFIRM);
+            verify(otpService).generate(USER_ID, OtpType.CANCELLATION_CONFIRM, RES_ID);
             verify(telegramPort).enviarMensaje(eq(CHAT), contains("/confirmar " + REF));
             verify(cancelarReservaService, never()).cancelar(any(), any(), anyBoolean());
         }
@@ -327,13 +350,28 @@ class TelegramDispatcherReservasTest {
         @DisplayName("a reservation owned by someone else is treated as not found (BOLA / RN-AUTH-02)")
         void foreign_reservation_not_found() {
             linked();
-            // The victim's reservation is never in the caller's own listing.
             when(reservaQueryService.listForUser(USER_ID)).thenReturn(List.of());
 
             service.handleUpdate("s3cret", update("/cancelar " + REF));
 
             verify(telegramPort).enviarMensaje(eq(CHAT), contains("No encuentro esa reserva"));
-            verify(otpService, never()).generate(any(), any());
+            verify(otpService, never()).generate(anyLong(), any(), any());
+            verify(auditRecorder).record(eq(TelegramAuditActions.TELEGRAM_COMMAND_REJECTED), eq(USER_ID), any());
+        }
+
+        @Test
+        @DisplayName("an ambiguous prefix asks for the full identifier (D-2), emits no OTP")
+        void ambiguous_prefix_asks_full_id() {
+            linked();
+            UUID other = UUID.fromString("a1b2ffff-0000-4000-8000-000000000002");
+            when(reservaQueryService.listForUser(USER_ID)).thenReturn(List.of(
+                    reserva(RES_ID, USER_ID, "CONFIRMED"),
+                    reserva(other, USER_ID, "CONFIRMED")));
+
+            service.handleUpdate("s3cret", update("/cancelar a1b2")); // prefix matches both
+
+            verify(telegramPort).enviarMensaje(eq(CHAT), contains("identificador completo"));
+            verify(otpService, never()).generate(anyLong(), any(), any());
             verify(auditRecorder).record(eq(TelegramAuditActions.TELEGRAM_COMMAND_REJECTED), eq(USER_ID), any());
         }
     }
@@ -345,36 +383,56 @@ class TelegramDispatcherReservasTest {
     class Confirmar {
 
         @Test
-        @DisplayName("with a pending RESERVATION_CONFIRM OTP → confirms the reservation and audits")
+        @DisplayName("a reservation with a pending RESERVATION_CONFIRM → confirms and audits")
         void confirms_reservation() {
             linked();
             when(reservaQueryService.listForUser(USER_ID))
                     .thenReturn(List.of(reserva(RES_ID, USER_ID, "PENDING_CONFIRMATION")));
-            when(otpService.hasActiveCode(USER_ID, OtpType.CANCELLATION_CONFIRM)).thenReturn(false);
-            when(otpService.hasActiveCode(USER_ID, OtpType.RESERVATION_CONFIRM)).thenReturn(true);
+            when(otpService.peekActiveReservationType(USER_ID, RES_ID))
+                    .thenReturn(Optional.of(OtpType.RESERVATION_CONFIRM));
 
             service.handleUpdate("s3cret", update("/confirmar " + REF + " 246810"));
 
-            verify(otpService).verify(USER_ID, OtpType.RESERVATION_CONFIRM, "246810");
+            verify(otpService).verifyForReservation(USER_ID, RES_ID, "246810");
             verify(confirmarReservaService).confirmar(RES_ID, USER_ID);
             verify(auditRecorder).record(eq(TelegramAuditActions.TELEGRAM_RESERVA_CONFIRMED), eq(USER_ID), any());
             verify(telegramPort).enviarMensaje(eq(CHAT), contains("confirmada"));
         }
 
         @Test
-        @DisplayName("with a pending CANCELLATION_CONFIRM OTP → cancels the reservation and audits")
+        @DisplayName("a reservation with a pending CANCELLATION_CONFIRM → cancels and audits")
         void cancels_reservation() {
             linked();
             when(reservaQueryService.listForUser(USER_ID))
                     .thenReturn(List.of(reserva(RES_ID, USER_ID, "CONFIRMED")));
-            when(otpService.hasActiveCode(USER_ID, OtpType.CANCELLATION_CONFIRM)).thenReturn(true);
+            when(otpService.peekActiveReservationType(USER_ID, RES_ID))
+                    .thenReturn(Optional.of(OtpType.CANCELLATION_CONFIRM));
 
             service.handleUpdate("s3cret", update("/confirmar " + REF + " 333333"));
 
-            verify(otpService).verify(USER_ID, OtpType.CANCELLATION_CONFIRM, "333333");
+            verify(otpService).verifyForReservation(USER_ID, RES_ID, "333333");
             verify(cancelarReservaService).cancelar(RES_ID, USER_ID, false);
             verify(auditRecorder).record(eq(TelegramAuditActions.TELEGRAM_RESERVA_CANCELLED), eq(USER_ID), any());
             verify(telegramPort).enviarMensaje(eq(CHAT), contains("cancelada"));
+        }
+
+        @Test
+        @DisplayName("cross case: confirming X never cancels X even with a cancellation pending on Y")
+        void confirming_X_never_cancels_X_with_pending_cancel_on_Y() {
+            linked();
+            UUID y = UUID.fromString("bbbbcccc-0000-4000-8000-000000000009");
+            // The user owns X (pending confirm) and Y (pending cancel). /confirmar X must confirm X.
+            when(reservaQueryService.listForUser(USER_ID)).thenReturn(List.of(
+                    reserva(RES_ID, USER_ID, "PENDING_CONFIRMATION"),
+                    reserva(y, USER_ID, "CONFIRMED")));
+            when(otpService.peekActiveReservationType(USER_ID, RES_ID))
+                    .thenReturn(Optional.of(OtpType.RESERVATION_CONFIRM));
+
+            service.handleUpdate("s3cret", update("/confirmar " + REF + " 246810"));
+
+            verify(otpService).verifyForReservation(USER_ID, RES_ID, "246810");
+            verify(confirmarReservaService).confirmar(RES_ID, USER_ID);
+            verify(cancelarReservaService, never()).cancelar(any(), any(), anyBoolean());
         }
 
         @Test
@@ -383,10 +441,10 @@ class TelegramDispatcherReservasTest {
             linked();
             when(reservaQueryService.listForUser(USER_ID))
                     .thenReturn(List.of(reserva(RES_ID, USER_ID, "PENDING_CONFIRMATION")));
-            when(otpService.hasActiveCode(USER_ID, OtpType.CANCELLATION_CONFIRM)).thenReturn(false);
-            when(otpService.hasActiveCode(USER_ID, OtpType.RESERVATION_CONFIRM)).thenReturn(true);
+            when(otpService.peekActiveReservationType(USER_ID, RES_ID))
+                    .thenReturn(Optional.of(OtpType.RESERVATION_CONFIRM));
             org.mockito.Mockito.doThrow(OtpVerificationException.invalid())
-                    .when(otpService).verify(USER_ID, OtpType.RESERVATION_CONFIRM, "000000");
+                    .when(otpService).verifyForReservation(USER_ID, RES_ID, "000000");
 
             service.handleUpdate("s3cret", update("/confirmar " + REF + " 000000"));
 
@@ -395,17 +453,16 @@ class TelegramDispatcherReservasTest {
         }
 
         @Test
-        @DisplayName("no pending operation → informs the user, nothing verified")
+        @DisplayName("no pending operation for the reservation → informs the user, nothing verified")
         void no_pending_operation() {
             linked();
             when(reservaQueryService.listForUser(USER_ID))
                     .thenReturn(List.of(reserva(RES_ID, USER_ID, "PENDING_CONFIRMATION")));
-            when(otpService.hasActiveCode(USER_ID, OtpType.CANCELLATION_CONFIRM)).thenReturn(false);
-            when(otpService.hasActiveCode(USER_ID, OtpType.RESERVATION_CONFIRM)).thenReturn(false);
+            when(otpService.peekActiveReservationType(USER_ID, RES_ID)).thenReturn(Optional.empty());
 
             service.handleUpdate("s3cret", update("/confirmar " + REF + " 123456"));
 
-            verify(otpService, never()).verify(any(), any(), any());
+            verify(otpService, never()).verifyForReservation(any(), any(), any());
             verify(telegramPort).enviarMensaje(eq(CHAT), contains("operación pendiente"));
         }
 
@@ -415,7 +472,8 @@ class TelegramDispatcherReservasTest {
             linked();
             when(reservaQueryService.listForUser(USER_ID))
                     .thenReturn(List.of(reserva(RES_ID, USER_ID, "CONFIRMED")));
-            when(otpService.hasActiveCode(USER_ID, OtpType.CANCELLATION_CONFIRM)).thenReturn(true);
+            when(otpService.peekActiveReservationType(USER_ID, RES_ID))
+                    .thenReturn(Optional.of(OtpType.CANCELLATION_CONFIRM));
             org.mockito.Mockito.doThrow(new InvalidReservaStateException(
                             "CANCELLATION_DEADLINE_PASSED", "La cancelación está fuera del plazo permitido"))
                     .when(cancelarReservaService).cancelar(RES_ID, USER_ID, false);
@@ -432,10 +490,10 @@ class TelegramDispatcherReservasTest {
             linked();
             when(reservaQueryService.listForUser(USER_ID))
                     .thenReturn(List.of(reserva(RES_ID, USER_ID, "PENDING_CONFIRMATION")));
-            when(otpService.hasActiveCode(USER_ID, OtpType.CANCELLATION_CONFIRM)).thenReturn(false);
-            when(otpService.hasActiveCode(USER_ID, OtpType.RESERVATION_CONFIRM)).thenReturn(true);
+            when(otpService.peekActiveReservationType(USER_ID, RES_ID))
+                    .thenReturn(Optional.of(OtpType.RESERVATION_CONFIRM));
             org.mockito.Mockito.doThrow(OtpVerificationException.invalid())
-                    .when(otpService).verify(USER_ID, OtpType.RESERVATION_CONFIRM, "654321");
+                    .when(otpService).verifyForReservation(USER_ID, RES_ID, "654321");
 
             service.handleUpdate("s3cret", update("/confirmar " + REF + " 654321"));
 

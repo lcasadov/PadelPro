@@ -4,6 +4,7 @@ import com.padelpro.otp.domain.model.OtpCode;
 import com.padelpro.otp.domain.model.OtpType;
 
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Outbound port — persistence operations on {@link OtpCode} (hexagonal).
@@ -23,6 +24,15 @@ public interface OtpCodeRepositoryPort {
 
     /** All active (not-used) codes for a user, any type — used to revoke on Telegram unlink. */
     List<OtpCode> findByUserIdAndUsedFalse(Long userId);
+
+    /**
+     * Active (not-used) codes bound to a specific reservation for a user, newest first, regardless of
+     * type. Used by the Telegram dispatcher (bot-telegram-reservas, D-4) to resolve the operation
+     * pending on a referenced reservation ({@code RESERVATION_CONFIRM} vs {@code CANCELLATION_CONFIRM})
+     * without global type precedence. At most one is expected because issuing a new reservation code
+     * invalidates the previous one for the same reservation.
+     */
+    List<OtpCode> findByUserIdAndReservationIdAndUsedFalseOrderByCreatedAtDesc(Long userId, UUID reservationId);
 
     /**
      * Active codes matching a code hash + type — used by the Telegram webhook to resolve which

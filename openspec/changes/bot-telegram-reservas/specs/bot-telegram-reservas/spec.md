@@ -51,16 +51,21 @@ El sistema SHALL permitir crear una reserva con `/reservar <fecha> <hora> [durac
 
 ### Requirement: Confirmar reserva con OTP por bot
 
-El sistema SHALL permitir confirmar una reserva pendiente con `/confirmar <ref> <otp>`, validando un OTP de tipo `RESERVATION_CONFIRM` vía `OtpService` (RN-AUTH-07: 6 dígitos, TTL 10 min, un solo uso, máx. 3 intentos). La confirmación SHALL aplicarse solo si la reserva es del usuario y está en un estado confirmable.
+El sistema SHALL permitir confirmar una reserva pendiente con `/confirmar <ref> <otp>`, validando un OTP **ligado a la reserva referenciada** (`otp_codes.reservation_id`, D-4) vía `OtpService` (RN-AUTH-07: 6 dígitos, TTL 10 min, un solo uso, máx. 3 intentos). La operación (confirmar vs. cancelar) SHALL determinarse por el tipo del OTP activo de ESA reserva (`RESERVATION_CONFIRM` vs `CANCELLATION_CONFIRM`), no por precedencia global de tipo. La confirmación SHALL aplicarse solo si la reserva es del usuario y está en un estado confirmable.
 
 #### Scenario: Confirmación exitosa
-- **GIVEN** una reserva pendiente del usuario y un OTP `RESERVATION_CONFIRM` válido
+- **GIVEN** una reserva pendiente del usuario y un OTP `RESERVATION_CONFIRM` válido ligado a esa reserva
 - **WHEN** el usuario envía `/confirmar <ref> <otp>`
 - **THEN** el OTP se consume, la reserva pasa a confirmada y se registra `TELEGRAM_RESERVA_CONFIRMED`
 
 #### Scenario: OTP incorrecto no confirma
 - **WHEN** el usuario envía `/confirmar <ref>` con un OTP inválido
 - **THEN** el bot informa del error, incrementa el conteo de intentos y no cambia el estado de la reserva
+
+#### Scenario: Confirmar X nunca cancela X aunque haya una cancelación pendiente de Y
+- **GIVEN** el usuario tiene la reserva X pendiente de confirmar (OTP `RESERVATION_CONFIRM` ligado a X) y una cancelación en curso de otra reserva Y (OTP `CANCELLATION_CONFIRM` ligado a Y)
+- **WHEN** el usuario envía `/confirmar X <otp-de-X>`
+- **THEN** el bot confirma X (nunca la cancela) y no consume el intento del OTP de Y
 
 ### Requirement: Cancelar reserva con OTP por bot
 

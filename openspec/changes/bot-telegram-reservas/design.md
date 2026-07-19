@@ -15,7 +15,7 @@ Restricciones: el bot NO reimplementa reglas de negocio de reservas — las dele
 **Non-Goals:**
 - Parsing de lenguaje natural libre (formato estricto + ayuda).
 - Editar/reprogramar reservas o unirse a partidas por bot.
-- Cambiar el contrato del webhook o el esquema de BD (salvo que la referencia corta exija persistencia — ver Decisiones).
+- Cambiar el contrato del webhook. (El esquema de BD recibe una única columna additiva y nullable `otp_codes.reservation_id` — migración `V21`, reversible — para ligar el OTP a la reserva; ver D-4.)
 
 ## Decisions
 
@@ -25,7 +25,11 @@ Restricciones: el bot NO reimplementa reglas de negocio de reservas — las dele
 
 **D-3 · Reutilización directa de servicios de aplicación, no de los controllers REST.** El handler invoca `CrearReservaService`/`CancelarReservaService`/`ReservaQueryService` con el `userId` resuelto del chat, pasando `admin=false`. Alternativa descartada: llamar a los endpoints REST internamente — añadiría auth HTTP y serialización redundante. Motiva: RN-RES-* provienen del servicio; el bot no las duplica.
 
-**D-4 · Flujo OTP de confirmar/cancelar en dos pasos.** `/cancelar <ref>` emite un OTP `CANCELLATION_CONFIRM` (enviado por `TelegramPort` al chat) y responde "confirma con /confirmar <ref> <otp>"; la aplicación efectiva ocurre al validar el OTP. `/confirmar <ref> <otp>` valida `RESERVATION_CONFIRM` o `CANCELLATION_CONFIRM` según el estado pendiente de la reserva. Motiva: RN-AUTH-07 (OTP como segundo factor para operaciones críticas), reusando `OtpService`.
+**D-4 · Flujo OTP de confirmar/cancelar en dos pasos, con el OTP ligado a la reserva.** `/reservar` emite un `RESERVATION_CONFIRM` y `/cancelar <ref>` un `CANCELLATION_CONFIRM` (enviados por `TelegramPort`); la aplicación efectiva ocurre al validar con `/confirmar <ref> <otp>`.
+
+Decisión clave (opción **a**, tras verificación adversarial): **cada OTP de reserva se liga a su `reservation_id`** (columna nullable additiva en `otp_codes`, migración `V21`; los OTP no-reserva `TELEGRAM_LINK`/`PASSWORD_RESET` la dejan `NULL`). El dispatcher resuelve la operación por **la reserva referenciada**, no por precedencia global de tipo: `peekActiveReservationType(userId, reservationId)` (lectura, sin gastar intento) devuelve el tipo del OTP activo ligado a esa reserva → `RESERVATION_CONFIRM` ⇒ confirmar, `CANCELLATION_CONFIRM` ⇒ cancelar; `verifyForReservation(userId, reservationId, code)` valida ese código concreto. Así `/confirmar X` **nunca** aplica la operación pendiente de otra reserva Y ni gasta el intento del OTP de Y.
+
+Alternativa descartada (opción b, sin esquema): decidir por el estado de `<ref>` — sigue siendo ambigua cuando una misma reserva PENDING tiene a la vez un confirm y un cancel pendientes. La ligadura al `reservation_id` es la única que elimina el cruce por completo. Efecto colateral positivo: generar el OTP de una reserva solo invalida el anterior **de esa misma reserva**, de modo que múltiples reservas pendientes son confirmables en paralelo (antes solo la última). Motiva: RN-AUTH-07 (OTP como segundo factor), reusando `OtpService`.
 
 **D-5 · Parser estricto de `/reservar`.** Regex/tokenización estricta: `<fecha ISO> <hora HH:mm> [duración min] [@handle|nombre externo...]`. Sin campo de pista (la reserva es por tramo; `CrearReservaRequest` no lo tiene). Si no casa → mensaje de ayuda con ejemplo. Los `@handle` se resuelven a usuarios vinculados; tokens no-@ se tratan como participante externo (nombre). Motiva: evita el riesgo de NL libre marcado en el backlog (US-017).
 
@@ -36,7 +40,7 @@ Restricciones: el bot NO reimplementa reglas de negocio de reservas — las dele
 - **[Resolución de @handles a usuarios]** → Mitigación: si un `@handle` no resuelve a una cuenta vinculada, se rechaza el comando indicando qué participante falló, en vez de crear la reserva a medias.
 - **[Doble ejecución por reintentos del webhook de Telegram]** → Mitigación: reusar la `idempotencyKey` de `CrearReservaService.crear` (derivada de chatId+comando+tramo) para que un reintento no cree dos reservas. Confirmar en implementación la fuente de la clave.
 - **[OTP en logs]** → Mitigación: RN-RGPD-04 — nunca loguear el código; auditar solo la acción y el resultado.
-- **[Estado pendiente ambiguo confirmar vs cancelar]** → Mitigación: el tipo de OTP (`RESERVATION_CONFIRM` vs `CANCELLATION_CONFIRM`) determina la operación; `/confirmar` resuelve según el OTP activo del usuario para esa reserva.
+- **[Estado pendiente ambiguo confirmar vs cancelar]** → Mitigación (D-4, opción a): el OTP se liga a `reservation_id`; `/confirmar <ref>` resuelve el OTP activo **de esa reserva** y su tipo (`RESERVATION_CONFIRM` vs `CANCELLATION_CONFIRM`) determina la operación. Con confirms/cancels pendientes en reservas distintas no hay cruce posible.
 
 ## Migration Plan
 

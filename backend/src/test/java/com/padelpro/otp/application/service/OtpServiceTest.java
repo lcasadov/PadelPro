@@ -16,6 +16,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -188,6 +190,139 @@ class OtpServiceTest {
         assertThat(otp.isUsed()).isTrue();
         verify(repository).save(otp);
         verify(auditRecorder).record(eq(OtpAuditActions.OTP_VERIFIED), eq(42L), any());
+    }
+
+    // -------------------------------------------------------------------------
+    // Reservation-bound codes (bot-telegram-reservas, D-4)
+    // -------------------------------------------------------------------------
+
+    private static final UUID RES = UUID.fromString("a1b2c3d4-0000-4000-8000-000000000001");
+
+    private OtpCode reservationOtp(String code, OtpType type, OffsetDateTime expiresAt, UUID reservationId) {
+        return new OtpCode(42L, OtpHasher.sha256Hex(code), type, expiresAt, OffsetDateTime.now(), reservationId);
+    }
+
+    @Test
+    @DisplayName("generate(type, reservationId) stores the code bound to the reservation and audits it")
+    void generate_bound_to_reservation() {
+        when(repository.findByUserIdAndReservationIdAndUsedFalseOrderByCreatedAtDesc(42L, RES))
+                .thenReturn(List.of());
+
+        GeneratedOtp result = service.generate(42L, OtpType.RESERVATION_CONFIRM, RES);
+
+        assertThat(result.code()).matches("\\d{6}");
+        ArgumentCaptor<OtpCode> captor = ArgumentCaptor.forClass(OtpCode.class);
+        verify(repository).save(captor.capture());
+        assertThat(captor.getValue().getReservationId()).isEqualTo(RES);
+        assertThat(captor.getValue().getType()).isEqualTo(OtpType.RESERVATION_CONFIRM);
+    }
+
+    @Test
+    @DisplayName("generate(type, reservationId) invalidates the previous code of the SAME reservation only")
+    void generate_bound_invalidates_same_reservation() {
+        OtpCode previous = reservationOtp("111111", OtpType.RESERVATION_CONFIRM,
+                OffsetDateTime.now().plusMinutes(5), RES);
+        when(repository.findByUserIdAndReservationIdAndUsedFalseOrderByCreatedAtDesc(42L, RES))
+                .thenReturn(List.of(previous));
+
+        service.generate(42L, OtpType.CANCELLATION_CONFIRM, RES);
+
+        assertThat(previous.isUsed()).isTrue();
+        verify(repository, times(2)).save(any(OtpCode.class));
+    }
+
+    @Test
+    @DisplayName("peekActiveReservationType returns the active code's type without consuming it")
+    void peek_returns_type() {
+        OtpCode otp = reservationOtp("246810", OtpType.CANCELLATION_CONFIRM,
+                OffsetDateTime.now().plusMinutes(5), RES);
+        when(repository.findByUserIdAndReservationIdAndUsedFalseOrderByCreatedAtDesc(42L, RES))
+                .thenReturn(List.of(otp));
+
+        assertThat(service.peekActiveReservationType(42L, RES))
+                .contains(OtpType.CANCELLATION_CONFIRM);
+        assertThat(otp.isUsed()).isFalse();
+        assertThat(otp.getAttempts()).isZero();
+    }
+
+    @Test
+    @DisplayName("peekActiveReservationType ignores an expired code and returns empty")
+    void peek_ignores_expired() {
+        OtpCode otp = reservationOtp("246810", OtpType.RESERVATION_CONFIRM,
+                OffsetDateTime.now().minusSeconds(1), RES);
+        when(repository.findByUserIdAndReservationIdAndUsedFalseOrderByCreatedAtDesc(42L, RES))
+                .thenReturn(List.of(otp));
+
+        assertThat(service.peekActiveReservationType(42L, RES)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("verifyForReservation consumes the reservation's code on success")
+    void verify_for_reservation_success() {
+        OtpCode otp = reservationOtp("654321", OtpType.RESERVATION_CONFIRM,
+                OffsetDateTime.now().plusMinutes(5), RES);
+        when(repository.findByUserIdAndReservationIdAndUsedFalseOrderByCreatedAtDesc(42L, RES))
+                .thenReturn(List.of(otp));
+
+        service.verifyForReservation(42L, RES, "654321");
+
+        assertThat(otp.isUsed()).isTrue();
+        verify(auditRecorder).record(eq(OtpAuditActions.OTP_VERIFIED), eq(42L), any());
+    }
+
+    @Test
+    @DisplayName("verifyForReservation increments attempts on a wrong code (<3 fails)")
+    void verify_for_reservation_wrong_code() {
+        OtpCode otp = reservationOtp("654321", OtpType.RESERVATION_CONFIRM,
+                OffsetDateTime.now().plusMinutes(5), RES);
+        when(repository.findByUserIdAndReservationIdAndUsedFalseOrderByCreatedAtDesc(42L, RES))
+                .thenReturn(List.of(otp));
+
+        assertThatThrownBy(() -> service.verifyForReservation(42L, RES, "000000"))
+                .isInstanceOf(OtpVerificationException.class)
+                .extracting("code").isEqualTo("OTP_INVALID");
+        assertThat(otp.getAttempts()).isEqualTo(1);
+        assertThat(otp.isUsed()).isFalse();
+    }
+
+    @Test
+    @DisplayName("verifyForReservation auto-invalidates on the third failed attempt")
+    void verify_for_reservation_third_fail() {
+        OtpCode otp = reservationOtp("654321", OtpType.CANCELLATION_CONFIRM,
+                OffsetDateTime.now().plusMinutes(5), RES);
+        otp.registerFailedAttempt();
+        otp.registerFailedAttempt();
+        when(repository.findByUserIdAndReservationIdAndUsedFalseOrderByCreatedAtDesc(42L, RES))
+                .thenReturn(List.of(otp));
+
+        assertThatThrownBy(() -> service.verifyForReservation(42L, RES, "000000"))
+                .isInstanceOf(OtpVerificationException.class)
+                .extracting("code").isEqualTo("OTP_MAX_ATTEMPTS");
+        assertThat(otp.isUsed()).isTrue();
+    }
+
+    @Test
+    @DisplayName("verifyForReservation throws OTP_EXPIRED for an expired reservation code")
+    void verify_for_reservation_expired() {
+        OtpCode otp = reservationOtp("654321", OtpType.RESERVATION_CONFIRM,
+                OffsetDateTime.now().minusSeconds(1), RES);
+        when(repository.findByUserIdAndReservationIdAndUsedFalseOrderByCreatedAtDesc(42L, RES))
+                .thenReturn(List.of(otp));
+
+        assertThatThrownBy(() -> service.verifyForReservation(42L, RES, "654321"))
+                .isInstanceOf(OtpVerificationException.class)
+                .extracting("code").isEqualTo("OTP_EXPIRED");
+    }
+
+    @Test
+    @DisplayName("verifyForReservation throws OTP_INVALID when the reservation has no active code")
+    void verify_for_reservation_no_active_code() {
+        when(repository.findByUserIdAndReservationIdAndUsedFalseOrderByCreatedAtDesc(42L, RES))
+                .thenReturn(List.of());
+
+        assertThatThrownBy(() -> service.verifyForReservation(42L, RES, "123456"))
+                .isInstanceOf(OtpVerificationException.class)
+                .extracting("code").isEqualTo("OTP_INVALID");
     }
 
     @Test

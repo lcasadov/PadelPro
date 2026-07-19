@@ -3,6 +3,7 @@ package com.padelpro.otp.domain.model;
 import jakarta.persistence.*;
 
 import java.time.OffsetDateTime;
+import java.util.UUID;
 
 /**
  * JPA entity for a one-time password (auth-otp-telegram, RN-AUTH-07).
@@ -48,12 +49,26 @@ public class OtpCode {
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
 
+    /**
+     * Reservation this code is bound to, or {@code null} for non-reservation codes (TELEGRAM_LINK,
+     * PASSWORD_RESET). Binding removes the confirm/cancel ambiguity for the Telegram dispatcher
+     * (bot-telegram-reservas, D-4): a {@code /confirmar <ref>} resolves the code by (user, reservation)
+     * and its {@link #type} then unambiguously says confirm-vs-cancel.
+     */
+    @Column(name = "reservation_id")
+    private UUID reservationId;
+
     protected OtpCode() {
         // JPA
     }
 
     public OtpCode(Long userId, String codeHash, OtpType type,
                    OffsetDateTime expiresAt, OffsetDateTime createdAt) {
+        this(userId, codeHash, type, expiresAt, createdAt, null);
+    }
+
+    public OtpCode(Long userId, String codeHash, OtpType type,
+                   OffsetDateTime expiresAt, OffsetDateTime createdAt, UUID reservationId) {
         this.userId = userId;
         this.codeHash = codeHash;
         this.type = type;
@@ -61,6 +76,7 @@ public class OtpCode {
         this.used = false;
         this.expiresAt = expiresAt;
         this.createdAt = createdAt;
+        this.reservationId = reservationId;
     }
 
     // -------------------------------------------------------------------------
@@ -111,4 +127,6 @@ public class OtpCode {
     public OffsetDateTime getExpiresAt() { return expiresAt; }
 
     public OffsetDateTime getCreatedAt() { return createdAt; }
+
+    public UUID getReservationId() { return reservationId; }
 }
