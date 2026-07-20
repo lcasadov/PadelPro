@@ -49,6 +49,16 @@ services:
       ADMIN_EMAIL: ${ADMIN_EMAIL:-}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
 
+      # Usuarios de prueba (Issue #258): crea un admin y un jugador ACTIVE con credenciales
+      # conocidas (documentadas en RESUME.md) para que el equipo pruebe la app. Idempotente.
+      # Se puede sobreescribir cada credencial vía .env; poner SEED_USERS_ENABLED=false para
+      # desactivarlo (o borrar los usuarios) antes de un uso real.
+      SEED_USERS_ENABLED: ${SEED_USERS_ENABLED:-true}
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin.demo@padelpro.es}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-PadelDemo#Admin2026}
+      SEED_PLAYER_EMAIL: ${SEED_PLAYER_EMAIL:-jugador.demo@padelpro.es}
+      SEED_PLAYER_PASSWORD: ${SEED_PLAYER_PASSWORD:-PadelDemo#Jugador2026}
+
       # SMTP / Email (notificaciones). Credenciales SOLO en el .env del EC2 (nunca en el repo).
       # Si MAIL_HOST está vacío, el envío falla de forma tolerante (D4) y no rompe la gestión.
       MAIL_HOST: ${MAIL_HOST:-}
